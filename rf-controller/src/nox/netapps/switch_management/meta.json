@@ -1,0 +1,15 @@
+{
+    "components": [
+        {
+            "name": "switch_management" ,
+            "library": "switch_management" 
+        },
+        {
+            "name": "pyswitch_management" ,
+            "dependencies": [
+                "switch_management"
+            ],
+            "python": "nox.netapps.switch_management.pyswitch_management"
+        }
+    ]
+}

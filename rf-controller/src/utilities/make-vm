@@ -1,0 +1,216 @@
+#! /bin/sh
+#
+# $Id: qemu-make-debian-root 204 2006-11-04 18:16:18Z guillem $
+#
+# Script to make a debian root image.
+#======================================================================
+# Copyright 2008 (C) Nicira, Inc.
+# 
+# This file is part of NOX.
+# 
+# NOX is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+# 
+# NOX is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with NOX.  If not, see <http://www.gnu.org/licenses/>.
+#======================================================================
+
+set -e
+
+which uudecode >/dev/null || {
+    echo "error: missing sharutils package" >&2
+    exit 1
+}
+
+which debootstrap >/dev/null || {
+    echo "error: missing debootstrap package" >&2
+    exit 1
+}
+
+KEEPFS=0
+if [ "$1" = "-k" ]; then
+    KEEPFS=1
+    shift
+fi
+
+if [ $# -lt 4 ]; then
+    echo Usage: "$0 [-k] size-in-MB distrib deburl image [files_to_copy_in_/root]" >&2
+    echo "eg $0 150 sid http://proxy:10000/debian qemu" >&2
+    exit 1
+fi
+
+SIZE=$1
+DISTRO=$2
+URL=$3
+IMAGE=$4
+shift 4
+
+# now files to copy are in "$@".  We don't put them in a variable
+# because that would coufuse spaces-in-filenames with
+# whitespace-separation.
+
+
+if [ $SIZE -lt 130 ]; then
+    echo 'Size must be at least 130 megabytes (Debian unstable takes 100)' >&2
+    exit 1
+fi
+
+cleanup()
+{
+    echo Cleaning up... >&2
+    umount -d /tmp/mount.$$ || true
+    rm -f $IMAGE.ext2 $IMAGE
+}
+
+trap cleanup EXIT
+
+HEADS=16
+SECTORS=63
+# 512 bytes in a sector: cancel the 512 with one of the 1024s...
+CYLINDERS=$(( $SIZE * 1024 * 2 / ($HEADS * $SECTORS) ))
+
+# Create a filesystem: one track for partition table.
+dd bs=$(($SECTORS * 512)) if=/dev/zero of=$IMAGE.ext2 count=$(($CYLINDERS * $HEADS - 1))
+mke2fs -q -m1 -F -j $IMAGE.ext2
+
+# Mount it.
+mkdir /tmp/mount.$$
+mount -o loop $IMAGE.ext2 /tmp/mount.$$
+
+# Do debian install on it.
+#debootstrap --exclude=syslinux,at,exim,mailx,libstdc++2.10-glibc2.2,mbr,setserial,fdutils,info,ipchains,lilo,pcmcia-cs,ppp,pppoe,pppoeconf,pppconfig $DISTRO /tmp/mount.$$ $URL
+debootstrap --include=modutils $DISTRO /tmp/mount.$$ $URL
+
+# Final configuration.
+cat > /tmp/mount.$$/etc/fstab <<EOF
+/dev/hda1 / ext3 errors=remount-ro 0 1
+proc /proc proc defaults 0 0
+EOF
+
+# Add console on ttyS0.
+echo 'T0:23:respawn:/sbin/getty -L ttyS0 9600 vt100' >> /tmp/mount.$$/etc/inittab
+
+# Add console on tty0 because of funny UML stuff,
+# and enable root logins on tty0.
+echo '0:2345:respawn:/sbin/getty 38400 tty0' >> /tmp/mount.$$/etc/inittab
+echo 'tty0' >> /tmp/mount.$$/etc/securetty
+
+# Create missing devices.
+mknod /tmp/mount.$$/dev/ttyS0 c 4 64
+mknod /tmp/mount.$$/dev/hda b 3 0
+mknod /tmp/mount.$$/dev/hdb b 3 64
+mknod /tmp/mount.$$/dev/hdc b 22 0
+
+# Set hostname to base of image name.
+basename $IMAGE > /tmp/mount.$$/etc/hostname
+
+# Create /etc/shadow
+chroot /tmp/mount.$$ pwconv
+
+# Set root password to "root"
+sed 's/^root:[^:]*/root:$1$aybpiIGf$cB7iFDNZvViQtQjEZ5HFQ0/' < /tmp/mount.$$/etc/shadow > /tmp/mount.$$/etc/shadow.new
+mv /tmp/mount.$$/etc/shadow.new /tmp/mount.$$/etc/shadow
+
+# Configure network interfaces.
+cat >/tmp/mount.$$/etc/network/interfaces <<EOF
+# This file describes the network interfaces available on your system
+# and how to activate them. For more information, see interfaces(5).
+
+# The loopback network interface
+auto lo
+iface lo inet loopback
+
+# The primary network interface
+#allow-hotplug eth0
+#iface eth0 inet dhcp
+EOF
+
+# Create /cdrom mount point.
+mkdir /tmp/mount.$$/cdrom
+
+# Run /cdrom/runme on boot.
+cat > /tmp/mount.$$/etc/rc.local <<EOF
+mount /dev/hdc /cdrom || exit 0
+cd /cdrom
+PATH=/cdrom:$PATH
+if test -x runme; then
+	runme
+elif test -e runme; then
+	sh -ex runme
+fi
+EOF
+
+# Make sure that dhclient makes nicira.com the default domain.
+echo "supersede domain-name \"nicira.com\";" >> /etc/dhcp3/dhclient.conf
+
+# Use same proxy as host.
+if test -n "$http_proxy"; then
+	echo "Acquire::http::Proxy \"$http_proxy\";" > /tmp/mount.$$/etc/apt/apt.conf.d/proxy
+	echo "export http_proxy=\"$http_proxy\"" >> /tmp/mount.$$/root/.bashrc
+fi
+
+# Try to remove all libraries: some won't be removable.
+chroot /tmp/mount.$$ dpkg --remove `chroot /tmp/mount.$$ dpkg --get-selections | sed -n 's/^\(lib[^ \t]*\)[\t ]*install/\1/p'` 2>/dev/null || true
+
+# Make networking work from the chroot, by stealing resolv.conf from the host
+cp /etc/resolv.conf /tmp/mount.$$/etc/resolv.conf
+
+# Install libnl-snapshot and recent version of libstdc++
+cat >> /tmp/mount.$$/etc/apt/sources.list <<EOF
+deb http://mirrors.kernel.org/debian/ unstable main contrib non-free
+deb-src http://mirrors.kernel.org/debian/ unstable main contrib non-free
+deb http://apt.nicira.com/apt/ unstable/i386/
+deb-src http://apt.nicira.com/apt/ unstable/source/
+EOF
+chroot /tmp/mount.$$ apt-get update
+#chroot /tmp/mount.$$ apt-get -y --force-yes install gdb valgrind libstdc++6 tzdata util-linux openssl-client tcpdump bridge-utils libpcap0.7 libsqlite3-0 python-twisted python-pysqlite2 sqlite3
+# Copy wanted files to /root if asked to
+if [ $# -gt 0 ]; then
+    cp -a "$@" /tmp/mount.$$/root/
+fi
+umount -d /tmp/mount.$$
+
+# Create file with partition table.
+uudecode -o- << "EOF" | gunzip > $IMAGE
+begin 664 partition-table.gz
+M'XL("*_<##\"`W!A<G1I=&EO;BUT86)L90#LT#$-`"`0!,&']D6A`D6XP1T&
+M"%B@))FIMKGF(OA9C;%;EENYZO.Z3P\"````!P``__\:!0````#__QH%````
+M`/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0````#__QH%
+M`````/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0````#_
+M_QH%`````/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0``
+M``#__QH%`````/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:
+M!0````#__QH%`````/__&@4`````__\:!0````#__QH%`````/__&@4`````
+M__\:!0````#__QH%`````/__&@4`````__\:!0````#__QH%`````/__&@4`
+M````__\:!0````#__QH%`````/__&@4`````__\:!0````#__QH%`````/__
+M&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0````#__QH%````
+M`/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0````#__QH%
+M`````/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0````#_
+M_QH%`````/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0``
+M``#__QH%`````/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:
+M!0````#__QH%`````/__&@4`````__\:!0````#__QH%`````/__&@4`````
+M__\:!0````#__QH%`````/__&@4`````__\:!0````#__QH%`````/__&@4`
+M````__\:!0````#__QH%`````/__&@4`````__\:!0````#__QH%`````/__
+M&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0````#__QH%````
+M`/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0````#__QH%
+M`````/__&@4`````__\:!0````#__QH%`````/__&@4`````__\:!0````#_
+M_QH%`````/__&@4`````__\:!0````#__QH%`````/__0@``````__\#`%&_
+&<90`?@``
+`
+end
+EOF
+dd if=$IMAGE.ext2 of=$IMAGE seek=$((`stat -c%s $IMAGE` / 512)) bs=512
+rm $IMAGE.ext2
+
+# Repartition so one partition covers entire disk.
+echo '63,' | sfdisk -uS -H$HEADS -S$SECTORS -C$CYLINDERS $IMAGE
+
+trap "" EXIT
+
+echo Done.

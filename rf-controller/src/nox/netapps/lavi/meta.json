@@ -1,0 +1,93 @@
+{
+    "components": [
+        {
+            "name": "lavi", 
+            "library": "lavi"
+        }, 
+        {
+            "dependencies": [
+                "jsonmessenger"
+            ], 
+            "name": "lavi nodes", 
+            "library": "lavi_nodes"
+        }, 
+        {
+            "dependencies": [
+                "lavi nodes", 
+                "datapathmem"
+            ], 
+            "name": "lavi_switches", 
+            "library": "lavi_switches"
+        }, 
+        {
+            "dependencies": [
+                "jsonmessenger"
+            ], 
+            "name": "lavi links", 
+            "library": "lavi_links"
+        }, 
+        {
+            "dependencies": [
+                "lavi links", 
+                "datapathmem", 
+                "topology"
+            ], 
+            "name": "lavi_swlinks", 
+            "library": "lavi_swlinks"
+        }, 
+        {
+            "dependencies": [
+                "jsonmessenger"
+            ], 
+            "name": "lavi flows", 
+            "library": "lavi_flows"
+        }, 
+        {
+            "dependencies": [
+                "lavi flows", 
+                "lavi_swlinks", 
+                "flowroute record"
+            ], 
+            "name": "lavi_networkflow", 
+            "library": "lavi_networkflow"
+        }, 
+        {
+            "dependencies": [
+                "lavi nodes", 
+                "hosttracker"
+            ], 
+            "name": "lavi_hosts", 
+            "library": "lavi_hosts"
+        }, 
+        {
+            "dependencies": [
+                "lavi links", 
+                "hosttracker"
+            ], 
+            "name": "lavi_host2sw", 
+            "library": "lavi_host2sw"
+        },
+        {
+            "dependencies": [
+                "lavi flows", 
+                "lavi_host2sw", 
+                "flowroute record"
+            ], 
+            "name": "lavi_hostflow", 
+            "library": "lavi_hostflow"
+        },
+        {
+            "dependencies": [
+                "lavi_networkflow", 
+                "lavi_hostflow", 
+                "lavi_switches", 
+                "lavi_hosts", 
+                "lavi_host2sw", 
+                "lavi_swlinks", 
+                "simplerouting"
+            ], 
+            "name": "lavitest_showflow", 
+            "library": "lavitest_showflow"
+        }
+    ]
+}

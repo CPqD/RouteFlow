@@ -1,0 +1,161 @@
+.\" -*- nroff -*-
+.TH START-TEST-VM 1 2007-09-12 "Nicira" "Nicira Developer's Manual"
+
+.SH NAME
+
+start-test-vm \- start collection of VMs
+.br
+stop-test-vm \- stop collection of VMs
+
+.SH SYNOPSIS
+
+.B start-test-vm
+.RB [ -n
+|
+.BR --dry-run ]
+.RB [ -f
+.I vm
+|
+.B --foreground
+.I vm
+|
+.B -o
+.I vm
+|
+.BI --only= vm\fR]
+.RB [ -v
+.I vmm
+|
+.BI --vmm= vmm\fR]
+.RI [ vmconf ]
+
+.br
+
+.B stop-test-vm
+
+.SH DESCRIPTION
+
+The
+.B start-test-vm
+program reads
+.B vms.conf
+in the current directory (or another file specified as
+.I vmconf
+on the command line) and, by default, starts all of the VMs and
+virtual Ethernet switches specified by the configuration.
+
+The
+.B stop-test-vm
+kills all of the programs started by
+.BR start-test-vm .
+In its current implementation it indiscriminately kills all processes
+with appropriate names.
+
+.SH OPTIONS
+
+The
+.B start-test-vm
+program accepts the following options.
+
+.IP -f\ \fIvm\fR
+.PD 0
+.IP --foreground=\fIvm\fR
+.PD
+Run the specified
+.I vm
+with its console in the foreground.  This overrides any setting of
+.B FOREGROUND
+in the VM configuration file.
+
+.IP -o\ \fIvm\fR
+.PD 0
+.IP --only=\fIvm\fR
+.PD
+Run
+.I only
+the specified
+.I vm
+with its console in the foreground, connecting it to a single virtual
+Ethernet that is in turn connected to the host network (and thus
+likely to the Internet).  Any changes to the VM's disk will persist to
+following sessions (unlike the default).  No other VMs or virtual
+switches are started.
+
+.IP -v\ \fIvmm\fR
+.PD 0
+.IP --vmm=\fIvmm\fR
+.PD
+Use the specified
+.I vmm
+(which should be
+.B qemu
+or
+.BR kvm )
+instead of the default.
+
+.IP \fIvmconf\fR
+.PD
+Use
+.I vmconf
+in place of the default configuration file
+.BR vms.conf .
+
+.PP
+The
+.B stop-test-vm
+program does not accept any options.
+
+.SH FILES
+
+.IP vms.conf
+Virtual machine configuration file.  See
+.BR vms.conf (5)
+for format and examples.
+
+.IP \fBvm\fR.log
+Log file that receives all output from the given
+.BR vm .
+
+.IP \fBvm\fR.screenrc
+Created for each VM to pass configuration commands to
+.BR screen (1).
+
+.IP \fBvm\fR.cd/
+If this directory exists, then the files in it will be converted to
+ISO-9660 CD-ROM format, with Rock Ridge extensions, using
+.BR genisoimage (1)
+and supplied to
+.B vm
+as a virtual CD-ROM on
+.BR /dev/hdc .
+Any symbolic links in the directory are dereferenced.  If no such
+directory exists, no virtual CD-ROM will be supplied to
+.BR vm .
+See the
+.B EXAMPLES
+section below for sample uses.
+
+.IP \fBvm\fR.iso
+File created from \fBvm\fR.cd directory by
+.BR genisoimage (1).
+Not ordinarily of user interest.
+
+.IP vde
+Directory used by
+.BR vde_switch ,
+.BR vdeq ,
+and
+.B slirpvde
+to communicate amongst themselves.  Not ordinarily of user interest.
+
+.SH "SEE ALSO"
+
+.BR vms.conf (5),
+.BR screen (1),
+.BR qemu (1),
+.BR kvm (1),
+.BR slirp (1),
+.BR genisoimage (1),
+.BR vde_switch (1),
+.BR vdeq (1),
+.BR slirpvde (1).

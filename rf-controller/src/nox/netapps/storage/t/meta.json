@@ -1,0 +1,11 @@
+{
+    "components": [
+        {
+            "name": "test_storage" ,
+            "dependencies": [
+                "pystorage"
+            ],
+            "python": "nox.netapps.storage.t.storage_test" 
+        }
+    ]
+}

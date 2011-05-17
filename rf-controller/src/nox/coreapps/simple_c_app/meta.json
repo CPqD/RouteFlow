@@ -1,0 +1,8 @@
+{
+    "components": [
+        {
+            "name": "simple cc app" ,
+            "library": "simple_cc_app" 
+        }
+    ]
+}

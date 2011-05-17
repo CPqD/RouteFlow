@@ -1,0 +1,58 @@
+{
+    "components": [
+        {
+            "name": "normal_routing" ,
+            "library": "normal_routing" ,
+            "dependencies": [
+                "flow_util",
+                "authenticator"
+            ]
+        },
+        {
+            "name": "nat_enforcer" ,
+            "library": "nat_enforcer" ,
+            "dependencies": [
+                "flow_util"
+            ]
+        },
+        {
+            "name": "nat" ,
+            "dependencies": [
+                "nat_enforcer",
+                "pyflow_util"
+            ],
+            "python": "nox.netapps.routing.pynatenforcer"
+        },
+        {
+            "name": "routing" ,
+            "library": "sprouting" ,
+            "dependencies": [
+                "routing_module",
+                "authenticator"
+            ]
+        },
+        {
+            "name": "routing_module" ,
+            "library": "routing_module" ,
+            "dependencies": [
+                "topology",
+                "nat_enforcer"
+            ]
+        },
+        {
+            "name": "pyrouting" ,
+            "dependencies": [
+                "routing_module"
+            ],
+            "python": "nox.netapps.routing.pyrouting"
+        },
+        {
+            "name": "sample_routing" ,
+            "dependencies": [
+                "pyauthenticator",
+                "pyrouting"
+            ],
+            "python": "nox.netapps.routing.samplerouting"
+        }
+    ]
+}

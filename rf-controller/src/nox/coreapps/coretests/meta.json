@@ -1,0 +1,24 @@
+{
+    "components": [
+        {
+            "name": "test_packet" , 
+            "python": "nox.coreapps.coretests.test_packet" 
+        },
+        {
+            "name": "test_mod" ,
+            "python": "nox.coreapps.coretests.test_mod" 
+        },
+        {
+            "name": "test_basic_callback" ,
+            "python": "nox.coreapps.coretests.test_basic_callback" 
+        },
+        {
+            "name": "test_ss" ,
+            "library": "ssl_test" 
+        },
+        {
+            "name": "test_async" ,
+            "library": "async_test" 
+        }
+    ]
+}

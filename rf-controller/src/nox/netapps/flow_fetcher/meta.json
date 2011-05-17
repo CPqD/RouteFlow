@@ -1,0 +1,23 @@
+{
+    "components": [
+        {
+            "name": "flow_fetcher" ,
+            "library": "flow_fetcher" 
+        },
+        {
+            "name": "python_flow_fetcher" ,
+            "dependencies": [
+                "flow_fetcher"
+            ],
+            "python": "nox.netapps.flow_fetcher.pyflow_fetcher"
+        },
+        {
+            "name": "python_flow_fetcher_tester" ,
+            "dependencies": [
+                "python_flow_fetcher",
+                "webservice"
+            ],
+            "python": "nox.netapps.flow_fetcher.test"
+        }
+    ]
+}

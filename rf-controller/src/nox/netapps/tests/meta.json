@@ -1,0 +1,20 @@
+{
+    "components": [
+        {
+            "name": "tests" ,
+            "library": "tests" , 
+            "dependencies": [
+                "pyuser_event_log",
+                "pyauthenticator",
+                "pybindings_storage",
+                "pystorage",
+                "pytstorage",
+                "pyrouting",
+                "webservice",
+                "componentws",
+                "noxinfows",
+                "tstorage-server"
+            ]
+        }
+    ]
+}

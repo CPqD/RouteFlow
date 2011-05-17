@@ -1,0 +1,59 @@
+{
+    "components": [
+        {
+            "name": "bindings_storage" ,
+            "library": "bindings_storage" , 
+            "dependencies": [
+                "storage-backend",
+                "datatypes",
+                "data_cache"
+            ]
+        },
+        {
+            "name": "pybindings_storage" ,
+            "dependencies": [
+                "bindings_storage"
+            ],
+            "python": "nox.netapps.bindings_storage.pybindings_storage"
+        },
+        {
+            "name": "bs_memleak_test" ,
+            "library": "bs_memleak_test" ,
+            "dependencies": [
+                "storage-backend",
+                "bindings_storage"
+            ]
+        },
+        {
+            "name": "py_bs_memleak_test" ,
+            "dependencies": [
+                "pybindings_storage",
+                "pystorage"
+            ],
+            "python": "nox.netapps.bindings_storage.py_bs_memleak_test"
+        },
+        {
+            "name": "bind_stuff_test" ,
+            "dependencies": [
+                "pybindings_storage"
+            ],
+            "python": "nox.netapps.bindings_storage.bind_stuff_test"
+        },
+        {
+            "name": "bindingsws" ,
+            "dependencies": [
+                "pybindings_storage",
+                "pystorage"
+            ],
+            "python": "nox.netapps.bindings_storage.bindingsws"
+        },
+        {
+            "name": "bindings_directory" ,
+            "dependencies": [
+                "pybindings_storage",
+                "pystorage"
+            ],
+            "python": "nox.netapps.bindings_storage.bindings_directory"
+        }
+    ]
+}

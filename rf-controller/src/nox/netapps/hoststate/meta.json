@@ -1,0 +1,20 @@
+{
+    "components": [
+        {
+            "name": "hosttracker" ,
+            "library": "hosttracker" 
+        },
+        {
+            "name": "trackhost_pktin" ,
+            "library": "trackhost_pktin" , 
+            "dependencies": [
+                "hosttracker",
+                "topology"
+            ]
+        },
+        {
+            "name": "hostip" ,
+            "library": "hostip" 
+        }
+    ]
+}

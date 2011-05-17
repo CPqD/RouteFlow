@@ -1,0 +1,20 @@
+{
+    "components": [
+        {
+            "name": "test_bs_link" ,
+            "dependencies": [
+                "pybindings_storage",
+                "pystorage"
+            ],
+            "python": "nox.netapps.bindings_storage.t.test_bs_link"
+        },
+        {
+            "name": "test_bs_location" ,
+            "dependencies": [
+                "pybindings_storage",
+                "pystorage"
+            ],
+            "python": "nox.netapps.bindings_storage.t.test_bs_location"
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+{
+    "components": [
+        {
+            "name": "cswitchstats" ,
+            "library": "cswitchstats" 
+        },
+        {
+            "name": "pycswitchstats" ,
+            "dependencies": [
+                "cswitchstats"
+            ],
+            "python": "nox.netapps.switchstats.pycswitchstats"
+        },
+        {
+            "name": "switchstats" ,
+            "dependencies": [
+                "pycswitchstats"
+            ],
+            "python": "nox.netapps.switchstats.switchstats"
+        }
+    ]
+}

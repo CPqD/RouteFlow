@@ -1,0 +1,8 @@
+{
+    "components": [
+        {
+            "name": "cpustats" ,
+            "python": "nox.webapps.miscws.cpustats" 
+        }
+    ]
+}

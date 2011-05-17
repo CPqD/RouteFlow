@@ -1,0 +1,77 @@
+{
+    "components": [
+        {
+            "name": "user_event_log" ,
+            "library": "user_event_log" ,
+            "dependencies": [
+                "storage-backend",
+                "bindings_storage",
+                "datatypes"
+            ]
+        },
+        {
+            "name": "user_event_log_test2" ,
+            "library": "user_event_log_test2" ,
+            "dependencies": [
+                "user_event_log",
+                "data_cache"
+            ]
+        },
+        {
+            "name": "uel_memleak_test" ,
+            "library": "uel_memleak_test" ,
+            "dependencies": [
+                "user_event_log"
+            ]
+        },
+        {
+            "name": "UI_user_event_log" ,
+            "dependencies": [
+                "pystorage"
+            ],
+            "python": "nox.netapps.user_event_log.UI_user_event_log"
+        },
+        {
+            "name": "pyuser_event_log" ,
+            "dependencies": [
+                "user_event_log",
+                "pydatatypes",
+                "pydatacache"
+            ],
+            "python": "nox.netapps.user_event_log.pyuser_event_log"
+        },
+        {
+            "name": "networkeventsws" ,
+            "dependencies": [
+                "pyuser_event_log",
+                "pybindings_storage",
+                "webservice"
+            ],
+            "python": "nox.netapps.user_event_log.networkeventsws"
+        },
+        {
+            "name": "pyuser_event_log_test" ,
+            "dependencies": [
+                "pyuser_event_log",
+                "pystorage"
+            ],
+            "python": "nox.netapps.user_event_log.pyuser_event_log_test"
+        },
+        {
+            "name": "py_uel_memleak_test" ,
+            "dependencies": [
+                "pyuser_event_log",
+                "pystorage",
+                "pybindings_storage"
+            ],
+            "python": "nox.netapps.user_event_log.py_uel_memleak_test"
+        },
+        {
+            "name": "simple_uel_util" ,
+            "dependencies": [
+                "pyuser_event_log"
+            ],
+            "python": "nox.netapps.user_event_log.simple_uel_util"
+        }
+    ]
+}

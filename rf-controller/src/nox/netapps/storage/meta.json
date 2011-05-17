@@ -1,0 +1,29 @@
+{
+    "components": [
+        {
+            "name": "storage-common" ,
+            "library": "storage-common" 
+        },
+        {
+            "name": "storage-backend" ,
+            "library": "storage-backend" ,
+            "dependencies": [
+                "storage-common"
+            ]
+        },
+        {
+            "name": "pystorage" ,
+            "dependencies": [
+                "storage-common"
+            ],
+            "python": "nox.netapps.storage.storage"
+        },
+        {
+            "name": "storage-memleak-test" ,
+            "library": "storage-memleak-test" ,
+            "dependencies": [
+                "storage-backend"
+            ]
+        }
+    ]
+}

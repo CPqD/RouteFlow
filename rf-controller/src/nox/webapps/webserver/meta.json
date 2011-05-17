@@ -1,0 +1,22 @@
+{
+    "components": [
+        {
+            "name": "webserver" ,
+            "python": "nox.webapps.webserver.webserver" 
+        },
+        {
+            "name": "webauth" ,
+            "dependencies": [
+                "webserver"
+            ],
+            "python": "nox.webapps.webserver.webauth"
+        },
+        {
+            "name": "dummywebpage" ,
+            "dependencies": [
+                "webserver"
+            ],
+            "python": "nox.webapps.webserver.dummywebpage"
+        }
+    ]
+}

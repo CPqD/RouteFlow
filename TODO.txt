@@ -1,0 +1,42 @@
+ToDo
+==============================
+(approx. ordered by priority)
+
+- Code standardization (names of variables, indentation, etc.) 
+- Send VM IP + ARP Table Protocol Message from RF-Slave to Server 
+- Optimize some data structures(change lists for maps, for example). 
+- Make the code more modular(create a .hh for rf-controller, consider how better we can divide in classes, less code on main.cc) 
+- Let the (RF-Server order the) RF-Slave set the VM's non-administrative interfaces to the same MAC Address. 
+- Create a verbose mode to RF-Server(server info are only available on log files).
+- Get TCP port, ovs name and RouteFlow operation from user arguments on RF-Server.
+
+- Experiment with NEC Trema controller
+- Port RF-C to Beacon controller
+
+
+Bugs
+-----
+(approx. ordered by priority)
+
+- “Ordered component requirement” ?
+
+
+Features
+-------------
+(approx. ordered by priority)
+
+- DataBase for consistent state management (http://88.198.54.126/nosqldbs.pdf)
+- On-demand start-up of VMs
+- Flexible mapping of switches to VMs
+
+- Alternative virtualization environments, e.g., LXC, OpenVZ
+
+- Dynamic virtual topology maintenance, with selective routing protocol messages delivery to the Datapath.
+
+- Flexible mapping (M:1, 1:N and M:N) between Datapath and VMs, allowing for virtual routing approaches and/or physical switch stacking.
+
+- Hooks into Quagga Zebra to reflect link up/down events
+
+- Improve the scenario where routing protocol messages are kept in the virtual domain and topology updates are replicated in response to an OpenFlow-based topology discovery and maintenance approach.
+
+

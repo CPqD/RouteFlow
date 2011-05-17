@@ -1,0 +1,22 @@
+{
+    "components": [
+        {
+            "name": "datapathmem" ,
+            "library": "datapathmem" 
+        },
+        {
+            "name": "switchrtt" ,
+            "library": "switchrtt" ,
+            "dependencies": [
+                "datapathmem"
+            ]
+        },
+        {
+            "name": "linkload" ,
+            "library": "linkload" ,
+            "dependencies": [
+                "datapathmem"
+            ]
+        }
+    ]
+}

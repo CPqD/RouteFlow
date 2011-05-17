@@ -1,0 +1,28 @@
+{% extends "!layout.html" %}
+
+
+{% block relbaritems %}
+  {%- if current_page_name != "index" %}
+  <li> {{ title }} </li>
+  {%- endif %}
+  <img src="_images/nox-icon-small.gif" height=27>
+{% endblock %}
+
+
+{% block sidebar1 %}{{ sidebar() }}{% endblock %}
+{% block sidebar2 %}{% endblock %}
+
+{%- block sidebarsearch %}
+
+{%- if current_page_name == "index" %}
+  <h3>Download</h3>
+    <p>Get the latest <a href="http://noxrepo.org/nox-v0.3.0.tar.gz">NOX release</a></p>
+{%- endif %}
+
+{%- if current_page_name == "index" %}
+  <h3>Participate?</h3>
+    <p>Join the <a href="http://noxrepo.org/mailman/listinfo/nox-dev_noxrepo.org">nox-dev mailing list</a></p>
+{%- endif %}
+
+
+{%- endblock %}

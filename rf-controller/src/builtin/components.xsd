@@ -1,0 +1,30 @@
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:vigil="http://www.noxrepo.org/components.xsd"
+            targetNamespace="http://www.noxrepo.org/components.xsd">
+    <xsd:element name="components" type="vigil:ComponentsType"/>
+
+    <xsd:complexType name="ComponentsType">
+        <xsd:sequence>
+            <xsd:element name="component" type="vigil:ComponentType"
+                         minOccurs="0" maxOccurs="unbounded"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="ComponentType">
+        <xsd:sequence>
+            <xsd:element name="name" type="xsd:string"/>
+            <xsd:element name="library" type="xsd:string"
+                         minOccurs="0"/>
+            <xsd:element name="dependency" type="vigil:DependencyType"
+                         minOccurs="0" maxOccurs="unbounded"/>
+            <xsd:element name="python" type="xsd:string"
+                         minOccurs="0"/>
+        </xsd:sequence>
+    </xsd:complexType>
+
+    <xsd:complexType name="DependencyType">
+        <xsd:sequence>
+            <xsd:element name="name" type="xsd:string"/>
+        </xsd:sequence>
+    </xsd:complexType>
+</xsd:schema>

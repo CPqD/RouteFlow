@@ -1,0 +1,8 @@
+{
+    "components": [
+        {
+            "name": "initindicator" ,
+            "python": "nox.coreapps.testharness.initindicator" 
+        }
+    ]
+}

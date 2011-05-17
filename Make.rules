@@ -1,0 +1,66 @@
+#.SILENT:
+# Sufix and prefix
+LIBSUFFIX=a
+
+LIBPREFIX=lib
+
+SOURCE_SUFIX := cc
+
+SOURCE_FILES := $(wildcard *.$(SOURCE_SUFIX))
+
+LIBS := $(addprefix $(BUILD_LIB_DIR)/$(LIBPREFIX),$(libdirs))
+LIBS := $(addsuffix .$(LIBSUFFIX),$(LIBS))
+
+
+LNX_LIBS := -lrt -lnetlink -lutil -lpthread
+
+CPPFLAGS += $(addprefix -I$(LIB_DIR)/,$(libdirs))
+CPPFLAGS += -I$(INC_DIR)
+
+ifneq (,$(DEBUG))
+CFLAGS += -g -D_GLIBCXX_DEBUG=1
+endif
+
+ifneq (,$(MAKEAPPS))
+apps_bin := $(BUILD_DIR)/$(MAKEAPPS)
+endif
+
+ifneq (,$(MAKELIB))
+targetlib = $(BUILD_LIB_DIR)/$(LIBPREFIX)$(notdir $(CURDIR)).$(LIBSUFFIX)
+endif
+
+ifneq (,$(SOURCE_FILES))
+objs := $(patsubst %.$(SOURCE_SUFIX),%.o, \
+				$(addprefix $(BUILD_OBJ_DIR)/$(notdir $(CURDIR))/,$(SOURCE_FILES)))
+endif
+################################################################################
+# TARGETS
+
+all: $(targetlib) $(apps_bin)
+
+################################################################################
+# BUILD OBJS
+
+$(BUILD_OBJ_DIR)/$(notdir $(CURDIR))/%.o: %.$(SOURCE_SUFIX)
+	$(CPP) $(CFLAGS) $(CPPFLAGS)  -c $< -o $@
+
+################################################################################
+# BUILD LIBS
+
+ifneq (,$(MAKELIB))
+$(BUILD_LIB_DIR)/%.$(LIBSUFFIX): $(objs)
+	$(AR) r $@ $?
+endif
+
+################################################################################
+# BUILD APPS
+
+$(apps_bin): $(objs) $(LIBS)
+	$(CPP) $(CPPFLAGS) -o $@ $(objs) $(LIBS) $(LNX_LIBS);
+
+################################################################################
+# CLEAN
+
+clean:
+	@rm -f $(objs);
+	@rm -f $(targetlib);

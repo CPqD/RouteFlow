@@ -1,0 +1,26 @@
+<xsd:schema xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+            xmlns:vigil="http://www.noxrepo.org/nox.xsd"
+            targetNamespace="http://www.noxrepo.org/nox.xsd">
+  <xsd:element name="nox" type="vigil:NoxType"/>
+
+  <xsd:complexType name="NoxType">
+    <xsd:sequence>
+      <xsd:element name="events" type="vigil:EventsType"/>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <xsd:complexType name="EventsType">
+    <xsd:sequence>
+      <xsd:element name="event" type="vigil:EventType"
+                   minOccurs="0" maxOccurs="unbounded"/>
+    </xsd:sequence>
+  </xsd:complexType>
+
+  <xsd:complexType name="EventType">
+    <xsd:sequence>
+      <xsd:element name="filter" type="xsd:string"
+                   minOccurs="1" maxOccurs="unbounded"/>
+    </xsd:sequence>
+    <xsd:attribute name="name" type="xsd:string"/>
+  </xsd:complexType>
+</xsd:schema>

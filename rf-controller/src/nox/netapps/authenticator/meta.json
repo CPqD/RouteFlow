@@ -1,0 +1,40 @@
+{
+    "components": [
+        {
+            "name": "flow_util" ,
+            "library": "flowutil" ,
+            "dependencies": [
+                "datatypes"
+            ]
+        },
+        {
+            "name": "pyflow_util" ,
+            "dependencies": [
+                "flow_util"
+            ],
+            "python": "nox.netapps.authenticator.pyflowutil"
+        },
+        {
+            "name": "authenticator" ,
+            "library": "authenticator" ,
+            "dependencies": [
+                "flow_util",
+                "user_event_log",
+                "datatypes",
+                "data_cache",
+                "bindings_storage",
+                "routing_module"
+            ]
+        },
+        {
+            "name": "pyauthenticator" ,
+            "dependencies": [
+                "authenticator",
+                "pyflow_util",
+                "datatypes",
+                "data_cache"
+            ],
+            "python": "nox.netapps.authenticator.pyauth"
+        }
+    ]
+}

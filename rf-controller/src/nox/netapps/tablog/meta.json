@@ -1,0 +1,26 @@
+{
+    "components": [
+        {
+            "name": "tablog" ,
+            "library": "tablog" ,
+            "dependencies": [
+                "jsonmessenger"
+            ]
+        },
+        {
+            "name": "rttlog" ,
+            "library": "rttlog" ,
+            "dependencies": [
+                "switchrtt",
+                "tablog"
+            ]
+        },
+        {
+            "name": "flowlog" ,
+            "library": "flowlog" ,
+            "dependencies": [
+                "tablog"
+            ]
+        }
+    ]
+}

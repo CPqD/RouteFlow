@@ -1,0 +1,227 @@
+#
+# This is a valgrind suppression file that should be used when using valgrind.
+#
+#  Here's an example of running valgrind:
+#
+#	cd python/dist/src
+#	valgrind --tool=memcheck --suppressions=Misc/valgrind-python.supp \
+#		./python -E -tt ./Lib/test/regrtest.py -u bsddb,network
+#
+# You must edit Objects/obmalloc.c and uncomment Py_USING_MEMORY_DEBUGGER
+# to use the preferred suppressions with Py_ADDRESS_IN_RANGE.
+#
+# If you do not want to recompile Python, you can uncomment
+# suppressions for PyObject_Free and PyObject_Realloc.
+#
+# all tool names: Addrcheck,Memcheck,cachegrind,helgrind,massif
+
+{
+   ADDRESS_IN_RANGE/Invalid read of size 4
+   Memcheck:Addr4
+   fun:Py_ADDRESS_IN_RANGE
+}
+
+{
+   ADDRESS_IN_RANGE/Invalid read of size 4
+   Memcheck:Value4
+   fun:Py_ADDRESS_IN_RANGE
+}
+
+{
+   ADDRESS_IN_RANGE/Conditional jump or move depends on uninitialised value
+   Memcheck:Cond
+   fun:Py_ADDRESS_IN_RANGE
+}
+
+{
+   ADDRESS_IN_RANGE/Invalid read of size 4
+   Memcheck:Addr4
+   fun:PyObject_Free
+}
+{
+   ADDRESS_IN_RANGE/Invalid read of size 8 (x86_64)
+   Memcheck:Addr8
+   fun:PyObject_Free
+}
+
+{
+   ADDRESS_IN_RANGE/Invalid read of size 4
+   Memcheck:Value4
+   fun:PyObject_Free
+}
+{
+   ADDRESS_IN_RANGE/Invalid read of size 8 (x86_64)
+   Memcheck:Value8
+   fun:PyObject_Free
+}
+{
+   ADDRESS_IN_RANGE/Conditional jump or move depends on uninitialised value
+   Memcheck:Cond
+   fun:PyObject_Free
+}
+
+{
+   ADDRESS_IN_RANGE/Use of uninitialized value of size
+   Memcheck:Value8
+   fun:PyObject_Free
+}
+
+{
+   ADDRESS_IN_RANGE/Invalid read of size 4
+   Memcheck:Addr4
+   fun:PyObject_Realloc
+}
+{
+   ADDRESS_IN_RANGE/Invalid read of size 8 (x86_64)
+   Memcheck:Addr8
+   fun:PyObject_Realloc
+}
+{
+   ADDRESS_IN_RANGE/Invalid read of size 4
+   Memcheck:Value4
+   fun:PyObject_Realloc
+}
+{
+   ADDRESS_IN_RANGE/Invalid read of size 8 (x86_64)
+   Memcheck:Value8
+   fun:PyObject_Realloc
+}
+
+{
+   ADDRESS_IN_RANGE/Conditional jump or move depends on uninitialised value
+   Memcheck:Cond
+   fun:PyObject_Realloc
+}
+
+{
+   GDBM problems, see test_gdbm
+   Memcheck:Param
+   write(buf)
+   fun:write
+   fun:gdbm_open
+
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Cond
+   fun:BN_bin2bn
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Cond
+   fun:BN_num_bits_word
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Value4
+   fun:BN_num_bits_word
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Cond
+   fun:BN_mod_exp_mont_word
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Cond
+   fun:BN_mod_exp_mont
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Param
+   write(buf)
+   fun:write
+   obj:/usr/lib/libcrypto.so.0.9.7
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Cond
+   fun:RSA_verify
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Value4
+   fun:RSA_verify
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Value4
+   fun:DES_set_key_unchecked
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Value4
+   fun:DES_encrypt2
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Cond
+   obj:/usr/lib/libssl.so.0.9.7
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Value4
+   obj:/usr/lib/libssl.so.0.9.7
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Cond
+   fun:BUF_MEM_grow_clean
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Cond
+   fun:memcpy
+   fun:ssl3_read_bytes
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Cond
+   fun:SHA1_Update
+}
+
+{
+   from test_socket_ssl
+   Memcheck:Value4
+   fun:SHA1_Update
+}
+
+
+{
+  from ssl23_read
+  Memcheck:Cond
+  fun:BN_div
+}
+
+{
+  from SSL_write 
+  Memcheck:Cond
+  fun:BN_div
+}
+
+{
+  from SSL_accept 
+  Memcheck:Cond
+  fun:BN_mod_inverse
+}
+
+{
+  from openDatabase
+  Memcheck:
+  fun:writeJournalHdr
+}

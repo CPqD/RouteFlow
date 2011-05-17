@@ -1,0 +1,11 @@
+{
+    "components": [
+        {
+            "name": "webservice" ,
+            "dependencies": [
+                "webauth"
+            ],
+            "python": "nox.webapps.webservice.webservice"
+        }
+    ]
+}

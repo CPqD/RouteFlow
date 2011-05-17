@@ -1,0 +1,11 @@
+#!/bin/sh
+ulimit unlimited
+echo "+runtime: 4"
+(cd "$abs_builddir/src" && \
+./nox_core test_bs_location
+)
+if test $? = 0; then
+    echo "+assert_pass: test_bs_location" 
+else
+    echo "+assert_fail: test_bs_location" 
+fi    

@@ -1,0 +1,25 @@
+{
+    "components": [
+        {
+            "name": "topology" ,
+            "library": "topology" ,
+            "dependencies": [
+                "discovery"
+            ]
+        },
+        {
+            "name": "pytopology" ,
+            "dependencies": [
+                "topology"
+            ],
+            "python": "nox.netapps.topology.pytopology"
+        },
+        {
+            "name": "pytopology_test" ,
+            "dependencies": [
+                "pytopology"
+            ],
+            "python": "nox.netapps.topology.pytopology_test"
+        }
+    ]
+}

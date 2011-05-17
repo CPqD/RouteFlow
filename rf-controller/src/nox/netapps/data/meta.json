@@ -1,0 +1,29 @@
+{
+    "components": [
+        {
+            "name": "datatypes" ,
+            "library": "datatypes" 
+        },
+        {
+            "name": "pydatatypes" ,
+            "dependencies": [
+                "datatypes"
+            ],
+            "python": "nox.netapps.data.datatypes_impl"
+        },
+        {
+            "name": "data_cache" ,
+            "dependencies": [
+                "datatypes"
+            ],
+            "library": "datacache"
+        },
+        {
+            "name": "pydatacache" ,
+            "dependencies": [
+                "data_cache"
+            ],
+            "python": "nox.netapps.data.datacache_impl"
+        }
+    ]
+}

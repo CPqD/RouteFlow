@@ -1,0 +1,17 @@
+{
+    "components": [
+        {
+            "name": "python" ,
+            "library": "pyrt" 
+        },
+        {
+            "name": "componentws" ,
+            "dependencies": [
+                "webservice",
+                "pycswitchstats",
+                "python"
+            ],
+            "python": "nox.coreapps.pyrt.componentws"
+        }
+    ]
+}

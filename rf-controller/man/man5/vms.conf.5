@@ -1,0 +1,287 @@
+.\" -*- nroff -*-
+.TH VMS.CONF 5 2007-09-12 "Nicira" "Nicira Developer's Manual"
+
+.SH NAME
+
+vms.conf \- VM configuration file
+
+.SH SYNOPSIS
+
+.B vms.conf
+
+.SH DESCRIPTION
+
+This manual page describes the format of
+.I vms.conf
+files understood by
+.IR start-test-vm .
+This file is a Bash script that
+.I start-test-vm
+runs.  It may contain arbitrary shell commands, e.g.\ to run
+.I make
+in a Vigil source tree, but its primary function is to set the
+following environment variables that determine what VMs will be
+started and how they will be networked together.
+
+.SH ENVIRONMENT
+
+.IP VMS
+Specifies a space-separated list of names for the VMs that are a part
+of this collection of VMs.  Each name must be suitable for use at the
+start of a shell variable name.
+
+.IP SWITCHES
+Specifies a space-separated list of names for virtual Ethernet
+switches that VMs can be connected to.  Each name must be suitable for
+use at the start of a shell variable name.
+
+.IP \fBvm\fR_NETS
+For the VM named
+.BR vm ,
+specifies a space-separated list of switches to which it is connected.
+For each switch on the list,
+.BR vm
+is given a virtual network card whose virtual Ethernet cable is
+plugged into the specified switch.  Every VM listed in
+.B VMS
+must have a corresponding
+.BR vm _NETS
+variable, and every switch named in a
+.BR vm _NETS
+variable must also be listed in
+.BR SWITCHES .
+
+.IP HUBS
+Specifies a space-separated list of names for virtual Ethernet
+hubs that VMs can be connected to.  Each name must be suitable for
+use at the start of a shell variable name.
+
+.IP \fBhub\fR_HUBS
+For the hub named
+.BR hub ,
+specifies a space-separated list of VMs to which connect to it.
+For each VM on the list, it is given a virtual network card whose 
+virtual Ethernet cable is plugged into 
+.BR hub .
+
+.IP \fBvm\fR_HDA
+The file name of the virtual disk to use as
+.BR vm 's
+.BR /dev/hda .
+Default:
+.BR hda.dsk .
+
+.IP \fBvm\fR_KERNEL
+The kernel to use to boot
+.BR vm .
+Default:
+.BR kernel.bin .
+
+.IP \fBvm\fR_INITRD
+The initrd to use for booting
+.BR vm .
+Default:
+.BR initrd.img .
+If the initrd file does not exist, then no initrd is used for boot.
+The kernels produced by the suggested configurations included in
+.B vigil/src/switch/datapath/linux/config
+do not require an initrd.
+
+.IP \fBvm\fR_SNAPSHOT
+If set to
+.BR no ,
+the VMM will be started without the
+.B -snapshot
+option.  This means that any changes to the VM's disks will be
+retained for the next run.  It also means that only a single VM can be
+run from a single virtual disk image at any given time (otherwise,
+massive virtual disk corruption will occur).  Default:
+.BR yes ,
+in which case no changes to the VM's disks will be retained across
+runs, and any number of VMs can run from a single virtual disk image
+at a time.
+
+.IP \fBswitch\fR_SLIRP
+For the switch named
+.BR switch ,
+a value of
+.B yes
+specifies that the named virtual Ethernet switch should be connected
+to its host's network connection using the
+.BR slirp (1)
+network emulator.  The properties of such a connection are similar to
+those obtained via NAT.  Default:
+.BR no ,
+in which case the virtual Ethernet switch will not be directly
+connected to any machines or networks except those specified using
+.BR vm _NETS
+variables (see above).
+
+.IP \fBswitch\fR_OPTIONS
+For the switch named
+.BR switch ,
+specifies additional arbitrary options to pass to the
+.B vde_switch
+program.
+
+.IP FOREGROUND
+Optionally, the name of a virtual machine whose console should run in
+the foreground when started with
+.BR start-test-vm .
+Default: all virtual machines are started in the background.  This
+option may be overridden by the user on the
+.BR start-test-vm (1)
+command line using the
+.B --foreground
+or
+.BR -f option.
+
+.IP VMM
+Optionally, the virtual machine monitor to use (either
+.B kvm
+or
+.BR qemu ).
+The default is chosen automatically based on whether your host
+hardware supports hardware virtualization.  It may also be overridden
+by the user on the
+.BR start-test-vm (1)
+command line using the
+.B --vmm
+or
+.BR -v option.
+
+.SH FUNCTIONS
+
+Optionally, each VM listed in
+.B VMS
+may have a corresponding shell function named
+.BR vm _files.
+If such a shell function exists, it will be run in an initially empty
+directory that it may populate with files, or symbolic links to files.
+Such files will be placed on the CD-ROM image along with any files in
+the
+.BR vm .cd
+directory (see below).
+
+.SH EXAMPLES
+
+The following example specifies a single VM, named
+.BR vigil ,
+connected to a single switch, named
+.BR s1 .
+The switch is connected to the host's network via
+.BR slirp (1).
+It also builds the Vigil tree corresponding to the desired kernel.
+(The
+.B run_cmd
+shell function is defined by
+.B start-test-vm
+to print the command specified as its arguments to
+.B stdout
+and then execute it, unless 
+.B -n
+or
+.B --dry-run
+is passed to
+.BR start-test-vm .)
+
+.nf
+run_cmd make -C $HOME/vigil/src/switch
+
+SWITCHES="s1"
+s1_SLIRP=yes
+
+VMS="vigil"
+vigil_NETS="s1"
+.fi
+
+The following example specifies three VMs, named
+.BR end1 ,
+.BR end2 ,
+and
+.BR vigil ,
+and three switches, named
+.BR s1 ,
+.BR s2 ,
+and
+.BR s3 .
+The two
+.B end
+nodes are connected to
+.B vigil
+via switch
+.B s1
+and
+.BR s2 ,
+respectively.
+.B end2
+is additionally connected to switch
+.BR s3 ,
+which is in turn connected to the host network (and thereby, most
+likely, to the Internet).
+
+.nf
+run_cmd make -C $HOME/vigil/src/switch KSRC=$HOME/linux-2.6
+
+SWITCHES="s1 s2 s3"
+s3_SLIRP=yes
+
+VMS="end1 end2 vigil"
+end1_NETS=s1
+vigil_NETS="s1 s2"
+end2_NETS="s2 s3"
+.fi
+
+Here is an illustration of the network created by the above
+configuration file:
+
+.nf
++------+       +-------+         +------+
+| end1 |       | vigil |         | end2 |
+|  VM  |       |  VM   |         |  VM  |
++------+       +-------+         +------+
+   |              | |              | |
+   |              | |              | |
+   |  +--------+  | |  +--------+  | |   +--------+    +---------+
+   \\--|   s1   |--/ \\--|   s2   |--/ \\---|   s3   |----|  host   |
+      | switch |       | switch |        | switch |    | network |
+      +--------+       +--------+        +--------+    +---------+
+.fi
+
+Typically, a
+.BR vm .cd
+directory contains symbolic links to
+.B System.map
+and
+.B vmlinux
+files for the corresponding kernel,
+.B ctlpath
+and
+.B dpctl
+utilities from the Vigil build tree,
+.B alpheus_mod.ko 
+and 
+.B unit_mod.ko
+kernel modules (Linux 2.6),
+.BR alpheus_mod.o ,
+.BR unit_mod.o ,
+and
+.B compat24_mod.o
+kernel modules (Linux 2.4), and an ordinary file named
+.B runme
+containing a shell script that the OS invokes automatically after
+booting (assuming your VM is configured to do so, as done by
+.BR make-vm ).
+
+.SH "SEE ALSO"
+
+.BR start-test-vm (1),
+.BR stop-test-vm (1),
+.BR screen (1),
+.BR qemu (1),
+.BR kvm (1),
+.BR slirp (1),
+.BR genisoimage (1),
+.BR vde_switch (1),
+.BR vdeq (1),
+.BR slirpvde (1).

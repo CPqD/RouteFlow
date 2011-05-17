@@ -1,0 +1,22 @@
+{
+    "components": [
+        {
+            "name": "messenger_core" ,
+            "library": "messenger_core" 
+        },
+        {
+            "name": "messenger" ,
+            "library": "messenger" ,
+            "dependencies": [
+                "messenger_core"
+            ]
+        },
+        {
+            "name": "jsonmessenger" ,
+            "library": "jsonmessenger" ,
+            "dependencies": [
+                "messenger_core"
+	    ]
+        }
+    ]
+}

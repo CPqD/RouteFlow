@@ -1,0 +1,15 @@
+{
+    "components": [
+        {
+            "name": "simple c py app" ,
+            "library": "simple_c_py_app" 
+        },
+        {
+            "name": "python simple c py app" ,
+            "dependencies": [
+                "simple c py app"
+            ],
+            "python": "nox.coreapps.simple_c_py_app.pysimple_c_py_app"
+        }
+    ]
+}
