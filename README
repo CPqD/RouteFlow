@@ -1,53 +1,31 @@
-README
-
-RouteFlow v0.0.2
-
+RouteFlow v0.1.0
 -----------------------------------
-
 Copyright (C) 2011 CPqD
 
 Welcome
-
 ========
 
 Welcome to the RouteFlow remote virtual routing platform.  This distribution includes all the software you need to build, install, and deploy RouteFlow in your OpenFlow network.
 
-This version of RouteFlow is an alpha developers' release intended to evaluate RouteFlow for providing virtualized
-
-IP routing services on one or more OpenFlow switches.
+This version of RouteFlow is a beta developers' release intended to evaluate RouteFlow for providing virtualized IP routing services on one or more OpenFlow switches.
 
 *Note*
 
 RouteFlow relies on NOX and OpenFlow as the communication protocol for controlling switches.  
-
-RouteFlow uses Open vSwitch to provide the connectivitiy within the virtual environment where Linux virtual
-
-machines run the Quagga routing engine.
-
+RouteFlow uses Open vSwitch to provide the connectivity within the virtual environment where Linux virtual machines run the Quagga routing engine.
 This build supports Openflow v1.0.0 and NOX v0.6.
-
 Please be aware of OpenFlow, NOX, Open vSwitch, Quagga and RouteFlow licenses.
 
 Contents
-
 ========
-
 - Overview
-
 - Install
-
-- Starting RouteFlow
-
-- Running RouteFlow
-
+- Running
 - Changes from last version
-
 - Known bugs
-
 - TODO (+ Upcoming features)
 
 Overview
-
 ========
 
 RouteFlow is made of four basic modules: rf-slave, rf-server, rf-controller, and the rf-protocol:
@@ -58,214 +36,90 @@ RouteFlow is made of four basic modules: rf-slave, rf-server, rf-controller, and
 
 - RF-Controller is a NOX (OpenFlow controller) application responsible for the interactions with the OpenFlow switches (identified by Datapath ID - DPID) via the OpenFlow protocol and implements the RF-Protocol to send and receives commands from/to the rf-server.
 
-- RF-Protocol defines most of the classes used by the other modules and specifies the protocol messages used for
+- RF-Protocol defines most of the classes used by the other modules and specifies the protocol messages used for the interactions between the rf-server and the rf-slave and the rf-controller.;
 
-the interactions between the rf-server and the rf-slave and the rf-controller.;
+
 
 +----- VM ----------+
-
 | Quagga | RF-Slave |
-
 +-------------------+
-
-        \
-
+	\
 M:1     \ rf-Protocol
-
-        \
-
+	\
 +----------------+
-
-| rf-Server           |
-
+| rf-Server  	 |
 +----------------+
-
-        \
-
+	\
 1:1     \ rf-Protocol
-
-        \
-
+	\
 +|-----------------------------+
-
 | rf-Controller  | Discovery   |
-
 |------------------------------|
-
-|         NOX                    |
-
+| 	NOX                    |
 +------------------------------+
-
-        \
-
+	\
 1:N     \ OpenFlow Protocol
-
-        \
-
+	\
++-----------------+
+| OF Switch (DPID)|      	 
 +-----------------+
 
-| OF Switch (DPID)|              
 
-+-----------------+
 
-Install
 
+Install 
 =======
+See the companion INSTALL file.
 
-Requirements:
+Running 
+========
 
-- RouteFlow package (contains NOX, link: XXX)
-
-- Virtual Machine image with Quagga and an implementation of RFSlave on it.
-
-(link: XXX)
-
-- OpenVSwitch (Download and installation instructions: http://openvswitch.org/?page_id=10)
-
-- OpenFlow-enabled* devices (e.g., OVS, Mininet, NetFPGA, commercial)
-
-*Note: Corrrect IP forwarding requires MAC-re-writing capabilities (plus TTL decrement and header checksum update)
-
-Dependencies:
-
-RouteFlow requires the following packages to be installed: netlink, pthread and librt.
-
-$ sudo apt-get install iproute-dev
-
-$ sudo apt-get install XXX, YYY, ZZZZ
-
-$ sudo apt-get install libboost-all-dev swig1.3
-
-The main directory tree of RouteFlow is divided into:
-
-- rf-controller (includes NOX version 0.6 along the RouteFlowc application)
-
-- rf-protocol
-
-- rf-slave.
-
-You can compile all modules simply running the command "make all" on the main directory.
-
-Since rf-slave, rf-controller, and rf-server are meant to run on different machines you can compile only the slave module with "make slave" (which will make needed libraries and rf-slave), only the controller with "make controller" (which will  make needed libraries and rf-controller) and only the server with make server, both in the main directory.
-
-The OpenFlow switches in the data plane must support the same controller's version (in this case, version 1.0) and it is not necessary any special configuration. For instance, you can use Mininet and connect to the external NOX controller running the rf-controller.
-
-You need to setup a virtual enviroment that will be responsible for running the virtual topology. There are options in the virtualization solution space. We have succesfully tested RF with images for KVM/QEMU and LXC. Each VM should meet the minimal requirements to run the route engine (e.g, Quagga) and RouteFlow-Slave daemon. In order to get a good performance on virtualization the processor should support a virtualization technology, it means that you will find the flag VMX for Intel processor or SVM for AMD. This information can be found in the file /proc/cpuinfo.
-
-Starting RouteFlow
-
-=================
-
-The initialization sequence should be as follows:
-
-1- Insert the Open vSwitch (OVS) module into the kernel. At OVS main directory:
-
-$sudo insmod datapath/linux-2.6/openvswitch_mod.ko
-
-2- Start two OVS instances, each using a different port:
-
-$sudo ovs-openflowd br0 tcp:127.0.0.1:6363 --out-of-band (VM configuration interfaces)
-
-$sudo ovs-openflowd --hw-desc=rfovs switch1 tcp:127.0.0.1:6633 --out-of-band. (Virtual Control Plane Network i.e. inter-VM connectivity).
-
-3- Configure the br0 interface with an IP on the configuration network, by default 192.169.100.1:
-
-$ifconfig br0 192.169.100.1.
-
-Make sure that the IP of the Virtual Machines running the QF-Slave are on the same network of br0. In the default case it should be on the form 192.169.100.X
-
-4- Start the NOX controller located at rf-controller/build/src with a simple learning switch module (such as pyswitch) listening to the same port of the (br0) OVS used for VM configuration connectivity:
-
-$cd rf-controller/build/src
-
-$sudo ./nox_core -v -i ptcp:6363 pyswitch
-
-5- Start rf-server:
-
-$sudo ./build/qf-server
-
-(XXX: What is the default port of qf-server?? by Christian)
-
-6- Start rf-controller NOX application by starting a new NOX instance with the RouteFlowc module. The default tcpport that it uses to connect to the VMs is 5678, but this can be changed passing the parameter tcpport. For example, if you want to set the port to 7890:
-
-$sudo ./nox_core -v -i ptcp:2525 routeflowc=tcpport=7890 .
-
-7- Start a new rf-controller NOX application instance listening to the same port used on the OVS in charge of the inter-VM connectivity:
-
-$sudo ./nox_core -v -i ptcp:6633 routeflowc
-
-8- Start VMs
-
-Any virtualization environment can be used to load the VMs with Quagga and QF-Slave.
-
-You can find a sample VM in the routeflow-vm-0.2.tar.bz2
-
-Uncompress:
-
-$tar xvjpf routeflow-vm-0.2.tar.bz2
-
-To start a new VM use the start-vm.sh script that accepts two parameters: 1.- An ID to identify the VM, 2.- The number* of interfaces that should be loaded. The VMs are started with one management interface plus the number used on 2. Thus, if you want VM 1 to be started with 25 interfaces* (e.g., 1 for control and 24 to act as data path ports):
-
-# start-vm <ID> <interfaces>
-
-$ start-vm.sh 1 24
-
-$ user: root
-
-$ password: root
-
-*Note the number of interfaces in the Virtual Machine shall be equal + 1 to the number of ports in the OpenFlow,  switch to be controlled,  because the rf-slave uses the VM first  port to communicate with server.
-
-Next you need to associate the virtual interfaces of the VM to the OVS instances
-
-$ sudo ovs-dpctl add-if br0 vethBV7oKd
-
-$ sudo ovs-dpctl add-if dp0 vethYgwzXy
-
-$ sudo ovs-dpctl add-if dp0 vethqaQTiT
-
-Inside the VM x, run the QF-Slave located in the /opt/ folder. This module needs three parameters on start, and the correct syntax is as follows:
-
-$./qfslave <IP> <port number> <interface>
-
-The <port number> parameter must match the routeflowc tcpport parameter, <IP> must be the IP of NOX and <interface> will provide the interface from which qfslave will get the MAC address to use as it's Id.
-
-9- Start the Datapaths (i.e. OpenFlow switches)
-
-Start the OpenFlow switches pointing them to the NOX controller running routeflowc (e.g. tcp:6633). When a Datapath connects to RouteFlowc, if there are no Idle VMs available, the Datapath is set to Idle mode and it's flow table is left empty.
-
-When a VM joins, it is assigned to the first Datapath on the list, the Datapath and the VM are both set to running mode and two default permanent flows are installed on the Datapath to forward RIP and OSPF packets to the controller. If there are no eligible Datapath's to assign to the registered VM, it's status is set to Idle, and it will wait for the next Datapath join event.
-
-When an assignment is successfully made, RouteFlowc stores this info so that a Datapath will always connect to it's specific VM.
-
-Note that when a VM connects to RouteFlow, the MAC address corresponding to the <interface> will be it's assigned Id. If a VM tries to connect using a MAC address equal to another VM already connected, the connection will be refused.
-
-Once the desired topology of the network is up, Quagga may be started on each VM, so that flows can be installed on each Datapath according to the Quagga+Linux generated forwarding rules (i.e., FIB = ARP + ROUTE tables) obtained by
-
-Quagga (more information about Quagga configuration can be obtained at http://www.quagga.net).
-
-Running RouteFlow
-
-=================
-
+Quagga Routing Engine:
+-------------------------------
 Once the VMs are up and assigned to the discovered Datapath switches, routing protocol messages originating at the VMs running Quagga are sent over the rf-Controller to the corresponding port in the Datapah. Conversely, routing protocol messages entering a Datapath port will match the default flow entry and will be forwarded to the rf-Controller, which in turn delivers it to the virtual interface of the corresponding VM.
 
+Manual IP Routes:
+-------------
+Instead of (or in addition to) IP routing engines like Quagga, you can also manually add routes. Suppose a new switch connects to another switch in your network. A new link will arise in the network but the system still has not the feature to change the respective switch virtual machine configuration on the fly, so youâ€™ll need do add the new route in the virtual machine. 
+For instance, to insert a new network with address 192.168.0.0, with gateway 192.168.2.1 and subnet mask 255.255.255.0 you can type:
+
+# route add -net 192.168.0.0 netmask 255.255.255.0 dev eth1
+or
+# ip route add 192.168.0.0/24 dev eth1
+
+Route all traffic via 192.168.2.1 gateway connected via eth1 network interface:
+# route add default gw 192.168.2.1 dev eth1
+or
+# ip route add default via 192.168.2.1 dev eth1
+
+
+Useful commands:
+----------
+You can check installed flows with the following commands
+
+In Open vSwitch:
+	sudo ovs-ofctl dump-flows <datapath> <flows>
+
+OpenFlow Switches(mininet, fpgas, etc)
+	sudo ovs-dpctl dump-flows <datapath> <flows>
+
+For more information, please check the Open vSwitch and OpenFlow documentation.
+
+Future releases will allow the option to choose the RouteFlow mode of operation where some routing protocol messages can be kept only in the virtual plane. 
+
 Changes from last version
-
 ========
-
 -
+
+
 
 Known Bugs
-
 ========
-
 -
 
+
 ToDo (+ features expected in upcoming versions)
-
 ========
-
 - Alternative virtualization environments, e.g., LXC, OpenVZ
 
 - Dynamic virtual topology maintenance, with selective routing protocol messages delivery to the Datapath.
@@ -276,4 +130,4 @@ ToDo (+ features expected in upcoming versions)
 
 - Improve the scenario where routing protocol messages are kept in the virtual domain and topology updates are replicated in response to an OpenFlow-based topology discovery and maintenance approach.
 
-Edit this page (if you have permission)–Published by Google Docs–Report Abuse–Updated automatically every 5 minutes
+

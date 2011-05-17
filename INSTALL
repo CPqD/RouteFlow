@@ -7,8 +7,7 @@ Welcome
 
 Welcome to the RouteFlow remote virtual routing platform.  This distribution includes all the software you need to build, install, and deploy RouteFlow in your OpenFlow network.
 
-This version of RouteFlow is an alpha developers' release intended to evaluate RouteFlow for providing virtualized
-IP routing services on one or more OpenFlow switches.
+This version of RouteFlow is an alpha developers' release intended to evaluate RouteFlow for providing virtualized IP routing services on one or more OpenFlow switches.
 
 *Note*
 
@@ -28,23 +27,29 @@ Install
 =======
 
 Requirements:
-- RouteFlow package (contains NOX, link: XXX)
-- Virtual Machine image with Quagga and an implementation of RFSlave on it. You can obtain a sample environment on (link: XXX)
+- RouteFlow package (contains NOX-Zaku (v0.9.0), http://noxrepo.org/)
+- Virtual Machine image with the Quagga routing engine and an implementation of RFSlave on it. You can obtain a sample environment for QEMU: http://github.com/chesteve/RouteFlowVM
 - OpenVSwitch (Download and installation instructions: http://openvswitch.org/?page_id=10)
 - OpenFlow-enabled* devices (e.g., OVS, Mininet, NetFPGA, commercial)
 
 *Note: Corrrect IP forwarding requires MAC-re-writing capabilities (plus TTL decrement and header checksum update)
 
 Dependencies:
-RouteFlow requires the following packages to be installed
+RouteFlow requires the following packages to be installed:
 $ sudo apt-get install iproute-dev 
 $ sudo apt-get install libboost-all-dev swig1.3
 
+In addition to the dependencies from the NOX controller. An unofficial list of dependencies can be found here:
+http://noxrepo.org/noxwiki/index.php/Dependencies
+
+For instance, for Ubuntu 10.04, a full compile of NOX zaku requires the following packages:
+$ sudo apt-get install autoconf automake g++ libtool swig make git-core libboost-dev libboost-test-dev libboost-filesystem-dev libssl-dev libpcap-dev python-twisted python-simplejson python-dev
+
 The main directory tree of RouteFlow is divided into:
  -rf-server
-- rf-controller (includes NOX version 0.6 along the RouteFlowc application)
+- rf-slave (also provided in the sample VM with Quagga 0.99.10)
+- rf-controller (includes NOX-Zaku with the RouteFlowc application located in the netapps folder: \src\nox\netapps)
 - rf-protocol
-- rf-slave.
 
 You can compile all modules simply running the command "make all" on the main directory.
 
@@ -68,7 +73,7 @@ $sudo ovs-openflowd --hw-desc=rfovs switch1 tcp:127.0.0.1:6633 --out-of-band. (V
 
 3- Configure the br0 interface with an IP on the configuration network, for instance 192.169.100.1:
 $ifconfig br0 192.169.100.1. 
-Make sure that the IP of the Virtual Machines running the QF-Slave are on the same network of br0. In the sample virtualization environment it should be on the form 192.169.100.X 
+Make sure that the IP of the Virtual Machines running the RF-Slave are on the same network of br0. In the sample virtualization environment it should be on the form 192.169.100.X 
 
 4- Start the NOX controller located at rf-controller/build/src with a simple learning switch module (such as pyswitch) listening to the same port of the (br0) OVS used for VM configuration connectivity:
 $cd rf-controller/build/src
@@ -77,6 +82,15 @@ $sudo ./nox_core -v -i ptcp:6363 pyswitch
 5- Start rf-server:
 $ ./build/rf-server
 The default tcpport that it uses to connect to the VMs is 5678.
+
+NOTE: In further versions you’ll have the option to choice RouteFlow´s mode operation on start-up. For now, there is only one mode available in which all packets originated in the VMs (e.g. OSPF hello) are sent through the data plane. If you want to try the mode of operation where routing packets are kept in the virtual data plane where the virtual topology is defined with the aid of NOX discovery application, you will have to change the following piece of code in the file main.cc contained in the rf-server folder, line 45.
+
+RouteFlowServer rfSrv(TCP_PORT, VIRT_N_FORWARD_PLANE);
+
+becomes
+
+RouteFlowServer rfSrv(TCP_PORT, VIRTUAL_PLANE);
+
 
 6- Start a new rf-controller NOX application instance, with the RouteFlowc module, listening to the same port used on the OVS in charge of the inter-VM connectivity:
 $sudo ./nox_core -v -i ptcp:6633 routeflowc .
@@ -88,7 +102,7 @@ $sudo ./nox_core -v -i ptcp:6633 routeflowc=tcpport=1234 .
 
 7- Start VMs
 
-Any virtualization environment can be used to load the VMs with Quagga and QF-Slave.
+Any virtualization environment can be used to load the VMs with Quagga and RF-Slave..
 You can find a sample VM in the routeflow-vm-0.2.tar.bz2
 
 Uncompress:
@@ -113,9 +127,9 @@ For more information about the command read the ovs-dpctl manual.
 Inside the VM x, run the RF-Slave located in the /opt/ folder. This module needs three parameters on start, and the correct syntax is as follows:
 $./rfslave <IP> <port number> <interface>
 
-The <port number> parameter must match the routeflowc tcpport parameter, <IP> must be the IP of NOX and <interface> will provide the interface from which qfslave will get the MAC address to use as it's Id. 
+The <port number> parameter must match the routeflowc tcpport parameter, <IP> must be the IP of NOX and <interface> will provide the interface from which rfslave will get the MAC address to use as it's Id. 
 
-*In our sample virtualization environment the RF-Slave starts when you init the virtual machine.
+*In our sample virtualization environment the RF-Slave starts when you initizalize the virtual machine.
 
 8- Start the Datapaths (i.e. OpenFlow switches)
 
@@ -129,5 +143,6 @@ Note that when a VM connects to RouteFlow, the MAC address corresponding to the 
 
 Once the desired topology of the network is up, Quagga may be started on each VM, so that flows can be installed on each Datapath according to the Quagga+Linux generated forwarding rules (i.e., FIB = ARP + ROUTE tables) obtained by Quagga (more information about Quagga configuration can be obtained at http://www.quagga.net).
 
-*In the virtualization environment available with the code, Quagga is initialized when the VM starts.
+*In the virtualization environment available with the RouteFlow package, Quagga is initialized when the VM starts.
+
 
