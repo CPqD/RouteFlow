@@ -34,6 +34,7 @@ Features
 --- Provide on-demand start-up of VMs via libvirt upon interactions (e.g. CLI) with RF-Server
 
 - Routing Protocol Optimization: 
+--- Searate topology discovery and maintenance from state distribution
 --- Dynamic virtual topology maintenance, with selective routing protocol messages delivery to the Datapath (e.g., HELLOs).
 --- Improve the scenario where routing protocol messages are kept in the virtual domain and topology is mantained through a  Topology Discovery controller application.
 --- Hooks into Quagga Zebra to reflect link up/down events
