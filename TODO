@@ -28,6 +28,7 @@ Features
 
 - Flexible mapping of switches to VMs:  
 --- M:1, 1:N and M:N mapping between Datapath and VMs, allowing for virtual routing approaches and/or physical switch stacking.
+--- Explore integration opportunities with FlowVisor
 
 - Libvirt: Virtualization-independence to accomodate alternative virtualization environments via unified virtualization API provided by libvirt
 --- Provide on-demand start-up of VMs via libvirt upon interactions (e.g. CLI) with RF-Server
