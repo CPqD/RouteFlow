@@ -21,7 +21,9 @@ Features
 (approx. ordered by priority)
 
 - Add TTL-decrement action (if supported by the datapath devices)
+
 - DataBase for consistent state management (Choose NoSQL candidate, e.g., Redis http://88.198.54.126/nosqldbs.pdf)
+
 - Extend RouteFlow protocol with a command to on-demand send VM IP + ARP Table from RF-Slave to Server 
 
 - Flexible mapping of switches to VMs:  
@@ -30,6 +32,11 @@ Features
 - Libvirt: Virtualization-independence to accomodate alternative virtualization environments via unified virtualization API provided by libvirt
 --- Provide on-demand start-up of VMs via libvirt upon interactions (e.g. CLI) with RF-Server
 
-- Dynamic virtual topology maintenance, with selective routing protocol messages delivery to the Datapath (e.g., HELLOs).
-- Improve the scenario where routing protocol messages are kept in the virtual domain and topology is mantained through a  Topology Discovery controller application.
-- Hooks into Quagga Zebra to reflect link up/down events
+- Routing Protocol Optimization: 
+--- Dynamic virtual topology maintenance, with selective routing protocol messages delivery to the Datapath (e.g., HELLOs).
+--- Improve the scenario where routing protocol messages are kept in the virtual domain and topology is mantained through a  Topology Discovery controller application.
+--- Hooks into Quagga Zebra to reflect link up/down events
+
+- Resiliency & Scalability:
+--- Physically distribute the virtualization environment via mutliple OVS providing the connectivity of the virtual control network
+--- Improve resiliency: Have a "stand-by" environment to take over in case of failure of the master RF-Server / Virtualized Control Plane 
