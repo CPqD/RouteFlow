@@ -12,6 +12,7 @@ ToDo
 - Let the (RF-Server order the) RF-Slave set the VM's non-administrative interfaces to the same MAC Address. 
 - Create a verbose mode to RF-Server(server info are only available on log files).
 - Get TCP port, ovs name and RouteFlow operation from user arguments on RF-Server.
+- Wireshark dissector plugin for the RouteFlow protocol
 - Experiment with NEC Trema controller: Port routeflowc to Trema
 - Port RF-C to Beacon controller
 
