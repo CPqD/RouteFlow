@@ -23,6 +23,7 @@
 #include <netpacket/packet.h>
 #include <netinet/in.h>
 #include <net/if.h>
+#include <net/if_arp.h>
 #include <netdb.h>
 #include <stdlib.h>
 #include <cstring>
@@ -131,6 +132,49 @@ void error(const char *msg) {
 	exit(0);
 }
 
+/* Set the MAC address of the interface. */
+int set_hwaddr_byname(const char * ifname, uint8_t hwaddr[], int16_t flags) {
+	struct ifreq ifr;
+	int sock;
+
+	if ((NULL == ifname) || (NULL == hwaddr)) {
+		return -1;
+	}
+
+	sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (sock < 0) {
+		return -1;
+	}
+
+	strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name) - 1);
+	ifr.ifr_name[sizeof(ifr.ifr_name) - 1] = '\0';
+	ifr.ifr_ifru.ifru_flags = flags & (~IFF_UP);
+
+	if (-1 == ioctl(sock, SIOCSIFFLAGS, &ifr)) {
+		perror("ioctl(SIOCSIFFLAGS) ");
+		return -1;
+	}
+
+	ifr.ifr_ifru.ifru_hwaddr.sa_family = ARPHRD_ETHER;
+	std::memcpy(ifr.ifr_ifru.ifru_hwaddr.sa_data, hwaddr, IFHWADDRLEN);
+
+	if (-1 == ioctl(sock, SIOCSIFHWADDR, &ifr)) {
+		perror("ioctl(SIOCSIFHWADDR) ");
+		return -1;
+	}
+
+	ifr.ifr_ifru.ifru_flags = flags | IFF_UP;
+
+	if (-1 == ioctl(sock, SIOCSIFFLAGS, &ifr)) {
+		perror("ioctl(SIOCSIFFLAGS) ");
+		return -1;
+	}
+
+	close(sock);
+
+	return 0;
+}
+
 /* Get the MAC address of the interface. */
 int get_hwaddr_byname(const char * ifname, uint8_t hwaddr[]) {
 	struct ifreq ifr;
@@ -211,6 +255,7 @@ std::vector<Interface*> get_Interfaces() {
 
 	struct ifaddrs *ifaddr, *ifa;
 	int family;
+	int intfNum;
 
 	if (getifaddrs(&ifaddr) == -1) {
 		perror("getifaddrs");
@@ -222,27 +267,31 @@ std::vector<Interface*> get_Interfaces() {
 
 	std::vector<Interface *> Interfaces;
 	Interface* tmpI = new Interface(0, "");
-
-	uint64_t vmId = get_vmId("eth0");
+	intfNum = 0;
 
 	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
 		family = ifa->ifa_addr->sa_family;
 
-		uint8_t mac[6];
-
 		if (family == AF_PACKET && strcmp(ifa->ifa_name, "eth0") != 0
 				&& strcmp(ifa->ifa_name, "lo") != 0) {
-			get_hwaddr_byname(ifa->ifa_name, mac);
+			if (0 == intfNum) {
+				get_hwaddr_byname(ifa->ifa_name, gVmMAC);
+			}
+			else {
+				set_hwaddr_byname(ifa->ifa_name, gVmMAC, ifa->ifa_flags);
+				cout << "Setting MAC Addr (" << ifa->ifa_name << ")" << endl;
+			}
 			string ifaceName = ifa->ifa_name;
 			size_t pos = ifaceName.find_first_of("123456789");
 			string port_num = ifaceName.substr(pos, ifaceName.length() - pos
 					+ 1);
 			uint32_t port_id = atoi(port_num.c_str());
 			tmpI = new Interface(port_id, ifaceName);
-			tmpI->setHwAddr(mac);
+			tmpI->setHwAddr(gVmMAC);
 			printf("Interface %s\n", ifa->ifa_name);
 			Interfaces.push_back(tmpI);
-			cout << "Send " << send_packet(ifa->ifa_name, mac, port_id, vmId)
+			intfNum++;
+			cout << "Send " << send_packet(ifa->ifa_name, gVmMAC, port_id, gVmId)
 					<< endl;
 		}
 	}
@@ -256,7 +305,7 @@ std::vector<Interface*> get_Interfaces() {
 int init_Interfaces() {
 
 	vector<Interface*> Interfaces = get_Interfaces();
-	int i;
+	unsigned int i;
 	for (i = 0; i < Interfaces.size(); i++) {
 		ifacesMap[Interfaces.at(i)->getName()] = (Interface *) Interfaces.at(i);
 	}
@@ -360,7 +409,6 @@ int main(int argc, char *argv[]) {
 
 		gVmId = get_vmId(argv[3]);
 		gVmIpAddr = get_ipaddr_byname(argv[3]);
-		get_hwaddr_byname(argv[3], gVmMAC);
 
 		cout << "gVmId=" << gVmId << endl;
 
@@ -409,7 +457,6 @@ int main(int argc, char *argv[]) {
 
 	/* Stay listening for some new message. */
 	while (1) {
-		int nfds = rfSock.getFd();
 		RFMessage * pMsg;
 		pMsg = rfSock.rfRecv();
 
