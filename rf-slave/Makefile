@@ -1,3 +1,3 @@
-MAKEAPPS := qf-slave
+MAKEAPPS := rf-slave
 
 include ../Make.rules
