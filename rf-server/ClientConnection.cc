@@ -92,6 +92,12 @@ int32_t ClientConnection::run(void * arg) {
 			}
 			pRFSrv->unlockvmList();
 		}
+		else
+		{
+			/* Sleep to avoid wasting CPU time unnecessarily */
+			sleep(1);
+		}
+
 		mutex.unlock();
 
 	}

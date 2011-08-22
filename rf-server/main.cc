@@ -140,10 +140,15 @@ int main(int argc, char **argv) {
 
 	listen(sockFd, MAX_CONNECTIONS);
 
+	/*
+           sockFd should be in "blocking" mode to avoid wasting
+	   CPU time unnecessarily
+         */
+/*
 	int flags = fcntl(sockFd, F_GETFL);
 	flags &= ~O_NONBLOCK;
 	fcntl(sockFd, F_SETFL, flags | O_NONBLOCK);
-
+*/
 	cliLength = sizeof(struct sockaddr_in);
 	connCount = 0;
 	while (1) {
