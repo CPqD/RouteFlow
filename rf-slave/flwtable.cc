@@ -423,6 +423,15 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 		}
 	}
 
+	/* Skipping routes to directly attached networks (next-hop field is blank) */
+	{
+		struct in_addr gwAddr;
+		if (inet_aton(gw, &gwAddr) == 0)
+		{
+			return 0;
+		}
+	}
+
 	struct in_addr convMascara;
 	convMascara.s_addr = htonl(~((1 << (32 - rtmsg_ptr->rtm_dst_len)) - 1));
 	char mask[INET_ADDRSTRLEN];
