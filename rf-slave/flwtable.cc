@@ -273,6 +273,7 @@ int FlwTablePolling::updateHostTable(const struct sockaddr_nl *who,
 
 	switch (n->nlmsg_type) {
 	case RTM_NEWNEIGH:
+		std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
 		hentry.ipAddr = inet_addr(ip);
 		FlwTablePolling::strMac2Binary(mac, hentry.m_hwAddr);
 		hentry.intf = NULL;
@@ -289,6 +290,7 @@ int FlwTablePolling::updateHostTable(const struct sockaddr_nl *who,
 		FlwTablePolling::hostTable.push_back(hentry);
 		break;
 	case RTM_DELNEIGH:
+		std::cout << "netlink->RTM_DELNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
 		hentry.ipAddr = inet_addr(ip);
 		FlwTablePolling::strMac2Binary(mac, hentry.m_hwAddr);
 		hentry.intf = NULL;
@@ -403,6 +405,7 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 
 	switch (n->nlmsg_type) {
 	case RTM_NEWROUTE:
+		std::cout << "netlink->RTM_NEWROUTE: net=" << net << ", mask=" << mask << ", gw=" << gw << std::endl;
 		rentry.netAddr = inet_addr(net);
 		rentry.gwIpAddr = inet_addr(gw);
 		rentry.netMask = inet_addr(mask);
@@ -424,6 +427,7 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 		FlwTablePolling::routeTable.push_back(rentry);
 		break;
 	case RTM_DELROUTE:
+		std::cout << "netlink->RTM_DELROUTE: net=" << net << ", mask=" << mask << ", gw=" << gw << std::endl;
 		rentry.netAddr = inet_addr(net);
 		rentry.gwIpAddr = inet_addr(gw);
 		rentry.netMask = inet_addr(mask);
