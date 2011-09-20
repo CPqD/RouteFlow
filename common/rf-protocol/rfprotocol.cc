@@ -238,7 +238,7 @@ RFMessage * RFSocket::rfRecv() {
 
 	int rcount = read(this->m_sockFd, buffer, sizeof(RFMessage));
 
-	if (rcount >= 0) {
+	if (sizeof(RFMessage) == rcount) {
 		RFMessage * recvMsg = (RFMessage *) buffer;
 		int32_t length = recvMsg->length() - rcount;
 		rcount += read(this->m_sockFd, buffer + sizeof(RFMessage), length);

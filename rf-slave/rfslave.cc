@@ -439,7 +439,7 @@ int main(int argc, char *argv[]) {
 
 		if (NULL == pMsg) {
 			rfSock.rfClose();
-			cout << "error receiving message" << endl;
+			cout << "Error receiving message: connection closed by peer." << endl;
 			return -1;
 		}
 		cout << "Connection msg (" << pMsg->length() << "bytes)" << endl;
@@ -461,15 +461,13 @@ int main(int argc, char *argv[]) {
 		pMsg = rfSock.rfRecv();
 
 		if (NULL != pMsg) {
-			if (pMsg->length() == 0) {
-				/* Server close connection. */
-				break;
-			}
 			cout << "new msg (" << pMsg->length() << "bytes)" << endl;
 			process_msg(pMsg);
 			delete (pMsg);
 		} else {
-			continue;
+			/* Connection closed by peer */
+			cout << "Connection closed by peer" << endl;
+			break;
 		}
 	}
 	rfSock.rfClose();
