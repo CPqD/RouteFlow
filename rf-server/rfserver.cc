@@ -925,6 +925,8 @@ int RouteFlowServer::send_IPC_flowmsg(uint64_t dpid, uint8_t msg[], size_t size)
 			syslog(LOG_INFO, "[RFSERVER] Msg sent successfully to %llx", dpid);
 	} while (ret == -1);
 
+	delete(controller_msg);
+
 	return ret;
 }
 
@@ -952,6 +954,8 @@ int RouteFlowServer::send_IPC_packetmsg(uint64_t dpid, uint64_t MsgId,
 			(IPCCommunicator *) qfCtlConnection->getCommunicator();
 
 	ret = Comm->sendMessage((IPCMessage *) controller_msg);
+
+	delete(controller_msg);
 
 	return ret;
 }
