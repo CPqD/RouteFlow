@@ -104,7 +104,9 @@ struct eth_data {
 
 class RouteFlowC: public Component {
 	Native_thread server_thread;
+	Co_thread send_cmd;
 	uint16_t tcpport;
+	queue<base_msg> command;
 	queue<base_msg> events;
 	queue<int> ports_num;
 
@@ -123,9 +125,11 @@ public:
 
 	Disposition handle_desc_in(const Event& e);
 
-	void add_link(const Link_event& le);
+	//void add_link(const Link_event& le);
 
-	void del_link(const Link_event& le);
+	//void del_link(const Link_event& le);
+
+	void send_command();
 
 	void process_message(base_msg * msg);
 
@@ -139,6 +143,25 @@ public:
 
 };
 
+
+void RouteFlowC::send_command()
+{
+        timeval t;
+
+        t.tv_sec = 0;
+        t.tv_usec = 1000;
+
+        while(1)
+        {
+                while(command.size())
+                {
+                        process_message(&command.front());
+                        command.pop();
+                }
+
+                this->send_cmd.sleep(t);
+        }
+}
 
 /*
  * Process rf-server command messages.
@@ -178,7 +201,6 @@ void RouteFlowC::process_message(base_msg * msg) {
 			send_packet pack_msg;
 			bzero(&pack_msg, sizeof(send_packet));
 			::memcpy(&pack_msg, &msg->payload, msg->pay_size);
-
 			hash_map<uint64_t, packet_data>::const_iterator i;
 			i = pack_buffer.find(pack_msg.pkt_id);
 
@@ -191,6 +213,7 @@ void RouteFlowC::process_message(base_msg * msg) {
 			if (i  != pack_buffer.end()){
 				Array_buffer buff(i->second.size);
 				memcpy(buff.data(),  i->second.packet, i->second.size);
+				VLOG_DBG(lg, "datapath with id %llx, port number %d", pack_msg.datapath_id, pack_msg.port_out);
 				if (send_openflow_packet(datapathid::from_host(pack_msg.datapath_id),
 					(Buffer &) buff, pack_msg.port_out, OFPP_NONE, true) )
 					VLOG_INFO(lg, "Failed to send packet to datapath with id %llx, port number %d", pack_msg.datapath_id, pack_msg.port_out);
@@ -211,7 +234,7 @@ void RouteFlowC::process_message(base_msg * msg) {
 
 /*
  * Sends to the rf-server Link Event messages.
- */
+ *
 Disposition RouteFlowC::handle_link_event(const Event& e) {
 	const Link_event& le = assert_cast<const Link_event&> (e);
 
@@ -238,7 +261,7 @@ Disposition RouteFlowC::handle_link_event(const Event& e) {
 		events.push(base_message);
 
 	return CONTINUE;
-}
+}*/
 
 /*
  * Sends Packet or Map Messages Event to the rf-server.
@@ -467,7 +490,7 @@ void RouteFlowC::server() {
 					break;
 				} else{
 					VLOG_INFO(lg, "Received Message from server");
-					process_message(&base_message);
+					command.push(base_message);
 				   }
 				}
 		}
@@ -499,8 +522,9 @@ void RouteFlowC::configure(const Configuration* config) {
 void RouteFlowC::install() {
 
 	this->server_thread.start(boost::bind(&RouteFlowC::server, this));
-	register_handler<Link_event> (boost::bind(&RouteFlowC::handle_link_event,
-			this, _1));
+	this->send_cmd.start(boost::bind(&RouteFlowC::send_command, this));
+	//register_handler<Link_event> (boost::bind(&RouteFlowC::handle_link_event,
+	//		this, _1));
 	register_handler<Packet_in_event> (boost::bind(
 			&RouteFlowC::handle_packet_in, this, _1));
 	register_handler<Datapath_join_event> (boost::bind(
