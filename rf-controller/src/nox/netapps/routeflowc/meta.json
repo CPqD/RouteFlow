@@ -2,10 +2,7 @@
     "components": [
         {
             "name": "routeflowc",
-            "library": "routeflowc" ,
-            "dependencies": [
-                "discovery"
-            ]
+            "library": "routeflowc" 
         }
     ]
 }
