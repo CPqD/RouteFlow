@@ -8,8 +8,8 @@
  *      Author: bill <carlos.nilton@gmail.com>
  */
 
-#ifndef __LIBNETLINK_HH__
-#define __LIBNETLINK_HH__ 1
+#ifndef LIBNETLINK_HH_
+#define LIBNETLINK_HH_
 
 #include <asm/types.h>
 #include <linux/if_link.h>
@@ -127,4 +127,4 @@ extern "C" int rtnl_from_file(FILE *, rtnl_filter_t handler, void *jarg);
 #define NDTA_PAYLOAD(n) NLMSG_PAYLOAD(n,sizeof(struct ndtmsg))
 #endif
 
-#endif /* __LIBNETLINK_HH__ */
+#endif /* LIBNETLINK_HH_ */

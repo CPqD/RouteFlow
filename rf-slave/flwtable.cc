@@ -52,7 +52,6 @@ int FlwTablePolling::lroute = 0;
 Thread FlwTablePolling::HTPolling = Thread(&FlwTablePolling::HTPollingCb);
 Thread FlwTablePolling::RTPolling = Thread(&FlwTablePolling::RTPollingCb);
 
-
 using std::memset;
 using std::strcmp;
 using std::ifstream;
@@ -71,7 +70,6 @@ extern RFSocket rfSock;
 
 uint32_t FlwTablePolling::isInit = 0;
 
-
 uint32_t FlwTablePolling::HTLock = UNLOCKED;
 uint32_t FlwTablePolling::RTLock = UNLOCKED;
 
@@ -84,7 +82,7 @@ list<HostEntry> FlwTablePolling::hostTable;
 void Thread::run() {
 	std::cout << "thread is running." << std::endl; // ugly test: not thread-safe!
 
-	callback(NULL); // ugly use. high coupling!
+	callback( NULL); // ugly use. high coupling!
 }
 
 /*
@@ -125,10 +123,10 @@ int32_t FlwTablePolling::strMac2Binary(const char *strMac, uint8_t *bMac) {
 		}
 
 		/*Convert into number.
-		*   a. If character is digit then ch - '0'
-		*	b. else (ch - 'a' + 10) it is done
-		*	because addition of 10 takes correct value.
-		*/
+		 *   a. If character is digit then ch - '0'
+		 *	b. else (ch - 'a' + 10) it is done
+		 *	because addition of 10 takes correct value.
+		 */
 		j = isdigit(ch) ? (ch - '0') : (ch - 'a' + 10);
 		ch = tolower(*strMac);
 
@@ -198,7 +196,6 @@ void * FlwTablePolling::RTPollingCb(void * data) {
 int32_t FlwTablePolling::init() {
 	if (!FlwTablePolling::isInit) {
 
-
 		/* Open NETLINK socket and start our threads. */
 		rtnl_open(&rth, RTMGRP_IPV4_MROUTE | RTMGRP_IPV4_ROUTE
 				| RTMGRP_IPV6_MROUTE | RTMGRP_IPV6_ROUTE);
@@ -233,7 +230,6 @@ int FlwTablePolling::updateHostTable(const struct sockaddr_nl *who,
 		struct nlmsghdr *n, void *arg) {
 	struct ndmsg *ndmsg_ptr = (struct ndmsg *) NLMSG_DATA(n);
 	struct rtattr *rtattr_ptr;
-
 
 	char intf[IF_NAMESIZE + 1];
 	memset(intf, 0, IF_NAMESIZE + 1);
@@ -273,7 +269,8 @@ int FlwTablePolling::updateHostTable(const struct sockaddr_nl *who,
 
 	switch (n->nlmsg_type) {
 	case RTM_NEWNEIGH:
-		std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
+		std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac
+				<< std::endl;
 		hentry.ipAddr = inet_addr(ip);
 		FlwTablePolling::strMac2Binary(mac, hentry.m_hwAddr);
 		hentry.intf = NULL;
@@ -290,7 +287,8 @@ int FlwTablePolling::updateHostTable(const struct sockaddr_nl *who,
 		FlwTablePolling::hostTable.push_back(hentry);
 		break;
 	case RTM_DELNEIGH:
-		std::cout << "netlink->RTM_DELNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
+		std::cout << "netlink->RTM_DELNEIGH: ip=" << ip << ", mac=" << mac
+				<< std::endl;
 		hentry.ipAddr = inet_addr(ip);
 		FlwTablePolling::strMac2Binary(mac, hentry.m_hwAddr);
 		hentry.intf = NULL;
@@ -370,17 +368,47 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 			rtmsg_len)) {
 		switch (rtattr_ptr->rta_type) {
 		case RTA_DST:
-			if (inet_ntop(AF_INET, RTA_DATA(rtattr_ptr), net, 128) == NULL)
-				return 0;
+			inet_ntop(AF_INET, RTA_DATA(rtattr_ptr), net, 128);
 			break;
 		case RTA_GATEWAY:
-			if (inet_ntop(AF_INET, RTA_DATA(rtattr_ptr), gw, 128) == NULL)
-				return 0;
+			inet_ntop(AF_INET, RTA_DATA(rtattr_ptr), gw, 128);
 			break;
 		case RTA_OIF:
-			if (if_indextoname(*((int *) RTA_DATA(rtattr_ptr)), (char *) intf)
-					== NULL)
-				return 0;
+			if_indextoname(*((int *) RTA_DATA(rtattr_ptr)), (char *) intf);
+			break;
+		case RTA_MULTIPATH: {
+			struct rtnexthop *rtnhp_ptr = (struct rtnexthop *) RTA_DATA(
+					rtattr_ptr);
+			int rtnhp_len = RTA_PAYLOAD(rtattr_ptr);
+
+			if (rtnhp_len < (int) sizeof(*rtnhp_ptr)) {
+				break;
+			}
+
+			if (rtnhp_ptr->rtnh_len > rtnhp_len) {
+				break;
+			}
+
+			if_indextoname(rtnhp_ptr->rtnh_ifindex, (char *) intf);
+
+			for (; RTNH_OK(rtnhp_ptr, rtnhp_len); rtnhp_ptr = RTNH_NEXT(
+					rtnhp_ptr)) {
+				int attrlen = rtnhp_len - sizeof(struct rtnexthop);
+
+				if (attrlen) {
+					struct rtattr *attr = RTNH_DATA(rtnhp_ptr);
+
+					while (RTA_OK(attr, attrlen)) {
+						if (attr->rta_type == RTA_GATEWAY) {
+							inet_ntop(AF_INET, RTA_DATA(attr), gw, 128);
+							break;
+						}
+						attr = RTA_NEXT(attr, attrlen);
+					}
+				}
+			}
+		}
+			break;
 		default:
 			break;
 		}
@@ -389,8 +417,7 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 	/* Skipping routes to directly attached networks (next-hop field is blank) */
 	{
 		struct in_addr gwAddr;
-		if (inet_aton(gw, &gwAddr) == 0)
-		{
+		if (inet_aton(gw, &gwAddr) == 0) {
 			return 0;
 		}
 	}
@@ -411,10 +438,12 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 
 	RouteEntry rentry;
 	map<string, Interface*>::iterator it;
+	list<RouteEntry>::iterator itRoutes;
 
 	switch (n->nlmsg_type) {
 	case RTM_NEWROUTE:
-		std::cout << "netlink->RTM_NEWROUTE: net=" << net << ", mask=" << mask << ", gw=" << gw << std::endl;
+		std::cout << "netlink->RTM_NEWROUTE: net=" << net << ", mask=" << mask
+				<< ", gw=" << gw << std::endl;
 		rentry.netAddr = inet_addr(net);
 		rentry.gwIpAddr = inet_addr(gw);
 		rentry.netMask = inet_addr(mask);
@@ -432,11 +461,20 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 			return 0;
 		}
 
+		for (itRoutes = FlwTablePolling::routeTable.begin(); itRoutes
+				!= FlwTablePolling::routeTable.end(); itRoutes++) {
+			if (rentry == (*itRoutes)) {
+				std::cout << "Duplicate route add request.\n" << "\n";
+				return 0;
+			}
+		}
+
 		FlwTablePolling::addFlowToHw(rentry);
 		FlwTablePolling::routeTable.push_back(rentry);
 		break;
 	case RTM_DELROUTE:
-		std::cout << "netlink->RTM_DELROUTE: net=" << net << ", mask=" << mask << ", gw=" << gw << std::endl;
+		std::cout << "netlink->RTM_DELROUTE: net=" << net << ", mask=" << mask
+				<< ", gw=" << gw << std::endl;
 		rentry.netAddr = inet_addr(net);
 		rentry.gwIpAddr = inet_addr(gw);
 		rentry.netMask = inet_addr(mask);
@@ -450,8 +488,16 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 			return 0;
 		}
 
-		FlwTablePolling::delFlowFromHw(rentry);
-		FlwTablePolling::routeTable.remove(rentry);
+		for (itRoutes = FlwTablePolling::routeTable.begin(); itRoutes
+				!= FlwTablePolling::routeTable.end(); itRoutes++) {
+			if (rentry == (*itRoutes)) {
+				FlwTablePolling::delFlowFromHw(rentry);
+				FlwTablePolling::routeTable.remove(rentry);
+			} else {
+				std::cout << "Duplicate route del request.\n" << "\n";
+				return 0;
+			}
+		}
 		break;
 	}
 
@@ -473,7 +519,7 @@ void FlwTablePolling::fakeReq(char *hostAddr, const char *intf) {
 	char *host = hostAddr;
 	static char address[30];
 
-	bzero((caddr_t) &req, sizeof(req));
+	bzero((caddr_t) & req, sizeof(req));
 
 	sin = (struct sockaddr_in *) &req.arp_pa;
 	sin->sin_family = AF_INET;

@@ -30,17 +30,20 @@
 #include <unistd.h>
 #include <errno.h>
 #include <iostream>
+#include <fstream>
 #include <fcntl.h>
 #include <cstring>
 #include <list>
 #include <sstream>
 #include <string>
+#include <syslog.h>
 #include <map>
 #include <ifaddrs.h>
 #include <vector>
 #include "rfprotocol.hh"
 #include "interface.hh"
 #include "flwtable.hh"
+#include "rfslave.hh"
 
 #define BUFFER_SIZE      23           /* Packet size. */
 #define ETH_ADRLEN       6            /* Mac Address size. */
@@ -53,6 +56,11 @@ using std::string;
 using std::stringstream;
 using std::vector;
 using std::map;
+using std::ofstream;
+
+ofstream logfile;
+
+enum logType useSyslog = LOGCONFIG_NOT_CONFIGURED;
 
 const uint8_t intfNumMax = 4;
 
@@ -259,7 +267,7 @@ std::vector<Interface*> get_Interfaces() {
 
 	if (getifaddrs(&ifaddr) == -1) {
 		perror("getifaddrs");
-		exit(EXIT_FAILURE);
+		exit( EXIT_FAILURE);
 	}
 
 	/* Walk through linked list, maintaining head pointer so we
@@ -276,8 +284,7 @@ std::vector<Interface*> get_Interfaces() {
 				&& strcmp(ifa->ifa_name, "lo") != 0) {
 			if (0 == intfNum) {
 				get_hwaddr_byname(ifa->ifa_name, gVmMAC);
-			}
-			else {
+			} else {
 				set_hwaddr_byname(ifa->ifa_name, gVmMAC, ifa->ifa_flags);
 				cout << "Setting MAC Addr (" << ifa->ifa_name << ")" << endl;
 			}
@@ -291,8 +298,8 @@ std::vector<Interface*> get_Interfaces() {
 			printf("Interface %s\n", ifa->ifa_name);
 			Interfaces.push_back(tmpI);
 			intfNum++;
-			cout << "Send " << send_packet(ifa->ifa_name, gVmMAC, port_id, gVmId)
-					<< endl;
+			cout << "Send " << send_packet(ifa->ifa_name, gVmMAC, port_id,
+					gVmId) << endl;
 		}
 	}
 
@@ -388,19 +395,76 @@ int recv_msg(int fd, RFMessage * msg, int32_t size) {
 	return rcount;
 }
 
-int main(int argc, char *argv[]) {
-	int portno;
+void print_help(char *prgname, int exval) {
+	fprintf(stderr, "\n%s -s SERVER -p PORT -i IFACE [-S|-f LOGFILE]\n\n",
+			prgname);
 
-	if (argc < 4) {
-		cout << "usage " << argv[0] << "rfslave <server_ipaddr> <port> <intf>"
-				<< endl;
-		return -1;
+	fprintf(stderr, "  -s SERVER       set IP address of rf-server\n");
+	fprintf(stderr, "  -p PORT         set port number to connect\n");
+	fprintf(stderr, "  -i IFACE        set interface name for binding\n");
+	fprintf(stderr, "  -S              use syslog for logging (default)\n");
+	fprintf(stderr, "  -l LOGFILE      use LOGFILE for log output\n\n");
+
+	exit(exval);
+}
+
+int main(int argc, char *argv[]) {
+	int opt, portno = -1;
+	string serverIp = "";
+	string connIface = "";
+	string logfilePath = "";
+
+	if (argc == 1) {
+		print_help(argv[0], 1);
+		exit(1);
 	}
 
-	string serverIp(argv[1]);
-	portno = atoi(argv[2]);
+	while ((opt = getopt(argc, argv, "s:p:i:Sl:")) != -1) {
+		switch (opt) {
+		case 's':
+			serverIp = optarg;
+			break;
+		case 'p':
+			portno = atoi(optarg);
+			break;
+		case 'i':
+			connIface = optarg;
+			break;
+		case 'S':
+			if (useSyslog == LOGCONFIG_NOT_CONFIGURED) {
+				useSyslog = LOGCONFIG_USE_SYSLOG;
+			} else {
+				print_help(argv[0], 1);
+			}
+			break;
+		case 'l':
+			if (useSyslog == LOGCONFIG_NOT_CONFIGURED) {
+				useSyslog = LOGCONFIG_USE_FILE;
+				logfilePath = optarg;
+			} else {
+				print_help(argv[0], 1);
+			}
+			break;
+		case 'h':
+		default:
+			print_help(argv[0], 1);
+		}
+	}
+
+	if (optind < argc || ((serverIp == "") || (portno == -1) || (connIface
+			== "")))
+		print_help(argv[0], 1);
 
 	bool regOK = 0;
+
+	if (useSyslog) {
+		openlog("rf-slave", LOG_NDELAY | LOG_NOWAIT | LOG_PID, LOG_DAEMON);
+		syslog(LOG_NOTICE, "starting RouteFlow FIB collector");
+	} else {
+		logfile.open(logfilePath.c_str());
+		logfile << "starting RouteFlow FIB collector" << endl;
+		logfile.flush();
+	}
 
 	while (!regOK) {
 		if (rfSock.rfOpen() < 0) {
@@ -439,7 +503,8 @@ int main(int argc, char *argv[]) {
 
 		if (NULL == pMsg) {
 			rfSock.rfClose();
-			cout << "Error receiving message: connection closed by peer." << endl;
+			cout << "Error receiving message: connection closed by peer."
+					<< endl;
 			return -1;
 		}
 		cout << "Connection msg (" << pMsg->length() << "bytes)" << endl;
