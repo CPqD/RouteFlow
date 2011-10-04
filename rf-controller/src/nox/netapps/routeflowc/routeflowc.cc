@@ -107,6 +107,7 @@ class RouteFlowC: public Component {
 	Co_thread send_cmd;
 	uint16_t tcpport;
 	queue<base_msg> command;
+	uint8_t cmd_mutex;
 	queue<base_msg> events;
 	queue<int> ports_num;
 
@@ -153,13 +154,17 @@ void RouteFlowC::send_command()
 
         while(1)
         {
-                while(command.size())
-                {
-                        process_message(&command.front());
-                        command.pop();
-                }
-
-                this->send_cmd.sleep(t);
+		if (!cmd_mutex)
+		{
+			cmd_mutex = 1;
+        	        while(command.size())
+                	{
+        	                process_message(&command.front());
+                	        command.pop();
+	                }
+			cmd_mutex = 0;
+		}
+	        this->send_cmd.sleep(t);
         }
 }
 
@@ -488,11 +493,20 @@ void RouteFlowC::server() {
 				else if (recv_dbg == 0) {
 					VLOG_INFO(lg, "Lost connection. Waiting for a new server connection");
 					break;
-				} else{
-					VLOG_INFO(lg, "Received Message from server");
-					command.push(base_message);
-				   }
 				}
+				else
+				{
+					VLOG_INFO(lg, "Received Message from server");
+					
+					while(cmd_mutex)
+					{
+						usleep(1000);
+					}
+					cmd_mutex = 1;
+					command.push(base_message);
+					cmd_mutex = 0;
+				}
+			}
 		}
 
 	}
@@ -505,6 +519,7 @@ void RouteFlowC::server() {
  */
 void RouteFlowC::configure(const Configuration* config) {
 
+	cmd_mutex = 0;
 	/*
 	 * Get command line arguments.
 	 */
