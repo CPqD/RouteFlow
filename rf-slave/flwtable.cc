@@ -492,15 +492,14 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 				!= FlwTablePolling::routeTable.end(); itRoutes++) {
 			if (rentry == (*itRoutes)) {
 				FlwTablePolling::delFlowFromHw(rentry);
-				FlwTablePolling::routeTable.remove(rentry);
-			} else {
-				std::cout << "Duplicate route del request.\n" << "\n";
+				FlwTablePolling::routeTable.remove((*itRoutes));
 				return 0;
-			}
+			} 
 		}
 		break;
 	}
-
+	/* The route was already deleted */
+	std::cout << "Duplicate route del request.\n" << "\n";
 	return 0;
 }
 
