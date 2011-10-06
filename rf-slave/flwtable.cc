@@ -286,7 +286,7 @@ int FlwTablePolling::updateHostTable(const struct sockaddr_nl *who,
 		FlwTablePolling::addFlowToHw(hentry);
 		FlwTablePolling::hostTable.push_back(hentry);
 		break;
-	case RTM_DELNEIGH:
+	/*case RTM_DELNEIGH:
 		std::cout << "netlink->RTM_DELNEIGH: ip=" << ip << ", mac=" << mac
 				<< std::endl;
 		hentry.ipAddr = inet_addr(ip);
@@ -302,7 +302,7 @@ int FlwTablePolling::updateHostTable(const struct sockaddr_nl *who,
 		}
 
 		FlwTablePolling::delFlowFromHw(hentry);
-		break;
+		break;*/
 	}
 
 	return 0;
@@ -411,14 +411,6 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 			break;
 		default:
 			break;
-		}
-	}
-
-	/* Skipping routes to directly attached networks (next-hop field is blank) */
-	{
-		struct in_addr gwAddr;
-		if (inet_aton(gw, &gwAddr) == 0) {
-			return 0;
 		}
 	}
 
