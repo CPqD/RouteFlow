@@ -399,7 +399,7 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 					struct rtattr *attr = RTNH_DATA(rtnhp_ptr);
 
 					while (RTA_OK(attr, attrlen)) {
-						if (attr->rta_type == RTA_GATEWAY) {
+						if ((attr->rta_type == RTA_GATEWAY) && (gw == NULL)) {
 							inet_ntop(AF_INET, RTA_DATA(attr), gw, 128);
 							break;
 						}
