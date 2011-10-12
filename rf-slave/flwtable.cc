@@ -391,21 +391,16 @@ int FlwTablePolling::updateRouteTable(const struct sockaddr_nl *who,
 
 			if_indextoname(rtnhp_ptr->rtnh_ifindex, (char *) intf);
 
-			for (; RTNH_OK(rtnhp_ptr, rtnhp_len); rtnhp_ptr = RTNH_NEXT(
-					rtnhp_ptr)) {
-				int attrlen = rtnhp_len - sizeof(struct rtnexthop);
+			int attrlen = rtnhp_len - sizeof(struct rtnexthop);
 
-				if (attrlen) {
-					struct rtattr *attr = RTNH_DATA(rtnhp_ptr);
+			if (attrlen) {
+				struct rtattr *attr = RTNH_DATA(rtnhp_ptr);
 
-					while (RTA_OK(attr, attrlen)) {
-						if ((attr->rta_type == RTA_GATEWAY) && (gw == NULL)) {
-							inet_ntop(AF_INET, RTA_DATA(attr), gw, 128);
-							break;
-						}
-						attr = RTA_NEXT(attr, attrlen);
+				for (; RTA_OK(attr, attrlen); attr = RTA_NEXT(attr, attrlen))
+					if ((attr->rta_type == RTA_GATEWAY)) {
+						inet_ntop(AF_INET, RTA_DATA(attr), gw, 128);
+						break;
 					}
-				}
 			}
 		}
 			break;
