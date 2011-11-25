@@ -325,8 +325,28 @@ Disposition RouteFlowC::handle_packet_in(const Event& e) {
 	/* Add packet to the buffer. */
 	packet_data pkt;
 	bzero(&pkt.packet[0],sizeof(pkt.packet));
-	memcpy(&pkt.packet[0], pi.get_buffer()->data(), pi.total_len);
-	pkt.size = pi.total_len;
+	/* Patch by Guilherme Fernandes to deal with VLAN tags add by the switch */
+	/* But strip any VLAN headers before adding */
+	/* TODO: double tagging? ethernet checksum? */
+	
+//	memcpy(&pkt.packet[0], pi.get_buffer()->data(), pi.total_len);
+//	pkt.size = pi.total_len;
+
+	if (flow.dl_vlan != htons(OFP_VLAN_NONE)) {
+		/* Copy ETH header */
+		memcpy(pkt.packet, pi.get_buffer()->data(), sizeof(eth_header));
+		/* Update ETH_TYPE accordingly */
+		*((uint16_t *)(&pkt.packet[ETH_ADDR_LEN + ETH_ADDR_LEN])) = flow.dl_type;
+		/* Copy rest of the packet */
+		memcpy(pkt.packet + sizeof(eth_header),
+				pi.get_buffer()->data() + sizeof(eth_header) + sizeof(vlan_header),
+				pi.total_len - (sizeof(eth_header) + sizeof(vlan_header)));
+		pkt.size = pi.total_len - sizeof(vlan_header);
+	} else {
+		memcpy(&pkt.packet[0], pi.get_buffer()->data(), pi.total_len);
+		pkt.size = pi.total_len;
+	}
+	
 	pack_buffer.insert(std::make_pair(pckt_xid, pkt));
 
 
