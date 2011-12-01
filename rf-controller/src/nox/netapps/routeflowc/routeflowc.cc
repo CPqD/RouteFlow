@@ -399,7 +399,6 @@ Disposition RouteFlowC::handle_datapath_join(const Event& e) {
    It's done here because in order to know if a datapath is an Open vSwitch
    we need the hw_desc field. 
    In the current scenario should always happen after a datapath_join event */
-*/
 Disposition RouteFlowC::handle_desc_in(const Event& e) {
 	const Desc_stats_in_event& ds = assert_cast<const Desc_stats_in_event&> (e);
 
