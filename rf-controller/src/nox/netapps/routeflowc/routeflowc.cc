@@ -363,11 +363,43 @@ Disposition RouteFlowC::handle_packet_in(const Event& e) {
 		}
 
 	} else
+		/*If the server isn't connected queue the event message */
 		events.push(base_message);
 
 	return CONTINUE;
 }
 
+/*.
+ * The handle_datapath_join asks for switch description generating a desc_in event.
+ */
+Disposition RouteFlowC::handle_datapath_join(const Event& e) {
+	const Datapath_join_event& dj = assert_cast<const Datapath_join_event&> (e);
+
+	ofp_stats_request* osr = NULL;
+	size_t msize = sizeof(ofp_stats_request);
+	boost::shared_array<uint8_t> raw_sr(new uint8_t[msize]);
+
+	// Send OFPT_STATS_REQUEST
+	osr = (ofp_stats_request*) raw_sr.get();
+	osr->header.type = OFPT_STATS_REQUEST;
+	osr->header.version = OFP_VERSION;
+	osr->header.length = htons(msize);
+	osr->header.xid = 0;
+	osr->type = htons(OFPST_DESC);
+	osr->flags = htons(0);
+	ports_num.push(dj.ports.size());
+
+	/*Request switch description. Generates a desc_in event */
+	send_openflow_command(dj.datapath_id, &osr->header, false);
+
+	return CONTINUE;
+}
+
+/* The handle_desc_in method sends the the DATAPATH_JOIN message to the server  
+   It's done here because in order to know if a datapath is an Open vSwitch
+   we need the hw_desc field. 
+   In the current scenario should always happen after a datapath_join event */
+*/
 Disposition RouteFlowC::handle_desc_in(const Event& e) {
 	const Desc_stats_in_event& ds = assert_cast<const Desc_stats_in_event&> (e);
 
@@ -392,35 +424,11 @@ Disposition RouteFlowC::handle_desc_in(const Event& e) {
 		if (send(server_sock_fd, &base_message, sizeof(base_msg), 0) == -1)
 			perror("send");
 	} else
+		/*If the server isn't connected queue the event message */
 		events.push(base_message);
 
 	VLOG_INFO(lg, "A new datapath has been registered: id=%llx",
 			ds.datapath_id.as_host());
-
-	return CONTINUE;
-}
-
-/*
- *	Sends, on a datapath join event, the switch datapath id and number of ports to the rf-server.
- */
-Disposition RouteFlowC::handle_datapath_join(const Event& e) {
-	const Datapath_join_event& dj = assert_cast<const Datapath_join_event&> (e);
-
-	ofp_stats_request* osr = NULL;
-	size_t msize = sizeof(ofp_stats_request);
-	boost::shared_array<uint8_t> raw_sr(new uint8_t[msize]);
-
-	// Send OFPT_STATS_REQUEST
-	osr = (ofp_stats_request*) raw_sr.get();
-	osr->header.type = OFPT_STATS_REQUEST;
-	osr->header.version = OFP_VERSION;
-	osr->header.length = htons(msize);
-	osr->header.xid = 0;
-	osr->type = htons(OFPST_DESC);
-	osr->flags = htons(0);
-	ports_num.push(dj.ports.size());
-
-	send_openflow_command(dj.datapath_id, &osr->header, false);
 
 	return CONTINUE;
 }
@@ -449,6 +457,7 @@ Disposition RouteFlowC::handle_datapath_leave(const Event& e) {
 			perror("send");
 
 	} else
+		/*If the server isn't connected queue the event message */
 		events.push(base_message);
 
 	return CONTINUE;
