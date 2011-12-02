@@ -471,8 +471,8 @@ int main(int argc, char *argv[]) {
 			error("ERROR opening socket");
 		}
 
-		gVmId = get_vmId(connIface);
-		gVmIpAddr = get_ipaddr_byname(connIface);
+		gVmId = get_vmId(connIface.c_str());
+		gVmIpAddr = get_ipaddr_byname(connIface.c_str());
 
 		cout << "gVmId=" << gVmId << endl;
 
