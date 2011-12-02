@@ -34,6 +34,7 @@
 const uint32_t TCP_PORT = 5678;
 const uint32_t MAX_CONNECTIONS = 10;
 
+#define SYSLOGFACILITY LOG_LOCAL7
 #define DEFAULTCTLIP "127.0.0.1"
 #define DEFAULTCTLPORT 7890
 
@@ -48,6 +49,8 @@ int main(int argc, char **argv) {
 	socklen_t cliLength;
 	struct sockaddr_in servAddr;
 	int8_t ret = SUCCESS;
+
+	openlog("rf-server", LOG_PID, SYSLOGFACILITY);
 
 	ControllerConnection qfController;
 
@@ -261,9 +264,11 @@ int main(int argc, char **argv) {
 					}
 					if (found) {
 						/* Install RIPv2 default flow. */
-						rfSrv.send_flow_msg(newVM.getDpId().dpId, RIPv2);
+						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_RIPv2);
 						/* Install OSPF default flow. */
-						rfSrv.send_flow_msg(newVM.getDpId().dpId, OSPF);
+						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_OSPF);
+						/* Install ARP default flow. */
+						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_ARP);
 
 						/* Configuration message to the slave. */
 						RFVMMsg logmsg;

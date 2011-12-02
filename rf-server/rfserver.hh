@@ -30,9 +30,12 @@ using std::list;
 using std::multimap;
 
 typedef enum rfoperation {
-	RIPv2,           /* RIPv2 protocol.*/
-	OSPF, 			 /* OSPF protocol. */
-	CLEAR_FLOW_TABLE /* Clear flow table. */
+	RFO_RIPv2,	/* RIPv2 protocol. */
+	RFO_OSPF,	/* OSPF protocol. */
+	RFO_BGP,	/* BGP protocol. */
+	RFO_ARP,	/* ARP protocol. */
+	RFO_ICMP,   /* ICMP protocol. */
+	RFO_CLEAR_FLOW_TABLE /* Clear flow table. */
 } qfoperation_t;
 
 /* Open vSwitch operations */

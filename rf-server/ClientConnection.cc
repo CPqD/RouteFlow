@@ -78,7 +78,7 @@ int32_t ClientConnection::run(void * arg) {
 								syslog(LOG_DEBUG, "VM = %lld, DpId = %lld",
 										iter->getVmId(), iter->getDpId().dpId);
 								pRFSrv->send_flow_msg(iter->getDpId().dpId,
-										CLEAR_FLOW_TABLE);
+										RFO_CLEAR_FLOW_TABLE);
 								pRFSrv->m_dpIdleList.push_back(iter->getDpId());
 							}
 							close(fd);

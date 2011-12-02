@@ -495,11 +495,20 @@ int32_t RouteFlowServer::datapath_join_event(uint64_t dpId, char hw_desc[],
 
 	/* Install flow to receive RIPv2 packets. */
 
-	send_flow_msg(dpId, RIPv2);
+	send_flow_msg(dpId, RFO_RIPv2);
 
 	/* Install flow to receive OSPF packets. */
 
-	send_flow_msg(dpId, OSPF);
+	send_flow_msg(dpId, RFO_OSPF);
+
+	/* Install flow to receive ARP packets. */
+	send_flow_msg(dpId, RFO_ARP);
+
+	/* Install flow to receive ICMP packets. */
+	send_flow_msg(dpId, RFO_ICMP);
+
+	/* Install flow to receive BGP packets. */
+	send_flow_msg(dpId, RFO_BGP);
 
 	syslog(LOG_INFO, "[RFSERVER] A new datapath has been registered: id=%llx",
 			dpId);
@@ -538,7 +547,7 @@ int RouteFlowServer::send_flow_msg(uint64_t dp_id, qfoperation_t operation) {
 	ofp_flow_mod* ofm;
 	size_t size = sizeof *ofm;
 
-	if (operation != CLEAR_FLOW_TABLE) {
+	if (operation != RFO_CLEAR_FLOW_TABLE) {
 		size = sizeof *ofm + sizeof(ofp_action_output);
 	}
 
@@ -552,25 +561,42 @@ int RouteFlowServer::send_flow_msg(uint64_t dp_id, qfoperation_t operation) {
 
 	std::memset(&(ofm->match), 0, sizeof(struct ofp_match));
 
-	if (operation == RIPv2) {
+	if (operation == RFO_RIPv2) {
 		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for RIPv2");
 		ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE)
 				& (~OFPFW_NW_PROTO) & (~((uint32_t) 63 << OFPFW_NW_DST_SHIFT)));
 		ofm->match.dl_type = htons(0x0800);
 		ofm->match.nw_proto = 0x11;
 		ofm->match.nw_dst = inet_addr("224.0.0.9"); /* RIPv2 Destination IP.*/
-	} else if (operation == OSPF) {
+	} else if (operation == RFO_OSPF) {
 		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for OSPF");
 		ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE)
 				& (~OFPFW_NW_PROTO));
 		ofm->match.dl_type = htons(0x0800);
 		ofm->match.nw_proto = 0x59;
-	} else if (operation == CLEAR_FLOW_TABLE) {
+	} else if (operation == RFO_ARP) {
+		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for ARP");
+		ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE));
+		ofm->match.dl_type = htons(0x0806);
+	} else if (operation == RFO_ICMP) {
+	    syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for ICMP");
+	    ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE)
+	            & (~OFPFW_NW_PROTO));
+	    ofm->match.dl_type = htons(0x0800);
+	    ofm->match.nw_proto = 0x01;
+	} else if (operation == RFO_BGP) {
+	    syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for BGP");
+	    ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE)
+	            & (~OFPFW_NW_PROTO) & (~OFPFW_TP_DST));
+	    ofm->match.dl_type = htons(0x0800);
+	    ofm->match.nw_proto = 0x06;
+	    ofm->match.tp_dst = htons(0x00B3);
+	} else if (operation == RFO_CLEAR_FLOW_TABLE) {
 		ofm->match.wildcards = htonl(0xffffffff);
 	}
 	ofm->cookie = htonl(0);
 	ofm->out_port = htons(OFPP_NONE);
-	if (operation == CLEAR_FLOW_TABLE) {
+	if (operation == RFO_CLEAR_FLOW_TABLE) {
 		syslog(LOG_DEBUG, "[RFSERVER] Clearing flow table");
 		ofm->command = htons(OFPFC_DELETE);
 		ofm->buffer_id = htonl(0);
