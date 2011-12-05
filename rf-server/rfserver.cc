@@ -136,11 +136,7 @@ int32_t RouteFlowServer::del_link_event(uint64_t dpsrc, uint16_t sport,
 	ofm_match_in(ofm, portsrc);
 
 	/*Open Flow Header. */
-	ofm->command = htons(OFPFC_DELETE);
-	ofm->idle_timeout = htons(0);
-	ofm->hard_timeout = htons(0);
-	ofm->buffer_id = htonl(UINT32_MAX);
-	ofm->out_port = htons(portdst);
+	ofm_set_command(ofm, OFPFC_DELETE, UINT32_MAX, 0, 0, portdst);
 
 	uint8_t ofm_array[size];
 	memcpy(&ofm_array, &ofm->header, size);
@@ -324,10 +320,7 @@ void RouteFlowServer::send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
 		}
 
 	}
-	ofm->command = htons(OFPFC_ADD);
-	ofm->buffer_id = htonl(UINT32_MAX);
-	ofm->idle_timeout = htons(OFP_FLOW_PERMANENT);
-	ofm->hard_timeout = htons(OFP_FLOW_PERMANENT);
+	ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
 
 	uint8_t ofm_array[size];
 	memcpy(&ofm_array, &ofm->header, size);
@@ -544,24 +537,12 @@ int RouteFlowServer::send_flow_msg(uint64_t dp_id, qfoperation_t operation) {
 		ofm->match.wildcards = htonl(0xffffffff);
 	}
 
-	ofm->out_port = htons(OFPP_NONE);
 	if (operation == RFO_CLEAR_FLOW_TABLE) {
 		syslog(LOG_DEBUG, "[RFSERVER] Clearing flow table");
-		ofm->command = htons(OFPFC_DELETE);
-		ofm->buffer_id = htonl(0);
-		ofm->idle_timeout = htons(0);
-		ofm->hard_timeout = htons(0);
+		ofm_set_command(ofm, OFPFC_DELETE, 0, 0, 0, OFPP_NONE);
 		ofm->priority = htons(0);
-		ofm->flags = htons(0);
 	} else {
-
-		ofm->command = htons(OFPFC_ADD);
-		ofm->buffer_id = htonl(UINT32_MAX);
-		ofm->idle_timeout = htons(OFP_FLOW_PERMANENT);
-		ofm->hard_timeout = htons(OFP_FLOW_PERMANENT);
-		ofm->priority = htons(OFP_DEFAULT_PRIORITY);
-		ofm->flags = htons(0);
-
+		ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
 		ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output),
 			OFPP_CONTROLLER, ETH_DATA_LEN, 0);
 	}
@@ -682,6 +663,7 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 				ofm = (ofp_flow_mod*) raw_of.get();
 
 				ofm_init(ofm, size);
+
 				ofm_match_dl(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
 				ofm_match_nw(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),	0, 0,
 					0, rules.ip);
@@ -689,16 +671,12 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 				syslog(LOG_DEBUG, "[RFSERVER] DstIp %d, Mask = %d", rules.ip,
 						rules.mask);
 
-				ofm->command = htons(OFPFC_ADD);
-				ofm->buffer_id = htonl(UINT32_MAX);
+				ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
 
 				if (rules.mask == 32) {
 					ofm->idle_timeout = htons(300);
-				} else {
-					ofm->idle_timeout = htons(OFP_FLOW_PERMANENT);
 				}
 
-				ofm->hard_timeout = htons(OFP_FLOW_PERMANENT);
 				ofm->priority = htons((OFP_DEFAULT_PRIORITY + rules.mask));
 
 				uint8_t *pActions = (uint8_t *) ofm->actions;
@@ -706,20 +684,20 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 				/*Action: change the dst MAC address.*/
 				ofp_action_dl_addr& dldstset =
 						*((ofp_action_dl_addr*) ofm->actions);
-				ofm_set_action((ofp_action_header*)dldstset, OFPAT_SET_DL_DST,
+				ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_DST,
 					sizeof(ofp_action_dl_addr), 0, 0, actions.dstMac);
 				pActions += sizeof(ofp_action_dl_addr);
 
 				/*Action: change the src MAC address.*/
 				ofp_action_dl_addr& dlsrcset =
 						*((ofp_action_dl_addr*) (pActions));
-				ofm_set_action((ofp_action_header*)dlsrcset, OFPAT_SET_DL_SRC,
+				ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_SRC,
 					sizeof(ofp_action_dl_addr), 0, 0, actions.srcMac);
 				pActions += sizeof(ofp_action_dl_addr);
 
 				/*Action: forward to port actions.dstPort. */
 				ofp_action_output& output = *((ofp_action_output*) (pActions));
-				ofm_set_action((ofp_action_header*)output, OFPAT_OUTPUT,
+				ofm_set_action((ofp_action_header*)pActions, OFPAT_OUTPUT,
 					sizeof(ofp_action_output), actions.dstPort, 0, 0);
 
 				syslog(
@@ -772,13 +750,8 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 				ofm_match_nw(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),
 					0, 0, 0, rules.ip);
 
-				ofm->out_port = htons(OFPP_NONE);
-				ofm->command = htons(OFPFC_MODIFY_STRICT);
-				ofm->buffer_id = htonl(UINT32_MAX);
-				ofm->idle_timeout = htons(60);
-				ofm->hard_timeout = htons(OFP_FLOW_PERMANENT);
 				ofm->priority = htons((OFP_DEFAULT_PRIORITY + rules.mask));
-
+				ofm_set_command(ofm, OFPFC_MODIFY_STRICT, UINT32_MAX, 60, OFP_FLOW_PERMANENT, OFPP_NONE);
 				ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), 0, 0, 0);
 
 				uint8_t ofm_array[size];
@@ -1009,4 +982,14 @@ void RouteFlowServer::ofm_set_action(ofp_action_header* hdr, uint16_t type, uint
 		ofp_action_dl_addr* action = (ofp_action_dl_addr*)hdr;
 		std::memcpy(&action->dl_addr, addr, OFP_ETH_ALEN);
 	}
+}
+
+void RouteFlowServer::ofm_set_command(ofp_flow_mod* ofm, uint16_t cmd, uint32_t id, uint16_t idle_to,
+		uint16_t hard_to, uint16_t port) {
+
+	ofm->command = htons(cmd);
+	ofm->buffer_id = htonl(id);
+	ofm->idle_timeout = htons(idle_to);
+	ofm->hard_timeout = htons(hard_to);
+	ofm->out_port = htons(port);
 }

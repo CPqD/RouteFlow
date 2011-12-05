@@ -171,6 +171,9 @@ public:
 
 	void ofm_set_action(ofp_action_header* pAction, uint16_t type, uint16_t len,
 		uint16_t port, uint16_t max_len, const uint8_t addr[]);
+
+	void ofm_set_command(ofp_flow_mod* ofm, uint16_t cmd, uint32_t id,
+		uint16_t idle_to, uint16_t hard_to, uint16_t port);
 };
 
 #endif /* QFSERVER_HH_ */
