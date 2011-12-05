@@ -156,6 +156,18 @@ public:
 	int send_IPC_packetmsg(uint64_t dpid, uint64_t MsgId, uint16_t port_out);
 
 	int VmToOvsMapping(uint64_t vmId, uint16_t VmPort, uint16_t OvsPort);
+
+	/* Rules to add OF matches to OF mods */
+	void ofm_init(ofp_flow_mod* ofm, size_t size);
+	void ofm_match_iface(ofp_flow_mod* ofm, uint16_t in);
+	void ofm_match_eth(ofp_flow_mod* ofm, uint32_t match, uint16_t type,
+        const uint8_t src[], const uint8_t dst[]);
+	void ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t id,
+        uint8_t priority);
+	void ofm_match_ip(ofp_flow_mod* ofm, uint32_t match, uint8_t proto,
+        uint8_t tos, uint32_t src, uint32_t dst);
+	void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match,
+        uint16_t src, uint16_t dst);
 };
 
 #endif /* QFSERVER_HH_ */

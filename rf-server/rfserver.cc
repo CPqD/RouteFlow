@@ -131,25 +131,16 @@ int32_t RouteFlowServer::del_link_event(uint64_t dpsrc, uint16_t sport,
 	boost::shared_array<char> raw_of(new char[size]);
 	ofm = (ofp_flow_mod*) raw_of.get();
 
+	/* Add a flow match for portsrc */
+	ofm_init(ofm, size);
+	ofm_match_iface(ofm, portsrc);
+
 	/*Open Flow Header. */
-	ofm->header.version = OFP_VERSION;
-	ofm->header.type = OFPT_FLOW_MOD;
-	ofm->header.length = htons(size);
-	ofm->header.xid = 0;
-
-	std::memset(&(ofm->match), 0, sizeof(struct ofp_match));
-
-	ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_IN_PORT));
-	ofm->cookie = htonl(0);
-	ofm->match.in_port = htons(portsrc);
-
 	ofm->command = htons(OFPFC_DELETE);
 	ofm->idle_timeout = htons(0);
 	ofm->hard_timeout = htons(0);
 	ofm->buffer_id = htonl(UINT32_MAX);
 	ofm->out_port = htons(portdst);
-	ofm->priority = htons(OFP_DEFAULT_PRIORITY);
-	ofm->flags = htons(0);
 
 	uint8_t ofm_array[size];
 	memcpy(&ofm_array, &ofm->header, size);
@@ -278,23 +269,14 @@ void RouteFlowServer::send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
 	boost::shared_array<char> raw_of(new char[size]);
 	ofm = (ofp_flow_mod*) raw_of.get();
 
-	/*Open Flow Header.
-	 * */
-	ofm->header.version = OFP_VERSION;
-	ofm->header.type = OFPT_FLOW_MOD;
-	ofm->header.length = htons(size);
-	ofm->header.xid = 0;
-
-	std::memset(&(ofm->match), 0, sizeof(struct ofp_match));
+	/* OpenFlow Header */
+	ofm_init(ofm, size);
 
 	/* Drop all packets.
 	 * */
 	if (ovs_op == DROP_ALL) {
 
-		ofm->match.wildcards = htonl(OFPFW_ALL);
-		ofm->cookie = htonl(0);
 		ofm->priority = htons(1);
-
 	} else {
 
 		ofp_action_output& action = *((ofp_action_output*) ofm->actions);
@@ -323,39 +305,29 @@ void RouteFlowServer::send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
 					break;
 				}
 
-			ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_IN_PORT));
-			ofm->cookie = htonl(0);
-			ofm->match.in_port = htons(portsrc);
+			ofm_match_iface(ofm, portsrc);
+
 			action.type = htons(OFPAT_OUTPUT);
 			action.len = htons(sizeof(ofp_action_output));
 			action.port = htons(portdst);
 			action.max_len = htons(ETH_DATA_LEN);
-			ofm->priority = htons(OFP_DEFAULT_PRIORITY);
 
 			/* Flow to send the packets to do the mapping between Vm and Open vSwitch ports. */
 		} else {
 
-			ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE));
 			if (ovs_op == VM_INFO)
-				ofm->match.dl_type = htons(0x0A0A);
+				ofm_match_eth(ofm, OFPFW_DL_TYPE, 0x0A0A, 0, 0);
 			else if (ovs_op == ARP)
-				ofm->match.dl_type = htons(0x0806);
+				ofm_match_eth(ofm, OFPFW_DL_TYPE, 0x0806, 0, 0);
 			else if (ovs_op == ICMP) {
-				ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE)
-						& (~OFPFW_NW_PROTO));
-				ofm->match.dl_type = htons(0x0800);
-				ofm->match.nw_proto = 1;
-			} else {
-				ofm->match.wildcards = htonl(OFPFW_ALL);
-
+				ofm_match_eth(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+				ofm_match_ip(ofm, OFPFW_NW_PROTO, 0x1, 0, 0, 0);
 			}
-			ofm->cookie = htonl(0);
-			ofm->priority = htons(OFP_DEFAULT_PRIORITY);
+
 			action.type = htons(OFPAT_OUTPUT);
 			action.len = htons(sizeof(ofp_action_output));
 			action.port = htons(OFPP_CONTROLLER);
 			action.max_len = htons(ETH_DATA_LEN);
-
 		}
 
 	}
@@ -363,7 +335,6 @@ void RouteFlowServer::send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
 	ofm->buffer_id = htonl(UINT32_MAX);
 	ofm->idle_timeout = htons(OFP_FLOW_PERMANENT);
 	ofm->hard_timeout = htons(OFP_FLOW_PERMANENT);
-	ofm->flags = htons(0);
 
 	uint8_t ofm_array[size];
 	memcpy(&ofm_array, &ofm->header, size);
@@ -554,47 +525,32 @@ int RouteFlowServer::send_flow_msg(uint64_t dp_id, qfoperation_t operation) {
 	boost::shared_array<char> raw_of(new char[size]);
 	ofm = (ofp_flow_mod*) raw_of.get();
 
-	ofm->header.version = OFP_VERSION;
-	ofm->header.type = OFPT_FLOW_MOD;
-	ofm->header.length = htons(size);
-	ofm->header.xid = 0;
+	ofm_init(ofm, size);
 
-	std::memset(&(ofm->match), 0, sizeof(struct ofp_match));
-
-	if (operation == RFO_RIPv2) {
+	if (operation == RFO_RIPV2) {
 		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for RIPv2");
-		ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE)
-				& (~OFPFW_NW_PROTO) & (~((uint32_t) 63 << OFPFW_NW_DST_SHIFT)));
-		ofm->match.dl_type = htons(0x0800);
-		ofm->match.nw_proto = 0x11;
-		ofm->match.nw_dst = inet_addr("224.0.0.9"); /* RIPv2 Destination IP.*/
+		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+		ofm_match_nw(ofm, (OFPFW_NW_PROTO & OFPFW_NW_DST_MASK), 0x11, 0, 0, inet_addr("224.0.0.9"));
 	} else if (operation == RFO_OSPF) {
 		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for OSPF");
-		ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE)
-				& (~OFPFW_NW_PROTO));
-		ofm->match.dl_type = htons(0x0800);
-		ofm->match.nw_proto = 0x59;
+		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x59, 0, 0, 0);
 	} else if (operation == RFO_ARP) {
 		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for ARP");
-		ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE));
-		ofm->match.dl_type = htons(0x0806);
+		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0806, 0, 0);
 	} else if (operation == RFO_ICMP) {
-	    syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for ICMP");
-	    ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE)
-	            & (~OFPFW_NW_PROTO));
-	    ofm->match.dl_type = htons(0x0800);
-	    ofm->match.nw_proto = 0x01;
+		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for ICMP");
+		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x01, 0, 0, 0);
 	} else if (operation == RFO_BGP) {
-	    syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for BGP");
-	    ofm->match.wildcards = htonl(OFPFW_ALL & (~OFPFW_DL_TYPE)
-	            & (~OFPFW_NW_PROTO) & (~OFPFW_TP_DST));
-	    ofm->match.dl_type = htons(0x0800);
-	    ofm->match.nw_proto = 0x06;
-	    ofm->match.tp_dst = htons(0x00B3);
+		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for BGP");
+		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+		ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x00B3);
 	} else if (operation == RFO_CLEAR_FLOW_TABLE) {
 		ofm->match.wildcards = htonl(0xffffffff);
 	}
-	ofm->cookie = htonl(0);
+
 	ofm->out_port = htons(OFPP_NONE);
 	if (operation == RFO_CLEAR_FLOW_TABLE) {
 		syslog(LOG_DEBUG, "[RFSERVER] Clearing flow table");
@@ -736,23 +692,13 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 				boost::shared_array<char> raw_of(new char[size]);
 				ofm = (ofp_flow_mod*) raw_of.get();
 
-				ofm->header.version = OFP_VERSION;
-				ofm->header.type = OFPT_FLOW_MOD;
-				ofm->header.length = htons(size);
-				ofm->header.xid = 0;
+				ofm_init(ofm, size);
+				ofm_match_eth(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
+				ofm_match_ip(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),	0, 0, 0, rules.ip);
 
-				std::memset(&(ofm->match), 0, sizeof(struct ofp_match));
-				ofm->match.wildcards = htonl(OFPFW_ALL & ~(((uint32_t) 31
-						+ rules.mask) << OFPFW_NW_DST_SHIFT) & ~OFPFW_DL_TYPE
-						& ~OFPFW_DL_DST);
-
-				ofm->match.dl_type = htons(0x0800);
-				ofm->match.nw_dst = rules.ip;
-				memcpy(ofm->match.dl_dst, &actions.srcMac, ETH_ALEN);
 				syslog(LOG_DEBUG, "[RFSERVER] DstIp %d, Mask = %d", rules.ip,
 						rules.mask);
 
-				ofm->cookie = htonl(0);
 				ofm->command = htons(OFPFC_ADD);
 				ofm->buffer_id = htonl(UINT32_MAX);
 
@@ -764,7 +710,6 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 
 				ofm->hard_timeout = htons(OFP_FLOW_PERMANENT);
 				ofm->priority = htons((OFP_DEFAULT_PRIORITY + rules.mask));
-				ofm->flags = htons(0);
 
 				uint8_t *pActions = (uint8_t *) ofm->actions;
 
@@ -838,26 +783,18 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 				boost::shared_array<char> raw_of(new char[size]);
 				ofm = (ofp_flow_mod*) raw_of.get();
 
-				ofm->header.version = OFP_VERSION;
-				ofm->header.type = OFPT_FLOW_MOD;
-				ofm->header.length = htons(size);
-				ofm->header.xid = 0;
+				ofm_init(ofm, size);
 
-				ofm->match.wildcards = htonl(OFPFW_ALL & ~(((uint32_t) 31
-						+ rules.mask) << OFPFW_NW_DST_SHIFT) & ~OFPFW_DL_TYPE
-						& ~OFPFW_DL_DST);
-				ofm->match.dl_type = htons(0x0800);
-				ofm->match.nw_dst = rules.ip;
-				memcpy(ofm->match.dl_dst, &actions.srcMac, ETH_ALEN);
+				ofm_match_eth(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
+				ofm_match_ip(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),
+					0, 0, 0, rules.ip);
 
-				ofm->cookie = htonl(0);
 				ofm->out_port = htons(OFPP_NONE);
 				ofm->command = htons(OFPFC_MODIFY_STRICT);
 				ofm->buffer_id = htonl(UINT32_MAX);
 				ofm->idle_timeout = htons(60);
 				ofm->hard_timeout = htons(OFP_FLOW_PERMANENT);
 				ofm->priority = htons((OFP_DEFAULT_PRIORITY + rules.mask));
-				ofm->flags = htons(0);
 
 				uint8_t *pActions = (uint8_t *) ofm->actions;
 
@@ -995,4 +932,88 @@ int RouteFlowServer::VmToOvsMapping(uint64_t vmId, uint16_t VmPort,
 	Vm2OvsList.insert(pair<uint64_t, Vm2Ovs_t> (vmId, vm2ovs));
 
 	return 0;
+}
+
+
+void RouteFlowServer::ofm_init(ofp_flow_mod* ofm, size_t size) {
+	/* Open Flow Header. */
+	ofm->header.version = OFP_VERSION;
+	ofm->header.type = OFPT_FLOW_MOD;
+	ofm->header.length = htons(size);
+	ofm->header.xid = 0;
+
+	std::memset(&(ofm->match), 0, sizeof(struct ofp_match));
+	ofm->match.wildcards = htonl(OFPFW_ALL);
+
+	ofm->cookie = htonl(0);
+	ofm->priority = htons(OFP_DEFAULT_PRIORITY);
+	ofm->flags = htons(0);
+}
+
+void RouteFlowServer::ofm_match_iface(ofp_flow_mod* ofm, uint16_t in) {
+
+	ofm->match.wildcards &= htonl(~OFPFW_IN_PORT);
+	ofm->match.in_port = htons(in);
+}
+
+void RouteFlowServer::ofm_match_eth(ofp_flow_mod* ofm, uint32_t match, uint16_t type,
+		const uint8_t src[], const uint8_t dst[]) {
+
+	ofm->match.wildcards &= htonl(~match);
+
+	if (match & OFPFW_DL_TYPE) { /* Ethernet frame type. */
+		ofm->match.dl_type = htons(type);
+	}
+	if (match & OFPFW_DL_SRC) { /* Ethernet source address. */
+		std::memcpy(ofm->match.dl_src, &src, OFP_ETH_ALEN);
+	}
+	if (match & OFPFW_DL_DST) { /* Ethernet destination address. */
+		std::memcpy(ofm->match.dl_dst, &dst, OFP_ETH_ALEN);
+  }
+}
+
+void RouteFlowServer::ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t id,
+		uint8_t priority) {
+
+	ofm->match.wildcards &= htonl(~match);
+
+	if (match & OFPFW_DL_VLAN) { /* VLAN id. */
+		ofm->match.dl_vlan = htons(id);
+	}
+	if (match & OFPFW_DL_VLAN_PCP) { /* VLAN priority. */
+		ofm->match.dl_vlan_pcp = priority;
+	}
+}
+
+
+void RouteFlowServer::ofm_match_ip(ofp_flow_mod* ofm, uint32_t match, uint8_t proto,
+		uint8_t tos, uint32_t src, uint32_t dst) {
+
+	ofm->match.wildcards &= htonl(~match);
+
+	if (match & OFPFW_NW_PROTO) { /* IP protocol. */
+		ofm->match.nw_proto = proto;
+	}
+	if (match & OFPFW_NW_TOS) { /* IP ToS (DSCP field, 6 bits). */
+		ofm->match.nw_tos = tos;
+	}
+	if ((match & OFPFW_NW_SRC_MASK) > 0) { /* IP source address. */
+		ofm->match.nw_src = src;
+	}
+	if ((match & OFPFW_NW_DST_MASK) > 0) { /* IP destination address. */
+		ofm->match.nw_dst = dst;
+	}
+}
+
+void RouteFlowServer::ofm_match_tp(ofp_flow_mod* ofm, uint32_t match,
+		uint16_t src, uint16_t dst) {
+
+	ofm->match.wildcards &= htonl(~match);
+
+	if (match & OFPFW_TP_SRC) { /* TCP/UDP source port. */
+		ofm->match.tp_src = htons(src);
+	}
+	if (match & OFPFW_TP_DST) { /* TCP/UDP destination port. */
+		ofm->match.tp_dst = htons(dst);
+	}
 }
