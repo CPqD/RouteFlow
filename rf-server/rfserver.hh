@@ -157,7 +157,7 @@ public:
 
 	int VmToOvsMapping(uint64_t vmId, uint16_t VmPort, uint16_t OvsPort);
 
-	/* Rules to add OF matches to OF mods */
+	/* Functions for adding OF matches to OF flowmods */
 	void ofm_init(ofp_flow_mod* ofm, size_t size);
 	void ofm_match_iface(ofp_flow_mod* ofm, uint16_t in);
 	void ofm_match_eth(ofp_flow_mod* ofm, uint32_t match, uint16_t type,
@@ -168,6 +168,9 @@ public:
         uint8_t tos, uint32_t src, uint32_t dst);
 	void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match,
         uint16_t src, uint16_t dst);
+
+	void ofm_set_action(ofp_action_header* pAction, uint16_t type, uint16_t len,
+		uint16_t port, uint16_t max_len, const uint8_t addr[]);
 };
 
 #endif /* QFSERVER_HH_ */

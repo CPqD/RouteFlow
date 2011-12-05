@@ -279,8 +279,6 @@ void RouteFlowServer::send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
 		ofm->priority = htons(1);
 	} else {
 
-		ofp_action_output& action = *((ofp_action_output*) ofm->actions);
-		memset(&action, 0, sizeof(ofp_action_output));
 		if (ovs_op == VM_FLOW) {
 
 			/*
@@ -306,11 +304,8 @@ void RouteFlowServer::send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
 				}
 
 			ofm_match_iface(ofm, portsrc);
-
-			action.type = htons(OFPAT_OUTPUT);
-			action.len = htons(sizeof(ofp_action_output));
-			action.port = htons(portdst);
-			action.max_len = htons(ETH_DATA_LEN);
+			ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), portdst,
+				ETH_DATA_LEN, 0);
 
 			/* Flow to send the packets to do the mapping between Vm and Open vSwitch ports. */
 		} else {
@@ -324,10 +319,8 @@ void RouteFlowServer::send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
 				ofm_match_ip(ofm, OFPFW_NW_PROTO, 0x1, 0, 0, 0);
 			}
 
-			action.type = htons(OFPAT_OUTPUT);
-			action.len = htons(sizeof(ofp_action_output));
-			action.port = htons(OFPP_CONTROLLER);
-			action.max_len = htons(ETH_DATA_LEN);
+			ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), OFPP_CONTROLLER,
+				ETH_DATA_LEN, 0);
 		}
 
 	}
@@ -569,12 +562,8 @@ int RouteFlowServer::send_flow_msg(uint64_t dp_id, qfoperation_t operation) {
 		ofm->priority = htons(OFP_DEFAULT_PRIORITY);
 		ofm->flags = htons(0);
 
-		ofp_action_output& action = *((ofp_action_output*) ofm->actions);
-		memset(&action, 0, sizeof(ofp_action_output));
-		action.type = htons(OFPAT_OUTPUT);
-		action.len = htons(sizeof(ofp_action_output));
-		action.port = htons(OFPP_CONTROLLER);
-		action.max_len = htons(ETH_DATA_LEN);
+		ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output),
+			OFPP_CONTROLLER, ETH_DATA_LEN, 0);
 	}
 
 	uint8_t ofm_array[size];
@@ -694,7 +683,8 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 
 				ofm_init(ofm, size);
 				ofm_match_eth(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
-				ofm_match_ip(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),	0, 0, 0, rules.ip);
+				ofm_match_ip(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),	0, 0,
+					0, rules.ip);
 
 				syslog(LOG_DEBUG, "[RFSERVER] DstIp %d, Mask = %d", rules.ip,
 						rules.mask);
@@ -716,28 +706,21 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 				/*Action: change the dst MAC address.*/
 				ofp_action_dl_addr& dldstset =
 						*((ofp_action_dl_addr*) ofm->actions);
-				memset(&dldstset, 0, sizeof(ofp_action_dl_addr));
-				dldstset.type = htons(OFPAT_SET_DL_DST);
-				dldstset.len = htons(sizeof(ofp_action_dl_addr));
-				memcpy(dldstset.dl_addr, actions.dstMac, ETH_ALEN);
+				ofm_set_action((ofp_action_header*)dldstset, OFPAT_SET_DL_DST,
+					sizeof(ofp_action_dl_addr), 0, 0, actions.dstMac);
 				pActions += sizeof(ofp_action_dl_addr);
 
 				/*Action: change the src MAC address.*/
 				ofp_action_dl_addr& dlsrcset =
 						*((ofp_action_dl_addr*) (pActions));
-				memset(&dlsrcset, 0, sizeof(ofp_action_dl_addr));
-				dlsrcset.type = htons(OFPAT_SET_DL_SRC);
-				dlsrcset.len = htons(sizeof(ofp_action_dl_addr));
-				memcpy(dlsrcset.dl_addr, actions.srcMac, ETH_ALEN);
+				ofm_set_action((ofp_action_header*)dlsrcset, OFPAT_SET_DL_SRC,
+					sizeof(ofp_action_dl_addr), 0, 0, actions.srcMac);
 				pActions += sizeof(ofp_action_dl_addr);
 
 				/*Action: forward to port actions.dstPort. */
 				ofp_action_output& output = *((ofp_action_output*) (pActions));
-				memset(&output, 0, sizeof(ofp_action_output));
-				output.type = htons(OFPAT_OUTPUT);
-				output.len = htons(sizeof(ofp_action_output));
-				output.max_len = 0;
-				output.port = htons(actions.dstPort);
+				ofm_set_action((ofp_action_header*)output, OFPAT_OUTPUT,
+					sizeof(ofp_action_output), actions.dstPort, 0, 0);
 
 				syslog(
 						LOG_DEBUG,
@@ -796,14 +779,7 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 				ofm->hard_timeout = htons(OFP_FLOW_PERMANENT);
 				ofm->priority = htons((OFP_DEFAULT_PRIORITY + rules.mask));
 
-				uint8_t *pActions = (uint8_t *) ofm->actions;
-
-				ofp_action_output& output = *((ofp_action_output*) (pActions));
-				memset(&output, 0, sizeof(ofp_action_output));
-				output.type = htons(OFPAT_OUTPUT);
-				output.len = htons(sizeof(ofp_action_output));
-				output.max_len = 0;
-				output.port = htons(0);
+				ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), 0, 0, 0);
 
 				uint8_t ofm_array[size];
 				memcpy(&ofm_array, &ofm->header, size);
@@ -1015,5 +991,22 @@ void RouteFlowServer::ofm_match_tp(ofp_flow_mod* ofm, uint32_t match,
 	}
 	if (match & OFPFW_TP_DST) { /* TCP/UDP destination port. */
 		ofm->match.tp_dst = htons(dst);
+	}
+}
+
+void RouteFlowServer::ofm_set_action(ofp_action_header* hdr, uint16_t type, uint16_t len, uint16_t port,
+		uint16_t max_len, const uint8_t addr[]) {
+
+	std::memset((uint8_t *)hdr, 0, len);
+	hdr->type = htons(type);
+	hdr->len = htons(len);
+
+	if (type == OFPAT_OUTPUT) {
+		ofp_action_output* action = (ofp_action_output*)hdr;
+		action->port = htons(port);
+		action->max_len = htons(max_len);
+	} else if (type == OFPAT_SET_DL_SRC || type == OFPAT_SET_DL_DST) {
+		ofp_action_dl_addr* action = (ofp_action_dl_addr*)hdr;
+		std::memcpy(&action->dl_addr, addr, OFP_ETH_ALEN);
 	}
 }
