@@ -133,7 +133,7 @@ int32_t RouteFlowServer::del_link_event(uint64_t dpsrc, uint16_t sport,
 
 	/* Add a flow match for portsrc */
 	ofm_init(ofm, size);
-	ofm_match_iface(ofm, portsrc);
+	ofm_match_in(ofm, portsrc);
 
 	/*Open Flow Header. */
 	ofm->command = htons(OFPFC_DELETE);
@@ -303,7 +303,7 @@ void RouteFlowServer::send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
 					break;
 				}
 
-			ofm_match_iface(ofm, portsrc);
+			ofm_match_in(ofm, portsrc);
 			ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), portdst,
 				ETH_DATA_LEN, 0);
 
@@ -311,12 +311,12 @@ void RouteFlowServer::send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
 		} else {
 
 			if (ovs_op == VM_INFO)
-				ofm_match_eth(ofm, OFPFW_DL_TYPE, 0x0A0A, 0, 0);
+				ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0A0A, 0, 0);
 			else if (ovs_op == ARP)
-				ofm_match_eth(ofm, OFPFW_DL_TYPE, 0x0806, 0, 0);
+				ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0806, 0, 0);
 			else if (ovs_op == ICMP) {
-				ofm_match_eth(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-				ofm_match_ip(ofm, OFPFW_NW_PROTO, 0x1, 0, 0, 0);
+				ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+				ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x1, 0, 0, 0);
 			}
 
 			ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), OFPP_CONTROLLER,
@@ -682,8 +682,8 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 				ofm = (ofp_flow_mod*) raw_of.get();
 
 				ofm_init(ofm, size);
-				ofm_match_eth(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
-				ofm_match_ip(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),	0, 0,
+				ofm_match_dl(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
+				ofm_match_nw(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),	0, 0,
 					0, rules.ip);
 
 				syslog(LOG_DEBUG, "[RFSERVER] DstIp %d, Mask = %d", rules.ip,
@@ -768,8 +768,8 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 
 				ofm_init(ofm, size);
 
-				ofm_match_eth(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
-				ofm_match_ip(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),
+				ofm_match_dl(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
+				ofm_match_nw(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),
 					0, 0, 0, rules.ip);
 
 				ofm->out_port = htons(OFPP_NONE);
@@ -926,13 +926,13 @@ void RouteFlowServer::ofm_init(ofp_flow_mod* ofm, size_t size) {
 	ofm->flags = htons(0);
 }
 
-void RouteFlowServer::ofm_match_iface(ofp_flow_mod* ofm, uint16_t in) {
+void RouteFlowServer::ofm_match_in(ofp_flow_mod* ofm, uint16_t in) {
 
 	ofm->match.wildcards &= htonl(~OFPFW_IN_PORT);
 	ofm->match.in_port = htons(in);
 }
 
-void RouteFlowServer::ofm_match_eth(ofp_flow_mod* ofm, uint32_t match, uint16_t type,
+void RouteFlowServer::ofm_match_dl(ofp_flow_mod* ofm, uint32_t match, uint16_t type,
 		const uint8_t src[], const uint8_t dst[]) {
 
 	ofm->match.wildcards &= htonl(~match);
@@ -962,7 +962,7 @@ void RouteFlowServer::ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t
 }
 
 
-void RouteFlowServer::ofm_match_ip(ofp_flow_mod* ofm, uint32_t match, uint8_t proto,
+void RouteFlowServer::ofm_match_nw(ofp_flow_mod* ofm, uint32_t match, uint8_t proto,
 		uint8_t tos, uint32_t src, uint32_t dst) {
 
 	ofm->match.wildcards &= htonl(~match);

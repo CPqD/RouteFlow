@@ -159,12 +159,12 @@ public:
 
 	/* Functions for adding OF matches to OF flowmods */
 	void ofm_init(ofp_flow_mod* ofm, size_t size);
-	void ofm_match_iface(ofp_flow_mod* ofm, uint16_t in);
-	void ofm_match_eth(ofp_flow_mod* ofm, uint32_t match, uint16_t type,
+	void ofm_match_in(ofp_flow_mod* ofm, uint16_t in);
+	void ofm_match_dl(ofp_flow_mod* ofm, uint32_t match, uint16_t type,
         const uint8_t src[], const uint8_t dst[]);
 	void ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t id,
         uint8_t priority);
-	void ofm_match_ip(ofp_flow_mod* ofm, uint32_t match, uint8_t proto,
+	void ofm_match_nw(ofp_flow_mod* ofm, uint32_t match, uint8_t proto,
         uint8_t tos, uint32_t src, uint32_t dst);
 	void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match,
         uint16_t src, uint16_t dst);
