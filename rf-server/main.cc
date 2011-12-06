@@ -264,7 +264,7 @@ int main(int argc, char **argv) {
 					}
 					if (found) {
 						/* Install RIPv2 default flow. */
-						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_RIPv2);
+						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_RIPV2);
 						/* Install OSPF default flow. */
 						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_OSPF);
 						/* Install ARP default flow. */

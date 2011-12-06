@@ -30,23 +30,16 @@ using std::list;
 using std::multimap;
 
 typedef enum rfoperation {
-	RFO_RIPv2,	/* RIPv2 protocol. */
-	RFO_OSPF,	/* OSPF protocol. */
-	RFO_BGP,	/* BGP protocol. */
-	RFO_ARP,	/* ARP protocol. */
-	RFO_ICMP,   /* ICMP protocol. */
-	RFO_CLEAR_FLOW_TABLE /* Clear flow table. */
+	RFO_DROP_ALL,		/* Drop all incoming packets. */
+	RFO_CLEAR_TABLE,	/* Clear flow table. */
+	RFO_VM_INFO,		/* Flow to communicate two linked VM's. */
+	RFO_RIPV2,			/* RIPv2 protocol. */
+	RFO_OSPF,			/* OSPF protocol. */
+	RFO_BGP,			/* BGP protocol. */
+	RFO_ARP,			/* ARP protocol. */
+	RFO_ICMP,			/* ICMP protocol. */
+	RFO_ALL				/*Send all traffic to the controller. */
 } qfoperation_t;
-
-/* Open vSwitch operations */
-typedef enum ovs_operation {
-	DROP_ALL, /* Drop all incoming packets. */
-	VM_FLOW,  /* Flow to communicate two linked VM's. */
-	VM_INFO,  /* Flow to send the MAP Event packet to the controller. */
-	ARP,	 /* To not drop ARP packets */
-	ICMP, 	 /* To not drop ICMP packets */
-	CONTROLLER /*Send all traffic to the controller */
-} ovs_operation_t;
 
 typedef enum rf_operation{
 
@@ -143,7 +136,7 @@ public:
 	int send_flow_msg(uint64_t dp, qfoperation_t operation);
 
 	void send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
-			uint8_t port2, ovs_operation_t ovs_op);
+			uint8_t port2, ofp_flow_mod_command cmd);
 
 	int process_msg(RFMessage * msg);
 
