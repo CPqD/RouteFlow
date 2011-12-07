@@ -436,7 +436,7 @@ int RouteFlowServer::send_flow_msg(uint64_t dp_id, qfoperation_t operation) {
 	ofp_flow_mod* ofm;
 	size_t size = sizeof *ofm;
 
-	if (operation != RFO_CLEAR_TABLE && operation != RFO_DROP_ALL) {
+	if (operation != RFO_CLEAR_FLOW_TABLE && operation != RFO_DROP_ALL) {
 		size = sizeof *ofm + sizeof(ofp_action_output);
 	}
 
@@ -472,7 +472,7 @@ int RouteFlowServer::send_flow_msg(uint64_t dp_id, qfoperation_t operation) {
 		ofm->priority = htons(1);
 	}
 
-	if (operation == RFO_CLEAR_TABLE) {
+	if (operation == RFO_CLEAR_FLOW_TABLE) {
 		syslog(LOG_DEBUG, "[RFSERVER] Clearing flow table");
 		ofm_set_command(ofm, OFPFC_DELETE, 0, 0, 0, OFPP_NONE);
 		ofm->priority = htons(0);

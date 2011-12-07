@@ -30,15 +30,15 @@ using std::list;
 using std::multimap;
 
 typedef enum rfoperation {
-	RFO_DROP_ALL,		/* Drop all incoming packets. */
-	RFO_CLEAR_TABLE,	/* Clear flow table. */
-	RFO_VM_INFO,		/* Flow to communicate two linked VM's. */
-	RFO_RIPV2,			/* RIPv2 protocol. */
-	RFO_OSPF,			/* OSPF protocol. */
-	RFO_BGP,			/* BGP protocol. */
-	RFO_ARP,			/* ARP protocol. */
-	RFO_ICMP,			/* ICMP protocol. */
-	RFO_ALL				/*Send all traffic to the controller. */
+	RFO_DROP_ALL,			/* Drop all incoming packets. */
+	RFO_CLEAR_FLOW_TABLE,	/* Clear flow table. */
+	RFO_VM_INFO,			/* Flow to communicate two linked VM's. */
+	RFO_RIPV2,				/* RIPv2 protocol. */
+	RFO_OSPF,				/* OSPF protocol. */
+	RFO_BGP,				/* BGP protocol. */
+	RFO_ARP,				/* ARP protocol. */
+	RFO_ICMP,				/* ICMP protocol. */
+	RFO_ALL					/*Send all traffic to the controller. */
 } qfoperation_t;
 
 typedef enum rf_operation{
