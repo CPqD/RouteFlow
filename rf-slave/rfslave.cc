@@ -45,6 +45,7 @@
 #include "flwtable.hh"
 #include "rfslave.hh"
 
+#define SYSLOGFACILITY   LOG_DAEMON
 #define BUFFER_SIZE      23           /* Packet size. */
 #define ETH_ADRLEN       6            /* Mac Address size. */
 #define ETH_P_RFP        0x0A0A       /* QF protocol. */
@@ -59,8 +60,6 @@ using std::map;
 using std::ofstream;
 
 ofstream logfile;
-
-enum logType useSyslog = LOGCONFIG_NOT_CONFIGURED;
 
 const uint8_t intfNumMax = 4;
 
@@ -137,6 +136,7 @@ int send_packet(char ethName[], uint8_t srcAddress[ETH_ADRLEN], uint8_t port,
 
 void error(const char *msg) {
 	perror(msg);
+	syslog(LOG_ERR, "%s", msg);
 	exit(0);
 }
 
@@ -286,7 +286,7 @@ std::vector<Interface*> get_Interfaces() {
 				get_hwaddr_byname(ifa->ifa_name, gVmMAC);
 			} else {
 				set_hwaddr_byname(ifa->ifa_name, gVmMAC, ifa->ifa_flags);
-				cout << "Setting MAC Addr (" << ifa->ifa_name << ")" << endl;
+				syslog(LOG_INFO, "Setting MAC Addr (%s)", ifa->ifa_name);
 			}
 			string ifaceName = ifa->ifa_name;
 			size_t pos = ifaceName.find_first_of("123456789");
@@ -298,8 +298,9 @@ std::vector<Interface*> get_Interfaces() {
 			printf("Interface %s\n", ifa->ifa_name);
 			Interfaces.push_back(tmpI);
 			intfNum++;
-			cout << "Send " << send_packet(ifa->ifa_name, gVmMAC, port_id,
-					gVmId) << endl;
+
+			if (send_packet(ifa->ifa_name, gVmMAC, port_id, gVmId) == -1)
+				syslog(LOG_INFO, "send_packet failed");
 		}
 	}
 
@@ -326,10 +327,10 @@ int init_Interfaces() {
 int process_msg(RFMessage * msg) {
 	switch (msg->getType()) {
 	case RFP_CMD_ACCPET:
-		cout << "RFP_CMD_ACCPET" << endl;
+		syslog(LOG_DEBUG, "RFP_CMD_ACCPET");
 		break;
 	case RFP_CMD_REJECT:
-		cout << "RFP_CMD_REJECT" << endl;
+		syslog(LOG_DEBUG, "RFP_CMD_REJECT");
 		break;
 
 		/* Clear all interfaces associated with the VM.  */
@@ -344,7 +345,7 @@ int process_msg(RFMessage * msg) {
 
 		ifacesMap.clear();
 
-		cout << "RFP_CMD_VM_RESET" << endl;
+		syslog(LOG_DEBUG, "RFP_CMD_VM_RESET");
 	}
 		break;
 		/* VM Configuration */
@@ -361,11 +362,11 @@ int process_msg(RFMessage * msg) {
 		}
 
 		FlwTablePolling::start();
-		cout << "RFP_CMD_VM_CONFIG" << endl;
+		syslog(LOG_DEBUG, "RFP_CMD_VM_CONFIG");
 	}
 		break;
 	default:
-		cout << "Invalid Message (" << msg->getType() << ")" << endl;
+		syslog(LOG_DEBUG, "Invalid Message (%x)", msg->getType());
 		break;
 	}
 
@@ -396,14 +397,12 @@ int recv_msg(int fd, RFMessage * msg, int32_t size) {
 }
 
 void print_help(char *prgname, int exval) {
-	fprintf(stderr, "\n%s -s SERVER -p PORT -i IFACE [-S|-f LOGFILE]\n\n",
+	fprintf(stderr, "\n%s -s SERVER -p PORT -i IFACE\n\n",
 			prgname);
 
 	fprintf(stderr, "  -s SERVER       set IP address of rf-server\n");
 	fprintf(stderr, "  -p PORT         set port number to connect\n");
 	fprintf(stderr, "  -i IFACE        set interface name for binding\n");
-	fprintf(stderr, "  -S              use syslog for logging (default)\n");
-	fprintf(stderr, "  -l LOGFILE      use LOGFILE for log output\n\n");
 
 	exit(exval);
 }
@@ -412,14 +411,13 @@ int main(int argc, char *argv[]) {
 	int opt, portno = -1;
 	string serverIp = "";
 	string connIface = "";
-	string logfilePath = "";
 
 	if (argc == 1) {
 		print_help(argv[0], 1);
 		exit(1);
 	}
 
-	while ((opt = getopt(argc, argv, "s:p:i:Sl:")) != -1) {
+	while ((opt = getopt(argc, argv, "s:p:i:")) != -1) {
 		switch (opt) {
 		case 's':
 			serverIp = optarg;
@@ -429,21 +427,6 @@ int main(int argc, char *argv[]) {
 			break;
 		case 'i':
 			connIface = optarg;
-			break;
-		case 'S':
-			if (useSyslog == LOGCONFIG_NOT_CONFIGURED) {
-				useSyslog = LOGCONFIG_USE_SYSLOG;
-			} else {
-				print_help(argv[0], 1);
-			}
-			break;
-		case 'l':
-			if (useSyslog == LOGCONFIG_NOT_CONFIGURED) {
-				useSyslog = LOGCONFIG_USE_FILE;
-				logfilePath = optarg;
-			} else {
-				print_help(argv[0], 1);
-			}
 			break;
 		case 'h':
 		default:
@@ -457,14 +440,8 @@ int main(int argc, char *argv[]) {
 
 	bool regOK = 0;
 
-	if (useSyslog) {
-		openlog("rf-slave", LOG_NDELAY | LOG_NOWAIT | LOG_PID, LOG_DAEMON);
-		syslog(LOG_NOTICE, "starting RouteFlow FIB collector");
-	} else {
-		logfile.open(logfilePath.c_str());
-		logfile << "starting RouteFlow FIB collector" << endl;
-		logfile.flush();
-	}
+	openlog("rf-slave", LOG_NDELAY | LOG_NOWAIT | LOG_PID, SYSLOGFACILITY);
+	syslog(LOG_NOTICE, "starting RouteFlow FIB collector");
 
 	while (!regOK) {
 		if (rfSock.rfOpen() < 0) {
@@ -474,16 +451,15 @@ int main(int argc, char *argv[]) {
 		gVmId = get_vmId(connIface.c_str());
 		gVmIpAddr = get_ipaddr_byname(connIface.c_str());
 
-		cout << "gVmId=" << gVmId << endl;
-
-		cout << "Connection to " << serverIp.c_str() << ":" << portno << endl;
+		syslog(LOG_INFO, "gVmId=%llx", gVmId);
+		syslog(LOG_DEBUG, "Connecting to %s:%d", serverIp.c_str(), portno);
 
 		if (rfSock.rfConnect(htons(portno), serverIp) < 0) {
 			rfSock.rfClose();
 			error("ERROR connecting");
 		}
 
-		cout << "Connected to " << serverIp.c_str() << ":" << portno << endl;
+		syslog(LOG_NOTICE, "Connected to %s:%d", serverIp.c_str(), portno);
 
 		RFVMMsg msg;
 
@@ -503,17 +479,16 @@ int main(int argc, char *argv[]) {
 
 		if (NULL == pMsg) {
 			rfSock.rfClose();
-			cout << "Error receiving message: connection closed by peer."
-					<< endl;
+			syslog(LOG_ERR, "Error receiving message: connection closed by peer.");
 			return -1;
 		}
-		cout << "Connection msg (" << pMsg->length() << "bytes)" << endl;
+		syslog(LOG_DEBUG, "Connection msg (%lx bytes)", pMsg->length());
 		if (RFP_CMD_ACCPET == pMsg->getType()) {
-			cout << "VM has been registered" << endl;
+			syslog(LOG_NOTICE, "VM has been registered");
 			regOK = 1;
 		} else {
 			rfSock.rfClose();
-			cout << "Error type:" << pMsg->getType() << endl;
+			syslog(LOG_ERR, "Error type:%x", pMsg->getType());
 			sleep(15);
 		}
 		delete (pMsg);
@@ -526,12 +501,12 @@ int main(int argc, char *argv[]) {
 		pMsg = rfSock.rfRecv();
 
 		if (NULL != pMsg) {
-			cout << "new msg (" << pMsg->length() << "bytes)" << endl;
+			syslog(LOG_DEBUG, "New msg (%lx bytes)", pMsg->length());
 			process_msg(pMsg);
 			delete (pMsg);
 		} else {
-			/* Connection closed by peer */
-			cout << "Connection closed by peer" << endl;
+			/* Connection to Server lost */
+			syslog(LOG_ERR, "Connection closed by peer");
 			break;
 		}
 	}
