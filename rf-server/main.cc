@@ -263,12 +263,12 @@ int main(int argc, char **argv) {
 						}
 					}
 					if (found) {
-						/* Install RIPv2 default flow. */
+						/* Install flows to recieve essential traffic. */
 						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_RIPV2);
-						/* Install OSPF default flow. */
 						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_OSPF);
-						/* Install ARP default flow. */
 						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_ARP);
+						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_BGP);
+						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_ICMP);
 
 						/* Configuration message to the slave. */
 						RFVMMsg logmsg;
