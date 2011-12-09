@@ -242,7 +242,7 @@ int main(int argc, char **argv) {
 						std::list<Datapath_t>::iterator iter;
 						for (iter = rfSrv.m_dpIdleList.begin(); iter
 								!= rfSrv.m_dpIdleList.end(); iter++) {
-							if (rfSrv.Dp2VmMap(iter->dpId == 0)) { //Is there an Idle Datapath without any VM assigned to it?
+							if (rfSrv.Dp2VmMap(iter->dpId) == 0) { //Is there an Idle Datapath without any VM assigned to it?
 								newVM.setMode(RFP_VM_MODE_RUNNING); //Set VM mode to running (local definition)
 								Datapath_t newDP;
 								newDP.dpId = iter->dpId;
