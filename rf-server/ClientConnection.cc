@@ -72,10 +72,10 @@ int32_t ClientConnection::run(void * arg) {
 						} else if (rcount == 0) {
 							/* Client disconnected */
 							syslog(LOG_INFO,
-									"The VM %lld has been disconnected",
+									"The VM 0x%llx has been disconnected",
 									iter->getVmId());
 							if (iter->getMode() == RFP_VM_MODE_RUNNING) {
-								syslog(LOG_DEBUG, "VM = %lld, DpId = %lld",
+								syslog(LOG_DEBUG, "VM = 0x%llx, DpId = 0x%llx",
 										iter->getVmId(), iter->getDpId().dpId);
 								pRFSrv->send_flow_msg(iter->getDpId().dpId,
 										RFO_CLEAR_FLOW_TABLE);

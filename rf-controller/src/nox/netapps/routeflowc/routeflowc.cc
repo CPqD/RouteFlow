@@ -188,7 +188,7 @@ void RouteFlowC::process_message(base_msg * msg) {
 					ofm = (ofp_flow_mod*) raw_of.get();
 					::memcpy(&ofm->header, &flow_msg.flow_mod, size);
 
-					VLOG_INFO(lg, "Flow Command to datapath  with id %llx", flow_msg.datapath_id);
+					VLOG_INFO(lg, "Flow Command to datapath  with id 0x%llx", flow_msg.datapath_id);
 					if (send_openflow_command(datapathid::from_host(
 							flow_msg.datapath_id), &ofm->header, true))
 						VLOG_INFO(lg, "Couldn't send flow");
@@ -218,11 +218,11 @@ void RouteFlowC::process_message(base_msg * msg) {
 			if (i  != pack_buffer.end()){
 				Array_buffer buff(i->second.size);
 				memcpy(buff.data(),  i->second.packet, i->second.size);
-				VLOG_DBG(lg, "datapath with id %llx, port number %d", pack_msg.datapath_id, pack_msg.port_out);
+				VLOG_DBG(lg, "datapath with id 0x%llx, port number %d", pack_msg.datapath_id, pack_msg.port_out);
 				if (send_openflow_packet(datapathid::from_host(pack_msg.datapath_id),
 					(Buffer &) buff, pack_msg.port_out, OFPP_NONE, true) )
-					VLOG_INFO(lg, "Failed to send packet to datapath with id %llx, port number %d", pack_msg.datapath_id, pack_msg.port_out);
-				else VLOG_INFO(lg, "Sending packet to datapath with id %llx, port number %d", pack_msg.datapath_id, pack_msg.port_out);
+					VLOG_INFO(lg, "Failed to send packet to datapath with id 0x%llx, port number %d", pack_msg.datapath_id, pack_msg.port_out);
+				else VLOG_INFO(lg, "Sending packet to datapath with id 0x%llx, port number %d", pack_msg.datapath_id, pack_msg.port_out);
 				pack_buffer.erase(i);
 			}
 
@@ -426,7 +426,7 @@ Disposition RouteFlowC::handle_desc_in(const Event& e) {
 		/*If the server isn't connected queue the event message */
 		events.push(base_message);
 
-	VLOG_INFO(lg, "A new datapath has been registered: id=%llx",
+	VLOG_INFO(lg, "A new datapath has been registered: id=0x%llx",
 			ds.datapath_id.as_host());
 
 	return CONTINUE;
@@ -449,7 +449,7 @@ Disposition RouteFlowC::handle_datapath_leave(const Event& e) {
 	msg_event.datapath_id = dl.datapath_id.as_host();
 	base_message.pay_size = sizeof(msg_event);
 	::memcpy(&base_message.payload, &msg_event, sizeof(msg_event));
-	VLOG_INFO(lg, "Datapath %llx has leaved", dl.datapath_id.as_host() );
+	VLOG_INFO(lg, "Datapath 0x%llx has leaved", dl.datapath_id.as_host() );
 	if (server_sock_fd > 0) {
 
 		if (send(server_sock_fd, &base_message, sizeof(base_msg), 0) == -1)
@@ -525,7 +525,7 @@ void RouteFlowC::server() {
 				else
 				{
 					VLOG_INFO(lg, "Received Message from server");
-					
+
 					while(cmd_mutex)
 					{
 						usleep(1000);

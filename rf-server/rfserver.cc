@@ -134,7 +134,7 @@ int32_t RouteFlowServer::packet_in_event(uint64_t dpId, uint32_t inPort,
 
 	syslog(
 			LOG_INFO,
-			"[RFSERVER] A packet has been received from datapath %llx, port %d",
+			"[RFSERVER] A packet has been received from datapath 0x%llx, port %d",
 			dpId, inPort);
 
 	int found = 0;
@@ -165,7 +165,7 @@ int32_t RouteFlowServer::packet_in_event(uint64_t dpId, uint32_t inPort,
 				send_IPC_packetmsg(dpId, pktId, port);
 				syslog(
 						LOG_INFO,
-						"[RFSERVER] A packet has been transmitted to Datapath %llx port=%d)",
+						"[RFSERVER] A packet has been transmitted to Datapath 0x%llx port=%d)",
 						dpId, port);
 				return 0;
 
@@ -194,7 +194,7 @@ int32_t RouteFlowServer::packet_in_event(uint64_t dpId, uint32_t inPort,
 					send_IPC_packetmsg(ovsdp.dpId, pktId, port);
 					syslog(
 							LOG_INFO,
-							"[RFSERVER] A packet has been transmitted to VM %lld (dpid=%llx port=%d)",
+							"[RFSERVER] A packet has been transmitted to VM 0x%llx (dpid=0x%llx port=%d)",
 							iter->getVmId(), iter->getDpId().dpId, port);
 					break;
 				}
@@ -399,7 +399,7 @@ int32_t RouteFlowServer::datapath_join_event(uint64_t dpId, char hw_desc[],
 	send_flow_msg(dpId, RFO_ICMP);
 	send_flow_msg(dpId, RFO_BGP);
 
-	syslog(LOG_INFO, "[RFSERVER] A new datapath has been registered: id=%llx",
+	syslog(LOG_INFO, "[RFSERVER] A new datapath has been registered: id=0x%llx",
 			dpId);
 
 	return 0;
@@ -504,7 +504,7 @@ int32_t RouteFlowServer::datapath_leave_event(uint64_t dpId) {
 	for (iter = m_vmList.begin(); iter != m_vmList.end(); iter++) {
 		if (iter->getDpId().dpId == dpId) {
 			iter->setMode(RFP_VM_MODE_STANDBY);
-			syslog(LOG_DEBUG, "[RFSERVER] Datapath %lld disconnected", dpId);
+			syslog(LOG_DEBUG, "[RFSERVER] Datapath 0x%llx disconnected", dpId);
 			RFVMMsg msg;
 
 			msg.setDstIP("10.4.1.26");
@@ -532,7 +532,7 @@ int32_t RouteFlowServer::datapath_leave_event(uint64_t dpId) {
 			}
 		}
 		syslog(LOG_WARNING,
-				"[RFSERVER] The datapath %lld has left, but it was not "
+				"[RFSERVER] The datapath 0x%llx has left, but it was not "
 					"registered", dpId);
 	}
 
@@ -589,7 +589,7 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 		std::list<RFVirtualMachine>::iterator iter;
 		for (iter = m_vmList.begin(); iter != m_vmList.end(); iter++) {
 			if (iter->getVmId() == vmId) {
-				syslog(LOG_DEBUG, "[RFSERVER] Virtual Machine Id %lld",
+				syslog(LOG_DEBUG, "[RFSERVER] Virtual Machine Id 0x%llx",
 						iter->getVmId());
 
 				ofp_flow_mod* ofm;
@@ -672,7 +672,7 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 		std::list<RFVirtualMachine>::iterator iter;
 		for (iter = m_vmList.begin(); iter != m_vmList.end(); iter++) {
 			if (iter->getVmId() == vm_id) {
-				syslog(LOG_DEBUG, "[RFSERVER] Virtual Machine Id %lld",
+				syslog(LOG_DEBUG, "[RFSERVER] Virtual Machine Id 0x%llx",
 						iter->getVmId());
 
 				ofp_flow_mod* ofm;
@@ -770,7 +770,7 @@ int RouteFlowServer::send_IPC_flowmsg(uint64_t dpid, uint8_t msg[], size_t size)
 		if (ret == -1)
 			usleep(1000);
 		else
-			syslog(LOG_INFO, "[RFSERVER] Msg sent successfully to %llx", dpid);
+			syslog(LOG_INFO, "[RFSERVER] Msg sent successfully to 0x%llx", dpid);
 	} while (ret == -1);
 
 	delete(controller_msg);

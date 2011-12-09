@@ -394,7 +394,7 @@ int rf_register(const char* iface, const char* server) {
 	gVmId = get_vmId(iface);
 	gVmIpAddr = get_ipaddr_byname(iface);
 
-	syslog(LOG_INFO, "gVmId=%llx", gVmId);
+	syslog(LOG_INFO, "gVmId=0x%llx", gVmId);
 
 	RFVMMsg msg;
 
@@ -434,7 +434,7 @@ int rf_connect(const char* iface, const char* server, int port) {
 		return -1;
 	}
 
-	syslog(LOG_DEBUG, "Connection msg (%lx bytes)", pMsg->length());
+	syslog(LOG_DEBUG, "Connection msg (%ld bytes)", pMsg->length());
 	if (RFP_CMD_ACCPET != pMsg->getType()) {
 		rfSock.rfClose();
 		syslog(LOG_ERR, "Registration error type:%x", pMsg->getType());
@@ -506,7 +506,7 @@ int main(int argc, char *argv[]) {
 			pMsg = rfSock.rfRecv();
 
 			if (NULL != pMsg) {
-				syslog(LOG_DEBUG, "New msg (%lx bytes)", pMsg->length());
+				syslog(LOG_DEBUG, "New msg (%ld bytes)", pMsg->length());
 				process_msg(pMsg);
 				delete (pMsg);
 			} else {
