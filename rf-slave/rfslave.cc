@@ -45,7 +45,7 @@
 #include "flwtable.hh"
 #include "rfslave.hh"
 
-#define SYSLOGFACILITY   LOG_DAEMON
+#define SYSLOGFACILITY   LOG_LOCAL7
 #define BUFFER_SIZE      23           /* Packet size. */
 #define ETH_ADRLEN       6            /* Mac Address size. */
 #define ETH_P_RFP        0x0A0A       /* QF protocol. */
@@ -132,12 +132,6 @@ int send_packet(char ethName[], uint8_t srcAddress[ETH_ADRLEN], uint8_t port,
 	return (sendto(SockFd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &sll,
 			(socklen_t) addrLen));
 
-}
-
-void error(const char *msg) {
-	perror(msg);
-	syslog(LOG_ERR, "%s", msg);
-	exit(0);
 }
 
 /* Set the MAC address of the interface. */
@@ -396,6 +390,63 @@ int recv_msg(int fd, RFMessage * msg, int32_t size) {
 	return rcount;
 }
 
+int rf_register(const char* iface, const char* server) {
+	gVmId = get_vmId(iface);
+	gVmIpAddr = get_ipaddr_byname(iface);
+
+	syslog(LOG_INFO, "gVmId=%llx", gVmId);
+
+	RFVMMsg msg;
+
+	msg.setDstIP(server);
+	msg.setSrcIP(gVmIpAddr);
+	msg.setVMId(gVmId);
+	msg.setType(RFP_CMD_REGISTER);
+
+	return (rfSock.rfSend(msg));
+}
+
+int rf_connect(const char* iface, const char* server, int port) {
+	if (rfSock.rfOpen() < 0) {
+		syslog(LOG_ERR, "Error opening socket");
+		return -1;
+	}
+
+	if (rfSock.rfConnect(htons(port), server) < 0) {
+		rfSock.rfClose();
+		syslog(LOG_ERR, "Error connecting to %s:%d", server, port);
+		return -1;
+	}
+
+	syslog(LOG_NOTICE, "Connected to %s:%d", server, port);
+
+	if (rf_register(iface,server) < 0) {
+		syslog(LOG_ERR, "Error writing to socket");
+		rfSock.rfClose();
+		return -1;
+	}
+
+	RFMessage *pMsg;
+
+	if ((pMsg = rfSock.rfRecv()) == NULL) {
+		rfSock.rfClose();
+		syslog(LOG_ERR, "Error receiving message: connection closed by peer.");
+		return -1;
+	}
+
+	syslog(LOG_DEBUG, "Connection msg (%lx bytes)", pMsg->length());
+	if (RFP_CMD_ACCPET != pMsg->getType()) {
+		rfSock.rfClose();
+		syslog(LOG_ERR, "Registration error type:%x", pMsg->getType());
+		return -1;
+	}
+
+	syslog(LOG_NOTICE, "VM has been registered");
+	delete (pMsg);
+
+	return 0;
+}
+
 void print_help(char *prgname, int exval) {
 	fprintf(stderr, "\n%s -s SERVER -p PORT -i IFACE\n\n",
 			prgname);
@@ -438,78 +489,34 @@ int main(int argc, char *argv[]) {
 			== "")))
 		print_help(argv[0], 1);
 
-	bool regOK = 0;
-
 	openlog("rf-slave", LOG_NDELAY | LOG_NOWAIT | LOG_PID, SYSLOGFACILITY);
 	syslog(LOG_NOTICE, "starting RouteFlow FIB collector");
 
-	while (!regOK) {
-		if (rfSock.rfOpen() < 0) {
-			error("ERROR opening socket");
+	while (1) { /* Main loop */
+		if (rf_connect(connIface.c_str(), serverIp.c_str(), portno) < 0) {
+			sleep(1);
+			continue;
 		}
 
-		gVmId = get_vmId(connIface.c_str());
-		gVmIpAddr = get_ipaddr_byname(connIface.c_str());
+		FlwTablePolling::init();
 
-		syslog(LOG_INFO, "gVmId=%llx", gVmId);
-		syslog(LOG_DEBUG, "Connecting to %s:%d", serverIp.c_str(), portno);
+		/* Stay listening for some new message. */
+		while (1) {
+			RFMessage * pMsg;
+			pMsg = rfSock.rfRecv();
 
-		if (rfSock.rfConnect(htons(portno), serverIp) < 0) {
-			rfSock.rfClose();
-			error("ERROR connecting");
+			if (NULL != pMsg) {
+				syslog(LOG_DEBUG, "New msg (%lx bytes)", pMsg->length());
+				process_msg(pMsg);
+				delete (pMsg);
+			} else {
+				/* Connection to Server lost */
+				syslog(LOG_ERR, "Connection closed by peer");
+				break;
+			}
 		}
-
-		syslog(LOG_NOTICE, "Connected to %s:%d", serverIp.c_str(), portno);
-
-		RFVMMsg msg;
-
-		msg.setDstIP(serverIp);
-		msg.setSrcIP(gVmIpAddr);
-		msg.setVMId(gVmId);
-		msg.setType(RFP_CMD_REGISTER);
-
-		RFMessage * pMsg;
-
-		int n = rfSock.rfSend(msg);
-		if (n < 0) {
-			error("ERROR writing to socket");
-		}
-
-		pMsg = rfSock.rfRecv();
-
-		if (NULL == pMsg) {
-			rfSock.rfClose();
-			syslog(LOG_ERR, "Error receiving message: connection closed by peer.");
-			return -1;
-		}
-		syslog(LOG_DEBUG, "Connection msg (%lx bytes)", pMsg->length());
-		if (RFP_CMD_ACCPET == pMsg->getType()) {
-			syslog(LOG_NOTICE, "VM has been registered");
-			regOK = 1;
-		} else {
-			rfSock.rfClose();
-			syslog(LOG_ERR, "Error type:%x", pMsg->getType());
-			sleep(15);
-		}
-		delete (pMsg);
+		rfSock.rfClose();
 	}
-	FlwTablePolling::init();
 
-	/* Stay listening for some new message. */
-	while (1) {
-		RFMessage * pMsg;
-		pMsg = rfSock.rfRecv();
-
-		if (NULL != pMsg) {
-			syslog(LOG_DEBUG, "New msg (%lx bytes)", pMsg->length());
-			process_msg(pMsg);
-			delete (pMsg);
-		} else {
-			/* Connection to Server lost */
-			syslog(LOG_ERR, "Connection closed by peer");
-			break;
-		}
-	}
-	rfSock.rfClose();
 	return 0;
 }
