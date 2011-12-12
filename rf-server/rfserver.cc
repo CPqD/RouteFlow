@@ -448,7 +448,7 @@ int RouteFlowServer::send_flow_msg(uint64_t dp_id, qfoperation_t operation) {
 	if (operation == RFO_RIPV2) {
 		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for RIPv2");
 		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-		ofm_match_nw(ofm, (OFPFW_NW_PROTO & OFPFW_NW_DST_MASK), 0x11, 0, 0, 
+		ofm_match_nw(ofm, (OFPFW_NW_PROTO | OFPFW_NW_DST_MASK), 0x11, 0, 0,
 			inet_addr("224.0.0.9"));
 	} else if (operation == RFO_OSPF) {
 		syslog(LOG_DEBUG, "[RFSERVER] Configuring flow table for OSPF");
@@ -600,7 +600,7 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 
 				ofm_init(ofm, size);
 
-				ofm_match_dl(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
+				ofm_match_dl(ofm, (OFPFW_DL_TYPE | OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
 				ofm_match_nw(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),	0, 0,
 					0, rules.ip);
 
@@ -682,7 +682,7 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 
 				ofm_init(ofm, size);
 
-				ofm_match_dl(ofm, (OFPFW_DL_TYPE & OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
+				ofm_match_dl(ofm, (OFPFW_DL_TYPE | OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
 				ofm_match_nw(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),
 					0, 0, 0, rules.ip);
 
