@@ -38,6 +38,7 @@
 const uint8_t LOCKED = 1;
 const uint8_t UNLOCKED = 0;
 int ovs_portson = 0;
+bool match_l2 = false;
 
 using std::map;
 using std::pair;
@@ -54,6 +55,13 @@ RouteFlowServer::RouteFlowServer(uint16_t srvPort, rf_operation_t op) {
 	operation = op;
 
 	this->ListvmLock = UNLOCKED;
+}
+
+/*
+ * Set whether to do Layer 2 matching in flows
+ */
+void RouteFlowServer::set_l2_match(bool match) {
+	match_l2 = match;
 }
 
 /*
@@ -600,7 +608,9 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 
 				ofm_init(ofm, size);
 
-				ofm_match_dl(ofm, (OFPFW_DL_TYPE | OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
+				ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800, 0, 0);
+				if (match_l2)
+					ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, actions.srcMac);
 				ofm_match_nw(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),	0, 0,
 					0, rules.ip);
 
@@ -682,7 +692,10 @@ int RouteFlowServer::process_msg(RFMessage * msg) {
 
 				ofm_init(ofm, size);
 
-				ofm_match_dl(ofm, (OFPFW_DL_TYPE | OFPFW_DL_DST), 0x0800, 0, actions.srcMac);
+				ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800, 0, 0);
+				if (match_l2)
+					ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, actions.srcMac);
+
 				ofm_match_nw(ofm, (((uint32_t) 31 + rules.mask) << OFPFW_NW_DST_SHIFT),
 					0, 0, 0, rules.ip);
 

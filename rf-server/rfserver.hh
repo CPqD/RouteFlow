@@ -150,6 +150,8 @@ public:
 
 	int VmToOvsMapping(uint64_t vmId, uint16_t VmPort, uint16_t OvsPort);
 
+	void set_l2_match(bool match);
+
 	/* Functions for adding OF matches to OF flowmods */
 	void ofm_init(ofp_flow_mod* ofm, size_t size);
 	void ofm_match_in(ofp_flow_mod* ofm, uint16_t in);

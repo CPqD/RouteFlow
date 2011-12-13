@@ -42,13 +42,33 @@ using std::memset;
 
 RouteFlowServer rfSrv(TCP_PORT, VIRT_N_FORWARD_PLANE);
 
+void usage(const char *prog) {
+	fprintf(stderr, "\nUsage: %s [-m] [-h]\n", prog);
+	fprintf(stderr, "  -m              Do L2 flow matching (default: off)\n");
+	fprintf(stderr, "  -h              Show this usage message\n");
+}
+
 int main(int argc, char **argv) {
 
 	timeval t;
-	int sockFd, connCount;
+	int sockFd, connCount, opt;
 	socklen_t cliLength;
 	struct sockaddr_in servAddr;
 	int8_t ret = SUCCESS;
+
+	while ((opt = getopt(argc, argv, "hm")) != -1) {
+		switch (opt) {
+		case 'h':
+			usage(argv[0]);
+			exit(0);
+			break;
+		case 'm':
+			rfSrv.set_l2_match(true);
+			break;
+		default:
+			break;
+		}
+	}
 
 	openlog("rf-server", LOG_PID, SYSLOGFACILITY);
 
