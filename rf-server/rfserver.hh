@@ -30,23 +30,16 @@ using std::list;
 using std::multimap;
 
 typedef enum rfoperation {
-	RFO_RIPv2,	/* RIPv2 protocol. */
-	RFO_OSPF,	/* OSPF protocol. */
-	RFO_BGP,	/* BGP protocol. */
-	RFO_ARP,	/* ARP protocol. */
-	RFO_ICMP,   /* ICMP protocol. */
-	RFO_CLEAR_FLOW_TABLE /* Clear flow table. */
+	RFO_DROP_ALL,			/* Drop all incoming packets. */
+	RFO_CLEAR_FLOW_TABLE,	/* Clear flow table. */
+	RFO_VM_INFO,			/* Flow to communicate two linked VM's. */
+	RFO_RIPV2,				/* RIPv2 protocol. */
+	RFO_OSPF,				/* OSPF protocol. */
+	RFO_BGP,				/* BGP protocol. */
+	RFO_ARP,				/* ARP protocol. */
+	RFO_ICMP,				/* ICMP protocol. */
+	RFO_ALL					/*Send all traffic to the controller. */
 } qfoperation_t;
-
-/* Open vSwitch operations */
-typedef enum ovs_operation {
-	DROP_ALL, /* Drop all incoming packets. */
-	VM_FLOW,  /* Flow to communicate two linked VM's. */
-	VM_INFO,  /* Flow to send the MAP Event packet to the controller. */
-	ARP,	 /* To not drop ARP packets */
-	ICMP, 	 /* To not drop ICMP packets */
-	CONTROLLER /*Send all traffic to the controller */
-} ovs_operation_t;
 
 typedef enum rf_operation{
 
@@ -143,7 +136,7 @@ public:
 	int send_flow_msg(uint64_t dp, qfoperation_t operation);
 
 	void send_ovs_flow(uint64_t dp1, uint64_t dp2, uint8_t port1,
-			uint8_t port2, ovs_operation_t ovs_op);
+			uint8_t port2, ofp_flow_mod_command cmd);
 
 	int process_msg(RFMessage * msg);
 
@@ -156,6 +149,26 @@ public:
 	int send_IPC_packetmsg(uint64_t dpid, uint64_t MsgId, uint16_t port_out);
 
 	int VmToOvsMapping(uint64_t vmId, uint16_t VmPort, uint16_t OvsPort);
+
+	void set_l2_match(bool match);
+
+	/* Functions for adding OF matches to OF flowmods */
+	void ofm_init(ofp_flow_mod* ofm, size_t size);
+	void ofm_match_in(ofp_flow_mod* ofm, uint16_t in);
+	void ofm_match_dl(ofp_flow_mod* ofm, uint32_t match, uint16_t type,
+        const uint8_t src[], const uint8_t dst[]);
+	void ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t id,
+        uint8_t priority);
+	void ofm_match_nw(ofp_flow_mod* ofm, uint32_t match, uint8_t proto,
+        uint8_t tos, uint32_t src, uint32_t dst);
+	void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match,
+        uint16_t src, uint16_t dst);
+
+	void ofm_set_action(ofp_action_header* pAction, uint16_t type, uint16_t len,
+		uint16_t port, uint16_t max_len, const uint8_t addr[]);
+
+	void ofm_set_command(ofp_flow_mod* ofm, uint16_t cmd, uint32_t id,
+		uint16_t idle_to, uint16_t hard_to, uint16_t port);
 };
 
 #endif /* QFSERVER_HH_ */

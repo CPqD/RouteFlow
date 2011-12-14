@@ -42,13 +42,33 @@ using std::memset;
 
 RouteFlowServer rfSrv(TCP_PORT, VIRT_N_FORWARD_PLANE);
 
+void usage(const char *prog) {
+	fprintf(stderr, "\nUsage: %s [-m] [-h]\n", prog);
+	fprintf(stderr, "  -m              Do L2 flow matching (default: off)\n");
+	fprintf(stderr, "  -h              Show this usage message\n");
+}
+
 int main(int argc, char **argv) {
 
 	timeval t;
-	int sockFd, connCount;
+	int sockFd, connCount, opt;
 	socklen_t cliLength;
 	struct sockaddr_in servAddr;
 	int8_t ret = SUCCESS;
+
+	while ((opt = getopt(argc, argv, "hm")) != -1) {
+		switch (opt) {
+		case 'h':
+			usage(argv[0]);
+			exit(0);
+			break;
+		case 'm':
+			rfSrv.set_l2_match(true);
+			break;
+		default:
+			break;
+		}
+	}
 
 	openlog("rf-server", LOG_PID, SYSLOGFACILITY);
 
@@ -133,8 +153,6 @@ int main(int argc, char **argv) {
 	servAddr.sin_addr.s_addr = INADDR_ANY;
 	servAddr.sin_port = htons(tcpport);
 
-	int bindsocketret = 0;
-
 	while (bind(sockFd, (struct sockaddr *) &servAddr, sizeof(servAddr)) < 0) {
 		syslog(LOG_INFO, "Could not bind server socket");
 		sleep(2);
@@ -217,7 +235,7 @@ int main(int argc, char **argv) {
 				if (!rfSrv.m_dpIdleList.empty()) { //If there is an Idle Datapath.
 					Dp2Vm_t vm2dptmp;
 					vm2dptmp.dpId = rfSrv.Vm2DpMap(vmId);
-					syslog(LOG_DEBUG, "Dp = %lld, VM = %lld", vm2dptmp.dpId,
+					syslog(LOG_DEBUG, "Dp = 0x%llx, VM = 0x%llx", vm2dptmp.dpId,
 							vmId);
 					if (vm2dptmp.dpId != 0) { //The VM has a Datapath assigned to it?
 						syslog(LOG_DEBUG, "Has a Datapath assigned.");
@@ -242,7 +260,7 @@ int main(int argc, char **argv) {
 						std::list<Datapath_t>::iterator iter;
 						for (iter = rfSrv.m_dpIdleList.begin(); iter
 								!= rfSrv.m_dpIdleList.end(); iter++) {
-							if (rfSrv.Dp2VmMap(iter->dpId == 0)) { //Is there an Idle Datapath without any VM assigned to it?
+							if (rfSrv.Dp2VmMap(iter->dpId) == 0) { //Is there an Idle Datapath without any VM assigned to it?
 								newVM.setMode(RFP_VM_MODE_RUNNING); //Set VM mode to running (local definition)
 								Datapath_t newDP;
 								newDP.dpId = iter->dpId;
@@ -255,7 +273,7 @@ int main(int argc, char **argv) {
 								rfSrv.m_Dp2VmList.push_front(vm2dptmp);
 								syslog(
 										LOG_DEBUG,
-										"Dp = %lld, VM = %lld added to the List",
+										"Dp = 0x%llx, VM = 0x%llx added to the List",
 										vm2dptmp.dpId, vm2dptmp.vmId);
 								found = 1;
 								break;
@@ -263,12 +281,12 @@ int main(int argc, char **argv) {
 						}
 					}
 					if (found) {
-						/* Install RIPv2 default flow. */
-						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_RIPv2);
-						/* Install OSPF default flow. */
+						/* Install flows to recieve essential traffic. */
+						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_RIPV2);
 						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_OSPF);
-						/* Install ARP default flow. */
 						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_ARP);
+						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_BGP);
+						rfSrv.send_flow_msg(newVM.getDpId().dpId, RFO_ICMP);
 
 						/* Configuration message to the slave. */
 						RFVMMsg logmsg;
@@ -288,7 +306,7 @@ int main(int argc, char **argv) {
 					} else {
 						syslog(
 								LOG_INFO,
-								"The Datapath assigned to VM: %lld isn't connected",
+								"The Datapath assigned to VM: 0x%llx isn't connected",
 								newVM.getVmId());
 					}
 				}
@@ -297,7 +315,7 @@ int main(int argc, char **argv) {
 
 
 				rfSrv.m_vmList.push_back(newVM);
-				syslog(LOG_INFO, "A new VM was registered: VmId=%lld", vmId);
+				syslog(LOG_INFO, "A new VM was registered: VmId=0x%llx", vmId);
 
 				rfSrv.unlockvmList();
 
