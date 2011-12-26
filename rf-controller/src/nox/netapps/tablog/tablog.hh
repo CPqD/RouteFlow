@@ -21,6 +21,9 @@
 #include "component.hh"
 #include "config.h"
 #include "hash_map.hh"
+/** Fix compiling on Ubuntu 11.10 by forcing Boost Filesystem V2
+ */
+#define BOOST_FILESYSTEM_VERSION 2
 #include <boost/filesystem/operations.hpp>
 
 #ifdef LOG4CXX_ENABLED
