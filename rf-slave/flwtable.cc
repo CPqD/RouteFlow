@@ -238,6 +238,9 @@ int FlwTablePolling::updateHostTable(const struct sockaddr_nl *who,
 			== NULL)
 		return 0;
 
+	if (ndmsg_ptr->ndm_state != NUD_REACHABLE)
+		return 0;
+
 	char ip[INET_ADDRSTRLEN];
 	char mac[2 * IFHWADDRLEN + 5 + 1];
 
