@@ -1,0 +1,118 @@
+﻿v0.2.9 -29 Dec 2011 (commit 7d7fe0ee30)
+--------------------
+ - Only update host table on ARP entry state == REACHABLE (avoids insertion when MAC is still being resolved).
+
+
+v0.2.8 -21 Dec 2011
+--------------------
+
+    - Build fixes for Ubuntu Oneiric Ocelot
+
+
+v0.2.7 -12 Dec 2011
+--------------------
+    - Fixed ethernet rule matching
+    - Add commandline argument parsing; L2-matching via -m
+
+
+v0.2.6 -08 Dec 2011
+--------------------
+    - rfslave: don't die when server connection is lost
+    - Fixed bug where joining VM wouldn't adopt an idle DP
+    - Standardise output for VMid/DPid to hexidecimal "0x..." format
+    - Switched all output to Syslog in the rf-slave
+
+
+v0.2.5 -07 Dec 2011
+--------------------
+    - Install BGP,ICMP flows to DP when a VM joins and associates with it.
+
+
+v0.2.4 -06 Dec 2011
+--------------------
+   - Refactored to consolidate send_ovs_flow() code into send_flow_msg()
+   - Fixed names of RFO_CLEAR_FLOW_TABLE
+
+
+v0.2.3 -05 Dec 2011
+--------------------
+   - Refactored OF mod matching/wildcard code
+   - Refactored OF flowmod action code
+   - Rename ofm functions to match flow wildcard naming convention
+   - Refactored OF flowmod command code
+
+
+v0.2.2 -02 Dec 2011
+--------------------
+   - De-clutter syslog a bit
+  - RFOperations renamed to RFO_foo for easier refactoring
+  - When a datapath joins, send it flow entries for ARP,ICMP,BGP
+   - Fix to invalid assignment of string -> char * in the rf-slave
+
+
+v0.2.1 - 25 Nov 2011
+--------------------
+     - Patch to deal with VLAN tags add by the switch 
+v0.2.0 - 12 Oct 2011
+--------------------
+    - Fixes to multipath handling code. Former fix dealt with attribute iterating, but the outer for (RTNH) was still causing headaches.
+
+
+v0.1.9 - 06 Oct 2011
+--------------------
+  - Fixed slave segmentation fault when deleting route from the Route list.
+    - Removed handling of RTM_DELNEIGH. When that kind of entry expires we shouldn't do anything, because the flow in the datapath is configured to expire in a certain ammount of time
+    - Multipath handling corrected. Gateway gathering was looping through rtnhp_ptr and setting inconsistent data.
+
+
+v0.1.8 - 04 Oct 2011
+--------------------
+    - Conditional variable added to handle race condition when accessing the command queue.
+
+
+v0.1.7 - 01 Oct 2011
+--------------------
+    - Corrected and added code for dealing with multipath routes
+(RTA_MULTIPATH). 
+    - Mockup of log facilities were also added, just to the point where it could help the former implementation.
+    - The routes to directly attached networks MUST NOT be installed to the flow table.
+
+
+v0.1.6 - 23 Sep 2011
+--------------------
+    - NOX crashes caused by  race condition when calling send_openflow_packet() from a non-cooperative thread (RF-Controller) is solved.
+    - Memory leaks in RF-Server corrected.
+    - dependency of NOX::Discovery on RF-Controller removed.
+
+
+v0.1.5 - 20 Sep 2011
+--------------------
+    - Reception method of RF-Protocol causing "Broken pipe" fixed
+
+
+v0.1.4 - 06 Sep 2011
+--------------------
+    - New debug messages in rf-slave for NetLink events.
+
+
+v0.1.3 - 29 Aug 2011
+--------------------
+    - Routes to directly attached networks MUST NOT be installed to the flow table.
+
+
+v0.1.2 - 22 Aug 2011
+--------------------
+    - Changed rf-server TCP socket mode to "blocking" to avoid wasting CPU time unnecessarily.
+
+   - Thread responsible for handle messagens from VMs is set sleep when there is no VM connected.
+
+
+v0.1.1 - 09 Jun 2011
+--------------------
+    - Flows installed with incorrect MAC address
+    - Now all the VM interfaces have the same ethernet MAC address.
+
+
+v0.1.0 - 17 May 2011
+--------------------
+    - Initial release
