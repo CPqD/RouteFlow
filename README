@@ -16,8 +16,8 @@ RouteFlow relies on the following technologies:
   Linux virtual machines may run the Quagga routing engine.
 - MongoDB as a central database and IPC.
 
-Please be aware of NOX, OpenFlow, Open vSwitch, Quagga, MongoDB and RouteFlow
-licenses.
+Please be aware of NOX, POX, OpenFlow, Open vSwitch, Quagga, MongoDB, jQuery,
+JIT and RouteFlow licenses and terms.
 
 
 === Overview ===
