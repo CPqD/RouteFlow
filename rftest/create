@@ -1,0 +1,45 @@
+#!/bin/bash
+
+if [ "$EUID" != "0" ]; then
+  echo "You must be root to run this script. Sorry, dude!"
+  exit 1
+fi
+
+LXCDIR="/var/lib/lxc"
+CONFIG="config"
+
+# Setup LXC
+mkdir $LXCDIR
+mkdir /cgroup
+echo "none /cgroup cgroup defaults 0 0" >> /etc/fstab
+mount -a
+sudo apt-get install lxc debootstrap
+
+# Create a base container
+mkdir $LXCDIR/base
+if [ "`lsb_release -r -s`" = "11.04" ]
+then
+    /usr/lib/lxc/templates/lxc-natty --path=$LXCDIR/base
+else
+    /usr/lib/lxc/templates/lxc-ubuntu --release=natty --path=$LXCDIR/base
+fi
+sudo chroot $LXCDIR/base/rootfs apt-get -y --force-yes install quagga libboost-thread1.42.0 libboost-system1.42.0 libboost-filesystem1.42.0 libboost-program-options1.42.0
+
+# Clone the base container to make other containers based on config
+cd $CONFIG
+for VM in *
+do
+    if [ "`lsb_release -r -s`" = "11.04" ]
+    then
+        cp -R $LXCDIR/base $LXCDIR/$VM 
+    else
+        lxc-clone -o base -n $VM
+    fi
+
+    sed -i "s/base/$VM/g" $LXCDIR/$VM/fstab
+    cp -R $VM/* $LXCDIR/$VM
+    chmod 777 $LXCDIR/$VM/rootfs/var/log/quagga
+    chmod 777 $LXCDIR/$VM/rootfs/var/run/quagga
+done
+
+

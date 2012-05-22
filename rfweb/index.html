@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+
+    <link type="text/css" href="css/style.css" rel="stylesheet" />
+    <link type="text/css" href="css/rftheme/jquery-ui-1.8.18.custom.css" rel="stylesheet" />	
+
+    <script type="text/javascript" src="js/jquery/jquery-1.7.1.min.js"></script>
+    <script type="text/javascript" src="js/jquery/jquery-ui-1.8.18.custom.min.js"></script>
+    <script src="js/rf/utils.js"></script>
+
+    <script>
+    var tab_map = {
+    	0: "network",
+    	1: "messages",
+    	2: "rftable",
+    };
+    
+    $(function() {
+    
+    $("#tabs").tabs({
+	    ajaxOptions: {
+		    error: function(xhr, status, index, anchor) {
+			    $(anchor.hash).html("Error loading tab.");
+		    }
+	    }
+    });
+
+	var selected = null;
+	
+	$("#tabs").bind("tabsload", function(event, ui) {
+		// Stop previously selected tab
+		if (selected != null) {
+			var func = window[tab_map[selected] + "_stop"];
+			func();
+		}
+		
+		// Init selected tab
+		var new_selected = $("#tabs").tabs("option", "selected");
+		var func = window[tab_map[new_selected] + "_init"];
+		selected = new_selected;
+		func();
+	});
+	
+	$("#about").dialog({ autoOpen: false });
+	$("#support").dialog({ autoOpen: false });
+	
+	    
+    });
+    </script>
+</head>
+
+<body>
+
+<div id="topnav">
+    <div id="cpqd-logo">
+        <img src="images/logo-cpqd.png" border="0" alt="CPqD logo" title="CPqD" />
+    </div>
+    
+    <div id="routeflow-logo">
+        <img src="images/RouteFlow.png" border="0" alt="RouteFlow logo" title="RouteFlow" />
+    </div>
+    
+    <div id="links">
+        <a href="#" onclick="$('#about').dialog('open')">About</a> | 
+        <a href="#" onclick="$('#support').dialog('open')">Support</a> 
+    </div>
+</div>
+
+<div id="tabs">
+	<ul>
+		<li><a href="network.html">Network</a></li>
+		<li><a href="messages.html">Messages</a></li>
+		<li><a href="rftable.html">Table</a></li>
+	</ul>
+</div>
+
+<div id="about" title="About RouteFlow">
+	<p><b>RouteFlow</b> is an architecture following the SDN paradigm based on a programmatic approach to logically centralize the network control. It is composed by <b>OpenFlow</b> Controller application and an independent <b>RouteFlow</b> server that manages a virtual network environment to interconnect virtualized IP routing engines.</p>
+        <p><b>RouteFlow</b> is about combining the line-rate performance of OpenFlow-enabled networking gear with the flexibility of open-source routing stacks in order to deliver novel models of virtual routers and IP Networks-as-a-Service in the open networking era. </p>
+	<p>The focus of this demonstration is showcasing the <b>RouteFlow</b> architecture in the provision of traditional IP routing (e.g., OSPF, BGP) on top of an <b>OpenFlow</b>-enabled infrastructure. By understanding how the <b>RouteFlow</b> platform orchestrates and dynamically links (remote) virtualized routing protocol stacks (e.g., Quagga, XORP), demo visitors will be able to devise how an open software-defined networking approach allows for innovation in the delivery of virtual IP routing and forwarding services.</p>
+</div>
+
+<div id="support" title="Support">
+See <a href="https://groups.google.com/group/routeflow-discuss/topics">RouteFlow Discuss</a>.
+</div>
+
+
+</body>
+
+</html>

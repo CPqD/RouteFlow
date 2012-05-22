@@ -1,142 +1,371 @@
-RouteFlow v0.1.0
------------------------------------
-Copyright (C) 2011 CPqD
+RouteFlow
+Copyright (C) 2012 CPqD
 
-Welcome
-========
+=== Welcome ===
+Welcome to the RouteFlow remote virtual routing platform.  This distribution
+includes all the software you need to build, install, and deploy RouteFlow in
+your OpenFlow network.
 
-Welcome to the RouteFlow remote virtual routing platform.  This distribution includes all the software you need to build, install, and deploy RouteFlow in your OpenFlow network.
+This version of RouteFlow is a beta developers' release intended to evaluate
+RouteFlow for providing virtualized IP routing services on one or more OpenFlow
+switches.
 
-This version of RouteFlow is a beta developers' release intended to evaluate RouteFlow for providing virtualized IP routing services on one or more OpenFlow switches.
+RouteFlow relies on the following technologies:
+- NOX and OpenFlow v1.0 as the communication protocol for controlling switches.
+- Open vSwitch to provide the connectivity within the virtual environment where
+  Linux virtual machines may run the Quagga routing engine.
+- MongoDB as a central database and IPC.
 
-*Note*
-
-RouteFlow relies on NOX and OpenFlow as the communication protocol for controlling switches.  
-RouteFlow uses Open vSwitch to provide the connectivity within the virtual environment where Linux virtual machines run the Quagga routing engine.
-This build supports Openflow v1.0.0 and NOX v0.6.
-Please be aware of OpenFlow, NOX, Open vSwitch, Quagga and RouteFlow licenses.
-
-Contents
-========
-- Overview
-- Install
-- Running
-- Changes from last version
-- Known bugs
-- TODO (+ Upcoming features)
-- License and Terms
-
-Overview
-========
-
-RouteFlow is made of four basic modules: rf-slave, rf-server, rf-controller, and the rf-protocol:
-
-- RF-Slave is the module running as a daemon in the Virtual Machine (VM) responsible for detecting changes in the linux ARP table and ROUTE tables. Upon a change is detected (via IP Netlink announcements), the corresponding rf-Protocol message is sent to the rf-Server.
-
-- RF-Server is a standalone application that manages the VM running the RF-Slave daemon and requests the creation of the OpenFlow flow mod messages according to route changes detected by rf-slaves. The RF-Server keeps the mapping between the rf-slave VM instances and the corresponding datapath switches. In addition, the RF-Server configures the Open vSwitch via the OpenFlow protocol to maintain the connectivity in the virtual environment formed by the set of registered VMs;
-
-- RF-Controller is a NOX (OpenFlow controller) application responsible for the interactions with the OpenFlow switches (identified by Datapath ID - DPID) via the OpenFlow protocol and implements the RF-Protocol to send and receives commands from/to the rf-server.
-
-- RF-Protocol defines most of the classes used by the other modules and specifies the protocol messages used for the interactions between the rf-server and the rf-slave and the rf-controller.;
+Please be aware of NOX, OpenFlow, Open vSwitch, Quagga, MongoDB and RouteFlow
+licenses.
 
 
+=== Overview ===
+RouteFlow is a distribution composed by three basic applications: rfclient,
+rfserver and rfproxy.
 
-+----- VM ----------+
-| Quagga | RF-Slave |
+- rfclient is the module running as a daemon in the Virtual Machine (VM)
+responsible for detecting changes in the linux ARP and routing tables.
+When a change is detected (via netlink events) messages are sent to the server.
+
+- rfserver is a standalone application that manages the VMs running the
+RFClient daemons. The RFServer keeps the mapping between the RFClient VM
+instances and the corresponding switches and their datapaths. It connects to
+the rfproxy to instruct it about when to configure flows and also to
+configure the Open vSwitch to maintain the connectivity in the virtual
+environment formed by the set of registered VMs.
+
+- rfproxy is a NOX (OpenFlow controller) application responsible for the
+interactions with the OpenFlow switches (identified by datapaths) via the
+OpenFlow protocol. It listens to instructions from the RFServer and also
+notifies whenever a switch joins or leavens the network.
+
+There is also a library of common functions (rflib). It defines the IPC, a
+central table for RouteFlow state data and utilities like custom types for IP
+and MAC addresses, OpenFlow message creation and type conversion.
+
+Additionally, there are two extra modules: rfweb, an web interface for
+RouteFlow and jsonflowagent, an SNMP agent.
+
+
+== RouteFlow architecture ===
++--------VM---------+
+| Quagga | rfclient |
 +-------------------+
-	\
-M:1     \ rf-Protocol
-	\
-+----------------+
-| rf-Server  	 |
-+----------------+
-	\
-1:1     \ rf-Protocol
-	\
-+|-----------------------------+
-| rf-Controller  | Discovery   |
-|------------------------------|
-| 	NOX                    |
-+------------------------------+
-	\
-1:N     \ OpenFlow Protocol
-	\
-+-----------------+
-| OF Switch (DPID)|      	 
-+-----------------+
+         \
+M:1      \ RFProtocol
+         \
++-------------------+
+|     rfserver      |
++-------------------+
+         \
+1:1      \ RFProtocol
+         \
++-------------------+
+|      rfproxy      |
+|-------------------|
+|        NOX        |
++-------------------+
+         \
+1:N      \ OpenFlow Protocol
+         \
++-------------------+
+|  OpenFlow Switch  |
++-------------------+
 
 
+=== Building ===
+These instructions are tested on Ubuntu 11.04. The version of the NOX controller
+we are using does not compile under newer versions of Ubuntu (11.10, 12.04).
 
 
-Install 
-=======
-See the companion INSTALL file.
+** Open vSwitch **
+1) Install the dependencies:
+$ sudo apt-get install build-essential linux-headers-generic
 
-Running 
-========
+2) Download Open vSwitch 1.4.1, extract it to a folder and browse to it:
+$ wget http://openvswitch.org/releases/openvswitch-1.4.1.tar.gz
+$ tar xzf openvswitch-1.4.1.tar.gz
+$ cd openvswitch-1.4.1
 
-Quagga Routing Engine:
--------------------------------
-Once the VMs are up and assigned to the discovered Datapath switches, routing protocol messages originating at the VMs running Quagga are sent over the rf-Controller to the corresponding port in the Datapah. Conversely, routing protocol messages entering a Datapath port will match the default flow entry and will be forwarded to the rf-Controller, which in turn delivers it to the virtual interface of the corresponding VM.
+3) Configure it as a kernel module, then compile and install
+$ ./configure --with-linux=/lib/modules/`uname -r`/build
+$ make
+$ sudo make install
 
-Manual IP Routes:
--------------
-Instead of (or in addition to) IP routing engines like Quagga, you can also manually add routes. Suppose a new switch connects to another switch in your network. A new link will arise in the network but the system still has not the feature to change the respective switch virtual machine configuration on the fly, so you’ll need do add the new route in the virtual machine. 
-For instance, to insert a new network with address 192.168.0.0, with gateway 192.168.2.1 and subnet mask 255.255.255.0 you can type:
+4) Install the modules in your system:
+$ sudo mkdir /lib/modules/`uname -r`/kernel/net/ovs
+$ sudo cp datapath/linux/*.ko /lib/modules/`uname -r`/kernel/net/ovs/
+$ sudo depmod -a
+$ sudo modprobe openvswitch_mod
 
-# route add -net 192.168.0.0 netmask 255.255.255.0 dev eth1
-or
-# ip route add 192.168.0.0/24 dev eth1
+Optionally, you may choose to skip the steps above and load the module manually
+every time:
 
-Route all traffic via 192.168.2.1 gateway connected via eth1 network interface:
-# route add default gw 192.168.2.1 dev eth1
-or
-# ip route add default via 192.168.2.1 dev eth1
+$ sudo insmod datapath/linux/openvswitch_mod.ko
+
+--- Note ---
+	If for some reason the bridge module is loaded in your system, the command
+	above will fail with an invalid module format error. If you don't need the
+	default bridge support in your system, use the modprobe -r bridge command to
+	unload it and try the modprobe command again. If you need bridge support,
+	you can get some help from the INSTALL.bridge file instructions in the
+	Open vSwitch distribution directory.
+
+	To avoid automatic loading of the bridge module (which would conflict with
+	openvswitch_mod), let's blacklist it. Access the /etc/modprobe.d/ directory
+	and create a new bridge.conf file:
+
+	$ cd /etc/modprobe.d
+	$ sudo vi bridge.conf
+
+	Insert the following lines in the editor, save and close:
+
+	# avoid conflicts with the openvswitch module
+	blacklist bridge
+
+5) Edit /etc/modules to configure the automatic loading of the openvswitch_mod
+   module:
+
+	$ sudo vi /etc/modules
+
+	Insert the following line at the end of the file, save and close:
+
+	openvswitch_mod
+
+	To be sure that everything is OK, reboot your computer. Log in and try the
+	following command. If the "openvswitch_mod" line is shown like in the
+	example below, you're ready to go.
+
+	$ sudo lsmod | grep openvswitch_mod
+	openvswitch_mod        68247  0
+
+6) Initialize the configuration database:
+$ sudo mkdir -p /usr/local/etc/openvswitch
+$ sudo ovsdb-tool create /usr/local/etc/openvswitch/conf.db vswitchd/vswitch.ovsschema
 
 
-Useful commands:
-----------
-You can check installed flows with the following commands
+** MongoDB **
+1) Install the dependencies:
+$ sudo apt-get install git-core build-essential scons libboost-dev \
+  libboost-program-options-dev libboost-thread-dev libboost-filesystem-dev \
+  python-pip
 
-In Open vSwitch:
-	sudo ovs-ofctl dump-flows <datapath> <flows>
+3) Download and extract MongoDB v2.0.5
+$ wget http://downloads.mongodb.org/src/mongodb-src-r2.0.5.tar.gz
+$ tar zxf mongodb-src-r2.0.5.tar.gz
+$ cd mongodb-src-r2.0.5
 
-OpenFlow Switches(mininet, fpgas, etc)
-	sudo ovs-dpctl dump-flows <datapath> <flows>
+3) There's a conflict with a constant name in NOX and MongoDB. It has
+been fixed, but is not part of version 2.0.5 yet. So, we need to fix it
+applying the changes listed in this commit:
+https://github.com/mongodb/mongo/commit/a1e68969d48bbb47c893870f6428048a602faf90
 
-For more information, please check the Open vSwitch and OpenFlow documentation.
-
-Future releases will allow the option to choose the RouteFlow mode of operation where some routing protocol messages can be kept only in the virtual plane. 
-
-Changes from last version
-========
-- See changelog file
-
-
-
-Known Bugs
-========
--
+4) Then compile and install MongoDB:
+$ scons all
+$ sudo scons --full install --prefix=/usr --sharedclient
+$ sudo pip install pymongo
 
 
-ToDo (+ features expected in upcoming versions)
-========
-- See TODO File
+** NOX install instructions **
+1) Install the dependencies:
+$ sudo apt-get install autoconf automake g++ libtool swig make git-core \
+  libboost-dev libboost-test-dev libboost-filesystem-dev libssl-dev \
+  libpcap-dev python-twisted python-simplejson python-dev
+
+2) TwistedPython, one of the dependencies of the NOX controller bundled with
+the RouteFlow distribution, got an update that made it stop working.
+To get around this issue, edit the following file in your machine:
+$ sudo vi /usr/lib/python2.6/dist-packages/twisted/internet/base.py
+
+Insert the method _handleSigchld at the end of the file, just before the last
+statement (the one that reads "__all__ = []"):
+
+[other lines above... (supressed) ]
+            except:
+                log.msg("Unexpected error in main loop.")
+                log.err()
+            else:
+                log.msg('Main loop terminated.')
+
+    def _handleSigchld(self, signum, frame, _threadSupport=platform.supportsThreads()):
+        from twisted.internet.process import reapAllProcesses
+        if _threadSupport:
+            self.callFromThread(reapAllProcesses)
+        else:
+            self.callLater(0, reapAllProcesses)
+
+__all__ = []
+
+Save the file and you're ready to go.
+
+NOX will be compiled with the RouteFlow distribution in the steps ahead.
 
 
+** RouteFlow **
+1) Install the dependencies:
+$ sudo apt-get install build-essential iproute-dev swig1.3
 
-License and Terms
-========
+2) Checkout the RouteFlow distribution:
+$ git clone git://github.com/CPqD/RouteFlow.git
+$ git checkout NewRouteFlow
 
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
+3) You can compile all RouteFlow applications by running the following command
+in the project root:
+$ make all
 
-- See LICENSE file
+You can also compile them individually:
+$ make rfclient
+$ make rfserver
+$ make nox
 
-Terms of contributing to RouteFlow program ("Program")
+4) That's it, everything is installed! After the build, you can run tests 1 and
+2. The setup to run them is described in the section "Running".
 
-Please read the following terms before you submit to the RouteFlow project ("Project") any original works of corrections, modifications, additions, patches and so forth to the Program ("Contribution"). By submitting the Contribution, you are agreeing to be bound by the following terms. If you do not or cannot agree to any of the terms, please do not submit the Contribution:
 
-    1. You hereby grant to any person or entity receiving or distributing the Program through the Project a worldwide, perpetual, non-exclusive, royalty free license to use, reproduce, modify, prepare derivative works of, display, perform, sublicense, and distribute the Contribution and such derivative works.
-    2. You warrant that you have all rights necessary to submit the Contribution and, to the best of your knowledge, the Contribution does not infringe copyright, patent, trademark, trade secret, or other intellectual property rights of any third parties.
-    3. In the event that the Contribution is combined with third parties' programs, you notify to Project maintainers including NEC Corporation ("Maintainers") the author, the license condition, and the name of such third parties' programs.
+=== Running ===
+The folder rftest contains all that is needed to create and run two test cases.
 
+First, create the LXC containers that will run as virtual machines:
+   $ sudo ./create
+
+Test 1
+   $ sudo ./rftest1
+
+   You can then log in to the LXC container b1 and try to ping b2:
+   $ sudo lxc-console -n b1
+   And inside b1:
+   # ping 172.31.2.2
+
+   To stop running:
+   $ sudo ./rftest1 clear
+
+   For more details on this test, see:
+   http://sites.google.com/site/routeflow/documents/first-routeflow
+
+Test 2
+   $ sudo ./rftest2
+
+   To stop running:
+   $ sudo ./rftest2 clear
+
+   This test should be run with a Mininet simulated network:
+   http://yuba.stanford.edu/foswiki/bin/view/OpenFlow/Mininet
+
+   Once you have a Mininet setup, copy the files in rftest to the VM:
+   $ scp topo-4sw-4host.py openflow@[Mininet address]:/home/openflow/mininet/custom
+   $ scp ipconf openflow@[Mininet address]:/home/openflow/
+
+   Then start the network:
+   $ sudo mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo" \
+   --controller=remote --ip=[Controller address] --port=6633"
+
+   Inside Mininet, load the address configuration:
+   mininet> source ipconf
+
+   Wait for the network to converge (it should take a few seconds), and try to
+   ping:
+   mininet> pingall
+
+   You'll need to setup the network using virtual machines, and the
+   configuration will depend on the chosen technology. If you have questions
+   about setting up RouteFlow on a particular technology, we might be able to
+   help. See the section "Support".
+
+   For more details on this test, see:
+   http://sites.google.com/site/routeflow/documents/tutorial2-four-routers-with-ospf
+
+POX
+   Experimental support for POX is included. There are versions of the tests
+   above written to run using POX (rftest*_pox). Note however that rfweb and
+   SNMP support won't work.
+
+
+=== Web interface ===
+The module rfweb provides an web application to inspect the network, showing
+topology, status and statistics. The application is written in Python using the
+WSGI specification: http://wsgi.readthedocs.org/en/latest/
+
+It's possible to run the application in several servers, and a simple server is
+provided in rfweb_server.py. This server is very simple, and you probably don't
+want to use it for anything more serious than playing around and testing.
+
+We've also tested the application with gunicorn (http://gunicorn.org/). You can
+run rfweb on it using the following command:
+
+$ gunicorn -w 4 -b 0.0.0.0:8080 rfweb:application
+(Runs four workers, listening on all interfaces on port 8080)
+
+Then to access the main page of the web interface (adapt the address to your
+setup), go to:
+http://localhost:8080/index.html
+
+The web interface currently only works with rftest2 running under NOX. Other
+tests should work, but this module still requires improvements.
+
+
+=== Support ===
+RouteFlow has a discussion list. You can send your questions on:
+https://groups.google.com/group/routeflow-discuss/topics
+
+
+=== Known Bugs ===
+- rfproxy: random (and somewhat rare) segfaults without any clear reason.
+
+- rftest*: When closing the tests, rfproxy segfaults to no effect.
+
+- rfweb: topology monitoring for rftest1 doesn't work
+
+- rfweb: topology monitoring shows switch8 as active when all switches are down
+
+- rfweb: flow colors are not shown correctly
+
+- See: http://bugs.openflowhub.org/browse/ROUTEFLOW
+
+
+=== TODO (+ features expected in upcoming versions) ===
+- Preload VM-datapath association (and also the ports used) in RFServer, 
+  allowing for flexible configuration.
+  
+- Tests and instructions for other virtualization environments
+
+- Hooks into Quagga Zebra to reflect link up/down events and extract additional route / label information
+
+- Create headers for RFClient.cc and RFServer.cc.
+
+- Let the (RFServer order the) RFClient set the VM's non-administrative
+  interfaces to the same MAC Address.
+
+- Create a verbose mode for RFServer.
+
+- Configuration arguments for RFServer.
+
+- Wireshark dissector plugin for the RouteFlow protocol
+
+- Experiment with NEC Trema controller: Port routeflowc to Trema
+
+- Add TTL-decrement action (if supported by the datapath devices)
+
+- Explore integration opportunities with FlowVisor
+
+- Libvirt: Virtualization-independence to accomodate alternative virtualization
+  environments via unified virtualization API provided by libvirt
+    - provide on-demand start-up of VMs via libvirt upon interactions (e.g. CLI)
+      with RFServer)
+
+- Routing Protocol Optimization:
+    - Separate topology discovery and maintenance from state distribution
+    - Dynamic virtual topology maintenance, with selective routing protocol
+      messages delivery to the Datapath (e.g., HELLOs).
+    - Improve the scenario where routing protocol messages are kept in the
+      virtual domain and topology is mantained through a  Topology Discovery
+      controller application.
+    - Hooks into Quagga Zebra to reflect link up/down events
+
+- Resiliency & Scalability:
+    - Physically distribute the virtualization environment via mutliple OVS
+      providing the connectivity of the virtual control network
+    - Improve resiliency: Have a "stand-by" environment to take over in case of
+      failure of the master RFServer / Virtualized Control Plane
+
+- For smaller changes, see TODO markings in the files.

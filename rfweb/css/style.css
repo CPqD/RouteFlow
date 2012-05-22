@@ -1,0 +1,273 @@
+/* Colors 
+Active: #2271af
+Active font: #ffffff
+
+Neutral 1: #ffffff
+Neutral 1 font: #363636
+
+Neutral 2: #F2F2F2
+Neutral 2 font: #363636
+
+Border: #f2f2f2
+
+Content hover: #d0e5f5
+Content hover font: #1d5987
+
+Tips/Details: #fbec88
+Tips/Details border: #fad42e
+Tips/Details font: #363636
+
+Shadow: #cccccc
+*/
+
+
+.header, .section_title {
+    background-color: #2271af;
+    color: #ffffff;
+}
+
+.bg0 {
+    background-color: #ffffff;
+    color: #363636;
+}
+
+.bg1 {
+    background-color: #F2F2F2;
+    color: #363636;
+}
+
+.bg0:hover, .bg1:hover {
+    background-color: #d0e5f5;
+    color: #1d5987;
+}
+
+.expand_control, .expand_control_header {
+    background-color: #ffffff;
+    color: #363636;
+}
+
+.message_content, .tips {
+    border: 1px solid #fad42e;
+    background-color: #fbec88;
+    color: #363636
+}
+
+#messages_control {
+    border-right: 1px solid #F2F2F2;
+}
+
+#links a {
+    color: #363636;
+}
+
+/* Styles */
+body {
+    font-size: 12px;
+    background: url('../images/header.png') repeat-x top center;
+}
+
+* {
+    font-family: Verdana,Arial,sans-serif;
+}
+
+.ui-tabs .ui-tabs-panel {
+    padding-top: 5px;
+    padding-left: 0px;
+    padding-right: 0px;
+    padding-bottom: 5px;
+}
+
+.header {
+    font-weight: bold;
+}
+
+.header td, .bg0 td, .bg1 td {
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+.hidden_msg_content {
+    display: none;
+}
+
+.message_content {
+    padding-left: 10px;
+}
+
+/* Main */
+#topnav {
+    padding: 16px;
+    height: 61px;
+}
+
+#topnav * {
+    display: inline-block;
+}
+
+#routeflow-logo {
+    margin-left: 40px;
+}
+
+#tabs {
+    box-shadow: 1px 1px 2px 1px #ccc;
+}
+
+.tips {
+    padding: 10px;
+    box-shadow: 1px 1px 5px 1px #ccc;
+    margin: 6px;
+}
+
+/* Section */
+.section {
+    vertical-align: top;
+}
+
+.section_title {
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    padding-left: 0px;
+    padding-top: 2px;
+    padding-bottom: 2px;
+    margin-bottom: 5px;
+}
+
+/* Subsection */
+.subsection {
+    margin-bottom: 15px;
+}
+
+.subsection_title {
+    font-weight: bold;
+    margin-bottom: 2px;
+}
+
+.subsection > * {
+    padding-left: 20px;
+}
+
+.subsection .subsection_title {
+    padding-left: 10px;
+}
+
+.section > .subsection {
+    padding-left: 5px;
+}
+
+/* Links */
+#links {
+    float: right;
+}
+
+#links a {
+    text-decoration: none;
+    font-weight: bold;
+}
+
+#links a:hover {
+    text-decoration: underline;
+}
+
+/* Network */
+#topology {
+    width: 100%;
+}
+
+#infovis {
+    height: 400px;
+    width: 75%;
+    background-color: #ffffff;
+    border: 1px solid #f2f2f2;
+    float: left;
+    -moz-box-sizing:border-box;
+    -webkit-box-sizing:border-box;
+    box-sizing:border-box;
+}
+
+#switchinfo {
+    vertical-align: top;
+    float: right;
+    width: 25%;
+}
+
+#flows {
+    width: 100%;
+    text-align: left;
+    text-indent:8px;
+    display: inline-block;
+    vertical-align: top;
+}
+
+#flows table {
+    width: 100%;
+}
+
+ul.switchdesc {
+    list-style: none;
+    margin: 2px;
+}
+
+.label {
+    cursor: default;
+    font: bold 12px sans;
+    color: #363636;
+    text-align: center;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Colors from: http://colorschemedesigner.com/#2q408cku-w0w0 */
+.flow-new {
+    background-color: #C3E48C;
+}
+
+.flow-kinda-new {
+    background-color: #F7DE98;
+}
+
+.flow-action-changed {
+    background-color: #7276AB;
+}
+
+/* RFMessages */
+#messages_control {
+    padding-right: 10px;
+    display: inline-block;
+}
+
+#channels {
+    display: inline-block;
+}
+#channels .section {
+    display: inline-block;
+}
+
+/* RFTable */
+#rftable_container {
+    width: 100%;
+    overflow: auto;
+}
+
+#rftable_left {
+    width: 70%;
+    float: left;
+    -moz-box-sizing:border-box;
+    -webkit-box-sizing:border-box;
+    box-sizing:border-box;
+}
+
+#rftable_right {
+    vertical-align: top;
+    float: right;
+    width: 30%;
+}
+
+#rftable {
+    width: 100%;
+    border: 1px solid #F2F2F2;
+}

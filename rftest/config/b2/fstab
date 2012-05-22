@@ -1,0 +1,3 @@
+proc            /var/lib/lxc/b2/rootfs/proc         proc    nodev,noexec,nosuid 0 0
+devpts          /var/lib/lxc/b2/rootfs/dev/pts      devpts defaults 0 0
+sysfs           /var/lib/lxc/b2/rootfs/sys          sysfs defaults  0 0

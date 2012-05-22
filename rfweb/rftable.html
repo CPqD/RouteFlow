@@ -1,0 +1,32 @@
+<script language="javascript" type="text/javascript" src="js/rf/rftable.js"></script>
+
+<div id="rftable_container" class="section">
+    <div id="rftable_left">
+        <table id="rftable">
+            <thead>
+                <tr class="header">
+                    <td>VM ID</td>
+                    <td>VM port</td>
+                    <td>VS ID</td>
+                    <td>VS port</td>
+                    <td>DP ID</td>
+                    <td>DP port</td>
+                </tr>
+            </thead>
+        </table>
+    </div>
+    
+    <div id="rftable_right">
+        <div id="rftable_tips" class="tips">
+            The table shows the current associations of VMs and datapaths in the RouteFlow network.
+            <ul>
+            <li>A row with all columns filled means an active entry.</li>
+            <li>A row with only a VM ID represents a registered, idle and never used VM.</li>
+            <li>A row with only a DP ID represents a registered, idle and never associated datapath.</li>
+            <li>A row with only a VM ID and DP ID represents an association that is inactive. <br />
+            The reason could be an offline datapath.</li>
+            </ul>
+        </div>
+    </div>
+    
+<div> 

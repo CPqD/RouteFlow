@@ -1,0 +1,47 @@
+<script language="javascript" type="text/javascript" src="js/rf/messages.js"></script>
+    
+<div class="section" id="messages_control">
+    <div class="section_title">Filters</div>
+    <div class="subsection">
+        By message type:
+        <div class="subsection_title">RFClients &harr; RFServer</div>
+        <div id="rfclient_rfserver_filters"></div>
+        
+        <div class="subsection_title">RFServer &harr; RFProxy</div>
+        <div id="rfserver_rfproxy_filters"></div>
+    </div>
+</div>
+
+<div id="channels">
+    <div class="section" id="rfclient_rfserver_channel">
+        <div class="section_title">RFClients &harr; RFServer</div>
+        <table>
+            <thead>
+                <tr class="header">
+                    <td class="expand_control_header"></td>
+                    <td>To</td>
+                    <td>Status</td>
+                    <td>Type</td>
+                </tr>
+            </thead>
+            
+            <tbody id="rfclient_rfserver"></tbody>
+        </table>
+    </div>
+
+    <div class="section" id="rfserver_rfproxy_channel">
+        <div class="section_title">RFServer &harr; RFProxy</div>
+        <table>
+            <thead>
+                <tr class="header">
+                    <td class="expand_control_header"></td>
+                    <td>To</td>
+                    <td>Status</td>
+                    <td>Type</td>
+                </tr>
+            </thead>
+            
+            <tbody id="rfserver_rfproxy"></tbody>
+        </table>
+    </div>
+</div>

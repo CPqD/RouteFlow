@@ -1,19 +1,20 @@
-
 export ROOT_DIR=$(CURDIR)
 export BUILD_DIR=$(ROOT_DIR)/build
-export LIB_DIR=$(ROOT_DIR)/common
-export RFC_DIR=$(ROOT_DIR)/rf-controller
-export INC_DIR=$(ROOT_DIR)/include
+export LIB_DIR=$(ROOT_DIR)/rflib
+export RFC_DIR=$(ROOT_DIR)/nox
+export MONGO_DIR=/usr/local/include/mongo
 
 export BUILD_LIB_DIR=$(BUILD_DIR)/lib
 export BUILD_OBJ_DIR=$(BUILD_DIR)/obj
 
+export RFLIB_NAME=rflib
+
 #the lib subdirs should be done first
-export libdirs := rf-protocol sys ipc 
-export srcdirs := rf-server rf-slave 
+export libdirs := ipc rftable types openflow
+export srcdirs := rfserver rfclient
 
 export CPP := g++
-export CFLAGS := -O2 -Wall -D_GNU_SOURCE -D_POSIX_SOURCE -W
+export CFLAGS := -Wall -W
 export AR := ar
 
 all: build lib app nox
@@ -26,11 +27,12 @@ lib: build
 	@mkdir -p $(BUILD_LIB_DIR);
 	@for dir in $(libdirs); do \
 		mkdir -p $(BUILD_OBJ_DIR)/$$dir; \
-		echo "Compiling Library $$dir..."; \
+		echo "Compiling Library Dependency ($$dir)..."; \
 		make -C $(LIB_DIR)/$$dir all; \
-		rmdir $(BUILD_OBJ_DIR)/$$dir; \
 		echo "done."; \
 	done
+	@echo "Generating Library";
+	make -C $(LIB_DIR) all;
 
 app: lib
 	@mkdir -p $(BUILD_OBJ_DIR);
@@ -41,18 +43,18 @@ app: lib
 		echo "done."; \
 	done
 
-server: lib
+rfserver: lib
 	@mkdir -p $(BUILD_OBJ_DIR);
-	@for dir in "rf-server"; do \
+	@for dir in "rfserver"; do \
 		mkdir -p $(BUILD_OBJ_DIR)/$$dir; \
 		echo "Compiling Application $$dir..."; \
 		make -C $(ROOT_DIR)/$$dir all; \
 		echo "done."; \
 	done
 	
-slave: lib 
+rfclient: lib 
 	@mkdir -p $(BUILD_OBJ_DIR);
-	@for dir in "rf-slave" ; do \
+	@for dir in "rfclient" ; do \
 		mkdir -p $(BUILD_OBJ_DIR)/$$dir; \
 		echo "Compiling Application $$dir..."; \
 		make -C $(ROOT_DIR)/$$dir all; \
@@ -60,15 +62,17 @@ slave: lib
 	done
 	
 nox: lib
-	echo "Building NOX and RF-Controller..."
-	if test -d $(RFC_DIR)/build; \
-	then echo "Skipping configure..."; \
-	else cd $(RFC_DIR); ./boot.sh; mkdir build; cd build; export CPP=; ../configure;\
-	fi
-	make -C $(RFC_DIR)/build
-	echo "finished."
+	echo "Building NOX with rfproxy..."
+	cd $(RFC_DIR); \
+	./boot.sh; \
+	mkdir build; \
+	cd build; \
+	export CPP=; \
+	../configure --enable-ndebug; \
+	make -C $(RFC_DIR)/build; \
+	echo "done."
 
-clean: clean-libs clean-apps_obj clean-apps_bin
+clean: clean-libs clean-apps_obj clean-apps_bin clean-nox
 
 clean-nox:
 	@rm -rf $(RFC_DIR)/build
@@ -81,6 +85,9 @@ clean-nox:
 
 clean-libs:
 	@rm -rf $(BUILD_LIB_DIR)
+	@for dir in $(libdirs); do \
+		rm -rf $(BUILD_OBJ_DIR)/$$dir; \
+	done
 
 clean-apps_obj:
 	@rm -rf $(BUILD_OBJ_DIR)
