@@ -146,8 +146,8 @@ def application(env, start_response):
             status = 200
             rbody = "JSON requests:\n" \
                     "GET /rftable: RouteFlow table\n" \
-                    "GET /switchs/[id]/stats: stats for switch [id]\n" \
-                    "GET /switchs/[id]/flowtable: flowtable for switch [id]\n" \
+                    "GET /topology: network topology\n" \
+                    "GET /switch/[id]: stats and flows for switch [id]\n" \
                     "GET /messages/[channel]: messages in channel [channel]\n" \
                     "\n" \
                     "Pages:\n" \

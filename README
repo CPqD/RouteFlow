@@ -240,7 +240,7 @@ the command line arguments.
 
 rftest1
    $ sudo ./rftest1 --nox
-   To stop running, press CTRL+C.
+   To stop the script, press CTRL+C.
     
    You can then log in to the LXC container b1 and try to ping b2:
    $ sudo lxc-console -n b1
@@ -252,7 +252,7 @@ rftest1
 
 rftest2
    $ sudo ./rftest2 --pox
-   To stop running, press CTRL+C.
+   To stop the script, press CTRL+C.
 
    This test should be run with a Mininet simulated network:
    http://yuba.stanford.edu/foswiki/bin/view/OpenFlow/Mininet
