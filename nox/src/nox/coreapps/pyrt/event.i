@@ -174,15 +174,6 @@ private:
     Aggregate_stats_in_event();
 };
 
-struct Flow_stats_in_event
-    : public Event
-{
-    static const std::string static_get_name();
-
-private:
-    Flow_stats_in_event();
-};
-
 struct Desc_stats_in_event
     : public Event
 {

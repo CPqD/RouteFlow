@@ -11,14 +11,15 @@ RFSERVER_ICON.src = 'images/icons/server_a.png';
 RFCONTROLLER_ICON = new Image();
 RFCONTROLLER_ICON.src = 'images/icons/server_b.png';
 
+// Browser compatibility stuff
 var labelType, useGradients, nativeTextSupport, animate;
-var rgraph = undefined;
-var switches_info;
-var tableMatches = {};
-var previous_pos = {};
-var selected_node = undefined;
-var interval_id;
 
+var rgraph = undefined; // Network graph
+var previous_pos = {}; // Keep the positions when updating
+var selected_node = undefined; // Selected node id
+var interval_id; // Update timer
+
+// From: http://thejit.org/static/v20/Jit/Examples/RGraph/example1.js
 (function() {
   var ua = navigator.userAgent,
       iStuff = ua.match(/iPhone/i) || ua.match(/iPad/i),
@@ -33,9 +34,10 @@ var interval_id;
   useGradients = nativeCanvasSupport;
   animate = !(iStuff || !nativeCanvasSupport);
 })();
-   
+//
+
 $jit.RGraph.Plot.NodeTypes.implement({
-    'of-switch': {
+    'switch': {
         'render': function(node, canvas) {
             var pos = node.pos.getc(true);
             canvas.getCtx().drawImage(SWITCH_ICON, 
@@ -50,7 +52,7 @@ $jit.RGraph.Plot.NodeTypes.implement({
         },
     },
     
-    'rf-server': {
+    'rfserver': {
         'render': function(node, canvas) {
             var pos = node.pos.getc(true);
             canvas.getCtx().drawImage(RFSERVER_ICON, pos.x - ICON_SIZE/2, pos.y - ICON_SIZE/2, ICON_SIZE, ICON_SIZE);
@@ -61,7 +63,7 @@ $jit.RGraph.Plot.NodeTypes.implement({
         }
     },
 
-    'controller': {
+    'rfproxy': {
         'render': function(node, canvas) {
             var pos = node.pos.getc(true);
             canvas.getCtx().drawImage(RFCONTROLLER_ICON, pos.x - ICON_SIZE/2, pos.y - ICON_SIZE/2, ICON_SIZE, ICON_SIZE);
@@ -73,143 +75,165 @@ $jit.RGraph.Plot.NodeTypes.implement({
     },
 });
 
-function show_info(node) {
-    var contMatch = new Array();
-    var contActions = new Array();
-    var flowsActions = new Array();
-	
-	// Find the switch info
-	var sw = undefined;
-	for (var i in switches_info) {
-	    if (switches_info[i]["id"] == node.id) {
-	        sw = switches_info[i];
-	        break;
-	    }
-	}
-	if (sw == undefined)
-	    return;
+function show_info(node, data) {
+    // We only support showing switch info for now
+    if (node.data.$type != "switch")
+        return;
 
 	// Build the right column statistics
-	var html = "<div class='section'><div class='section_title'>" + node.name + "</div>";
+	var html = "<div class='section'><div class='section_title'>" + node.id + "</div>";
+	var list = [];
 	
-	//ofp_desc_stats
-	var switchData = sw["data"]['$ofp_desc_stats'];
-	if(switchData) {
-		html += "<div class='subsection'><div class='subsection_title'>Description</div><ul class=\"switchdesc\"><li>", list = [];
-		list.push("Manufacturer: " + switchData[0]);
-		list.push("Hardware descrpition: " + switchData[1]);
-		list.push("Software description: " + switchData[2]);
-		list.push("Serial number: " + switchData[3]);
-		list.push("Datapath description: " + switchData[4]);
+	// TODO: use a loop to automate this task
+	// ofp_desc_stats
+	list = [];
+	if (data.desc != undefined) {
+		html += "<div class='subsection'><div class='subsection_title'>Description</div><ul class=\"switchdesc\"><li>";
+		list.push("Manufacturer: " + data.desc.mfr_desc);
+		list.push("Hardware descrpition: " + data.desc.hw_desc);
+		list.push("Software description: " + data.desc.sw_desc);
+		list.push("Serial number: " + data.desc.serial_num);
+		list.push("Datapath description: " + data.desc.dp_desc);
 		html = html + list.join("</li><li>") + "</li></ul></div>";
-	
-	
-	//ofp_aggregate_stats
-	switchData = sw["data"]['$ofp_aggr_stats'];
-	if(switchData) {
-		html = html + "<div class='subsection'><div class='subsection_title'>Aggregated statistics</div><ul class=\"switchdesc\"><li>", list = [];
-		list.push("Packet count: " + switchData[0]);
-		list.push("Byte count: " + switchData[1]);
-		list.push("Flow count: " + switchData[2]);
+	}
+		
+	// ofp_aggregate_stats
+	list = [];
+	if (data.aggregate != undefined) {
+		html = html + "<div class='subsection'><div class='subsection_title'>Aggregated statistics</div><ul class=\"switchdesc\"><li>";
+		list.push("Packet count: " + data.aggregate.packet_count);
+		list.push("Byte count: " + data.aggregate.byte_count);
+		list.push("Flow count: " + data.aggregate.flow_count);
 		html = html + list.join("</li><li>") + "</li></ul></div>";
 	}
 	
-	//ofp_table_stats
-	switchData = sw["data"]['$ofp_table_stats'];
-	html = html + "<div class='subsection'><div class='subsection_title'>Table statistics</div><ul class=\"switchdesc\"><li>", list = [];
-	if(switchData) {
-		list.push("Table ID: " + switchData[0][0]);
-		list.push("Name: " + switchData[0][1]);
-		list.push("Active count: " + switchData[0][2]);
-		list.push("Lookup count: " + switchData[0][3]);
-		html = html + list.join("</li><li>") + "</li></ul></div>";
-	}
+    //	//ofp_table_stats
+    //  list = [];
+    //	switchData = sw["data"]['$ofp_table_stats'];
+    //	html = html + "<div class='subsection'><div class='subsection_title'>Table statistics</div><ul class=\"switchdesc\"><li>", list = [];
+    //	if(switchData) {
+    //		list.push("Table ID: " + switchData[0][0]);
+    //		list.push("Name: " + switchData[0][1]);
+    //		list.push("Active count: " + switchData[0][2]);
+    //		list.push("Lookup count: " + switchData[0][3]);
+    //		html = html + list.join("</li><li>") + "</li></ul></div>";
+    //	}
+
 	html += "</div>"
 	// display information
 	$('#switchinfo').html(html);
-	
-	// Build the bottom flow table
-	var flows = sw["data"]['$flows'];		
+
+	// Build the bottom flow table		
 	html = "<table>" +
 	    "<tr class='header'>" +
 		    "<td>#</td>" +
-		    "<td>Matches</td>" +
+		    "<td>Match</td>" +
 		    "<td>Actions</td>" +
 		    "<td>Packets</td>" +
 		    "<td>Bytes</td>" +
 	    "</tr>";
-	var matches = "";
-
     var rowtemplate = "<tr class=\"bg\{style}\">"
-    rowtemplate += "<td class=\"{status}\">{flow}</td>"
-    rowtemplate += "<td>{matches}</td>"
+    rowtemplate += "<td>{flow}</td>"
+    rowtemplate += "<td>{match}</td>"
     rowtemplate += "<td>{actions}</td>"
-    rowtemplate += "<td>{packets}</td>"
-    rowtemplate += "<td>{bytes}</td>"
+    rowtemplate += "<td>{packet_count}</td>"
+    rowtemplate += "<td>{byte_count}</td>"
     rowtemplate += "</tr>"
-    
-    var count = 0;
-    var status = "";
-	for(var i in flows) {
-		var f = flows[i];
-		
-		var actions = f.ofp_actions[0];
-		for (j in f.ofp_actions) {
-			if(j!=0 && f.ofp_actions[j] != 'type' && f.ofp_actions[j] != 'len')
-				actions = actions + f.ofp_actions[j];
-		}
-		if(tableMatches[node.id]!=undefined && tableMatches[node.id].search(f.ofp_match)!=-1) {
-			//fluxo ja estah na flow table mas eh recente
-			if(f.ofp_match in contMatch && contMatch[f.ofp_match] > 0) {
-                --contMatch[f.ofp_match];
-                status = "flow-kinda-new";
-			// fluxo estah na flow table ha tempo
-            } else {
-				delete contMatch[f.ofp_match];
-				// as acoes para este fluxo mudaram
-				if(flowsActions && flowsActions[f.ofp_match] != undefined && flowsActions[f.ofp_match] != actions) {
-						contActions[f.ofp_match] = 5;
-					    status = "flow-action-changed";
-				} else {
-					if(contActions[f.ofp_match] && contActions[f.ofp_match] > 0) {
-                        --contActions[f.ofp_match];
-                    }
-                    if(contActions[f.ofp_match] > 0) {
-                        status = "flow-action-changed";
-                    } else {
-						delete contActions[f.ofp_match];
-					}
-				}
-			}
-		// fluxo acaba de entrar na flow table
-		} else {
-			contMatch[f.ofp_match] = 5;
-			status = "flow-new";
-		}
-		flowsActions[f.ofp_match] = actions;
-		matches = matches + f.ofp_match;
-
-        var data = {
-            "flow": f.flow,
-            "matches": f.ofp_match,
-            "actions": actions,
-            "packets": f.packet_count,
-            "bytes": f.byte_count,
-            "status": status,
-            "style": count % 2,
+    for (var i in data.flows) {
+        flow = data.flows[i];
+        var values = {
+            "flow": i,
+            "match": prettify_match(flow.match),
+            "actions": prettify_actions(flow.actions),
+            "packet_count": flow.packet_count,
+            "byte_count": flow.byte_count,
+            "style": i % 2,
         }
-        html += apply_template(rowtemplate, data);
-		count = count + 1;
-	}
-	tableMatches[node.id] = matches;
-	html = html + "</table>";
-	
+        html += apply_template(rowtemplate, values);
+    }
+	html += "</table>";
 	$('#flows').html(html);
-	}
+}
+
+function prettify_match(match) {
+    var string = "";
+    for (var m in match) {
+        if (m != "wildcards")
+            string += m + ": " + flow.match[m] + ", "
+    }
+    return string.replace(new RegExp(", $"), "");
+}
+
+function prettify_actions(actions) {
+    function get_params_list(params) {
+        var params_list = [];
+        var elements = params.split(", ");
+        for (var i in elements)
+            params_list.push(elements[i].split(": "));
+        return params_list;        
+    }
+    
+    var string = "";
+    var re = /(\w*)\[([^\]]*)\]/;
+    for (var i in actions) {
+        var result = actions[i].match(re);
+        if (result == null || result == undefined || result.length < 3) {
+            string += actions[i] + ", ";
+            continue;
+        }
+        
+        var action = result[1];
+        var params = result[2];
+        
+        // ofp_action_output
+        if (action == "ofp_action_output") {
+            action = "OUTPUT";
+            var params_list = get_params_list(params);
+            params = ""
+            for (var i in params_list) {
+                var param = params_list[i][0];
+                var value = params_list[i][1];
+                // port
+                if (param == "port") {
+                    if (parseInt(value) == 0xfffd)
+                        port = "CONTROLLER";
+                    params += "port: " + value + ", ";
+                }
+            }
+        }
+        
+        // ofp_action_dl_addr
+        else if (action == "ofp_action_dl_addr") {
+        
+            action = "";
+            var params_list = get_params_list(params);
+            params = ""
+            for (var i in params_list) {
+                var param = params_list[i][0];
+                var value = params_list[i][1];
+                // type
+                if (param == "type") {
+                    type = parseInt(value);
+                    if (type == 4)
+                        action = "SET_DL_SRC";
+                    else if (type == 5)
+                        action = "SET_DL_DST";
+                }
+                // dl_addr
+                else if (param == "dl_addr") {
+                    params += param + ": " + value + ", ";
+                }
+            }
+        }
+        
+        // append action
+        string += action + "(" + rstrip(params, ", ") + ")" + ", ";
+    }
+    return rstrip(string, ", ");
 }
 
 function network_start_updating() {
-    interval_id = setInterval("network_update()", 1000);
+    interval_id = setInterval("network_update()", 5000);
 }
 
 function network_stop_updating() {
@@ -269,8 +293,10 @@ function build() {
             
             onClick: function(node, eventInfo, e) {
                 if (node) {
+                    if (node.data.$type != "switch")
+                        return;
                     selected_node = node.id;
-                    show_info(node);
+                    node_update(node.id);
                 }
             },
 
@@ -301,22 +327,44 @@ function build() {
     });
 }
 
-function network_update() {
-    $.getJSON("data/topology.json",
-        function(data) {
+function node_update(id) {
+    $.getJSON("/switch/" + selected_node,
+        function (data) {
             if (data == null || data == undefined)
                 return;
-                
+            show_info(rgraph.graph.getNode(selected_node), data);
+        });
+}
+
+function network_update() {
+    $.getJSON("/topology",
+        function (data) {
+            if (data == null || data == undefined)
+                return;
+
             // Pre-process data
-            for (node in data["nodes"]) {
-                if (data["nodes"][node]["data"]["$type"] == "of-switch")
-                    data["nodes"][node]["data"]["$height"] = ICON_SIZE/5 + SPACING + LABEL_SIZE;
+            nodes = [];
+            var center = 0;
+            for (var i in data) {
+                var node = data[i]
+                node["name"] = node["id"];
+                // Mark rfproxy as the central node (used when creating the graph)
+                if (node["name"] == "rfproxy")
+                    center = i;
+                node["data"] = {};
+                if (node["type"] == "switch")
+                    node["data"]["$height"] = ICON_SIZE/5 + SPACING + LABEL_SIZE;
+                node["data"]["$type"] = node["type"];
+                delete node["type"];
+                node["adjacencies"] = node["links"];
+                delete node["links"];
+                nodes.push(node);
             }
             
             // If the graph hasn't been built yet, build it
             if (rgraph == undefined) {
                 build();
-                rgraph.loadJSON(data["nodes"], 1);
+                rgraph.loadJSON(nodes, center);
                 rgraph.refresh();
                 rgraph.canvas.scale(0.7, 0.7);
                 return;
@@ -328,7 +376,7 @@ function network_update() {
             });
             
             // Update
-            rgraph.loadJSON(data["nodes"]);
+            rgraph.loadJSON(nodes);
             rgraph.refresh();
             
             // Restore old positions
@@ -340,13 +388,8 @@ function network_update() {
             rgraph.plot();
             
             if (selected_node != undefined) {
-                show_info(rgraph.graph.getNode(selected_node));
+                node_update(selected_node);
             }
-    });
-    
-    $.getJSON("data/switchstats.json",
-        function(data) {
-            switches_info = data["nodes"];
     });
 }
 

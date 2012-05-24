@@ -9,6 +9,14 @@ function toHex(n, len) {
     return "0x" + n.toUpperCase();
 }
 
+function replace_all(string, old, new_) {
+    return string.replace(new RegExp(old, "g"), new_);
+}
+
+function rstrip(string, terminal) {
+    return string.replace(new RegExp(terminal + "$"), "");
+}
+
 function apply_template(template, data) {
     var code = template;
     for (var attr in data) {

@@ -1,9 +1,30 @@
 #!/bin/bash
 
 if [ "$EUID" != "0" ]; then
-  echo "You must be root to run this script. Sorry, dude!"
+  echo "You must be root to run this script."
   exit 1
 fi
+
+ACTION=""
+case "$1" in
+--pox)
+    ACTION="POX"
+    ;;
+--nox)
+    ACTION="NOX"
+    ;;
+--reset)
+    ACTION="RESET"
+    ;;
+*)
+    echo "Invalid argument: $1"
+    echo "Options: "
+    echo "    --pox: run using POX"
+    echo "    --nox: run using NOX"
+    echo "    --reset: stop running and clear data from previous executions"
+    exit
+    ;;
+esac
 
 LXCDIR=/var/lib/lxc
 RF_HOME=..
@@ -19,62 +40,81 @@ ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
 	                 --certificate=db:SSL,certificate \
 	                 --bootstrap-ca-cert=db:SSL,ca_cert \
 	                 --pidfile --detach &>> $LOG_FILE
-ovs-vswitchd --pidfile --detach	&>> $LOG_FILE
+ovs-vswitchd --pidfile --detach &>> $LOG_FILE
 
-echo "Resetting and stopping LXC VMs..."
-rm -f $LXCDIR/{rfvm1,b1,b2}/rootfs/var/run/network/ifstate &>> $LOG_FILE
-lxc-stop -n b2 &>> $LOG_FILE
-lxc-stop -n b1 &>> $LOG_FILE
-lxc-stop -n rfvm1 &>> $LOG_FILE
+reset() {
+    echo "-> Stopping any running instances of rf-server, NOX, POX, OVS and MongoDB...";
+    pkill -15 rfserver;
+    pkill -15 python2.7;
+    pkill -15 lt-nox_core;
+    pkill -15 mongod;
 
-echo "Stopping any running instances and data of rfserver, NOX, OVS and MongoDB..."
-pkill -15 rfserver &> /dev/null
-pkill -15 lt-nox_core &> /dev/null
-pkill -15 mongod &> /dev/null
-rm -r $HOME/db &>> $LOG_FILE
-rm -r /var/lib/lxc/rfvm1/rootfs/opt/rfclient
+    sudo ovs-vsctl del-br br0;
+    sudo ovs-vsctl del-br dp0;
+    sudo ovs-vsctl del-br switch1;
+    sudo ovs-vsctl emer-reset;
+    
+    echo "-> Resetting and stopping LXC VMs...";
+    lxc-stop -n rfvm1;
+    lxc-stop -n b1;
+    lxc-stop -n b2;
+        
+    rm -rf $LXCDIR/rfvm1/rootfs/var/run/network/ifstate;
 
-sudo ovs-vsctl del-br br0
-sudo ovs-vsctl del-br dp0
-sudo ovs-vsctl del-br switch1
-sudo ovs-vsctl emer-reset
+    echo "-> Deleting data from previous runs...";
+    rm -rf $HOME/db;
+    rm -rf /var/lib/lxc/rfvm1/rootfs/opt/rfclient;
+}
+reset
+trap reset 2
 
-if [ "$1" != "clear" ]; then
-    echo "Starting MongoDB..."
+if [ "$ACTION" != "RESET" ]; then
+    echo "-> Starting MongoDB..."
     mkdir $HOME/db &>> $LOG_FILE
     mongod --quiet --dbpath $HOME/db --logpath /dev/null &
-    sleep 5
+    sleep 3
 
-    echo "Starting the rfvm1 virtual machine..."
+    echo "-> Starting the rfvm1 virtual machine..."
+    # Create the rfclient dir
     mkdir /var/lib/lxc/rfvm1/rootfs/opt/rfclient &>> $LOG_FILE
+
+    # Copy the rfclient executable
     cp build/rfclient /var/lib/lxc/rfvm1/rootfs/opt/rfclient/rfclient &>> $LOG_FILE
+
     cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvm1/rootfs/usr/lib &>> $LOG_FILE
     cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvm1/rootfs/usr/lib &>> $LOG_FILE
-    
+
     echo "#!/bin/sh" > /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
     echo "sleep 5" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
+
     chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
-    
+
     lxc-start -n rfvm1 -d &>> $LOG_FILE
-
-
-    echo "Starting the management network (br0)..."
+    
+    echo "-> Starting the management network (br0)..."
     sleep 5
 	ovs-vsctl add-br br0 \
 		-- add-port br0 rfvm1.0 &>> $LOG_FILE
     ifconfig br0 up
     ifconfig br0 192.169.1.1
 
-    echo "Starting NOX and the RouteFlow network controller..."
-    ( cd nox/build/src && ./nox_core -i ptcp:6633 rfproxy --verbose="rfproxy:ANY:INFO" &>> $LOG_FILE & )
+    echo "-> Starting the controller ($ACTION) and RFPRoxy..."
+    case "$ACTION" in
+    POX)
+        ( cd pox && ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats & &>> $LOG_FILE & )
+        ;;
+    NOX)
+        ( cd nox/build/src && ./nox_core -i ptcp:6633 rfproxy --verbose="rfproxy:ANY:INFO" &>> $LOG_FILE & )
+        ;;
+    esac
     sleep 5
     
-    echo "Starting the RouteFlow server..."
+    echo "-> Starting the RFServer..."
     build/rfserver &>> $LOG_FILE &
     sleep 3
-    
-    echo "Starting the control plane network (dp0 OVS)..."
+
+    echo "-> Starting the control plane network (dp0 VS)..."
 	ovs-vsctl add-br dp0 \
 		-- add-port dp0 rfvm1.1 \
 		-- add-port dp0 rfvm1.2 &>> $LOG_FILE
@@ -82,8 +122,8 @@ if [ "$1" != "clear" ]; then
 	ovs-vsctl set-controller dp0 tcp:127.0.0.1:6633
     ifconfig dp0 up &>> $LOG_FILE
     sleep 3
-        
-    echo "Starting the sample network..."
+
+    echo "-> Starting the sample network..."
     lxc-start -n b1 -d &>> $LOG_FILE
     lxc-start -n b2 -d &>> $LOG_FILE
 	ovs-vsctl add-br switch1 \
@@ -94,13 +134,15 @@ if [ "$1" != "clear" ]; then
     
     cd - &> /dev/null
     sleep 5
-    
+
+    echo "---"    
     echo "Now we'll open this test's log."
     echo "Try pinging b1 from b2:"
     echo "  $ sudo lxc-console -n b1"
     echo "Login and run:"
     echo "  $ ping 172.31.2.2"
+    echo "You can stop this test by pressing CTRL+C."
+    echo "---"
     tail -f $LOG_FILE
 fi
-
 exit 0

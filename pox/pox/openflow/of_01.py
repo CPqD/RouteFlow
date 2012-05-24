@@ -194,7 +194,7 @@ def handle_OFPST_FLOW (con, parts):
   con.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
 
 def handle_OFPST_AGGREGATE (con, parts):
-  msg = of.ofp_aggregate_stats_reply()
+  msg = of.ofp_aggregate_stats()
   msg.unpack(parts[0].body)
   con.ofnexus.raiseEventNoErrors(AggregateFlowStatsReceived, con,
                                  parts[0], msg)

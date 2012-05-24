@@ -16,10 +16,6 @@
  * along with NOX.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "topology.hh"
-#include <fstream>
-#include <iostream>
-#include <algorithm>
-#include <time.h>
 
 #include <boost/bind.hpp>
 #include <inttypes.h>
@@ -30,9 +26,6 @@
 #include "port-status.hh"
 #include "vlog.hh"
 
-//#include "client/dbclient.h"
-//#include "mongo.h"
-
 using namespace std;
 using namespace vigil;
 using namespace vigil::applications;
@@ -42,10 +35,6 @@ namespace vigil {
 namespace applications {
 
 static Vlog_module lg("topology");
-
-//std::list<int> latitudeList;
-hash_map<datapathid, int> latitudeList;
-hash_map<datapathid, int> longitudeList;
 
 Topology::Topology(const Context* c,
                    const json_object*)
@@ -69,7 +58,6 @@ Topology::getInstance(const container::Context* ctxt, Topology*& t)
     t = dynamic_cast<Topology*>
         (ctxt->get_by_interface(container::Interface_description
                                 (typeid(Topology).name())));
-	srand ( time(NULL) );
 }
 
 void
@@ -159,14 +147,6 @@ Topology::handle_datapath_join(const Event& e)
 
     nlm_iter->second.active = true;
     nlm_iter->second.ports = dj.ports;
-
-    int latitude = rand() % 10 - 26;
-    int longitude = rand() % 10 - 50;
-    //int latitude = 10;
-    if(latitudeList.find(dj.datapath_id) == latitudeList.end()) {
-        latitudeList[dj.datapath_id] = latitude;
-	longitudeList[dj.datapath_id] = longitude;
-    }
     return CONTINUE;
 }
 
@@ -189,7 +169,6 @@ Topology::handle_datapath_leave(const Event& e)
         VLOG_ERR(lg, "Received datapath_leave for non-existing dp %"PRIx64".",
                  dl.datapath_id.as_host());
     }
-    //latitudeList.erase(dl.datapath_id);
     return CONTINUE;
 }
 
@@ -267,7 +246,7 @@ Topology::delete_port(const datapathid& dp, const Port& port)
 Disposition
 Topology::handle_link_event(const Event& e)
 {
-	
+
     const Link_event& le = assert_cast<const Link_event&>(e);
     if (le.action == Link_event::ADD) {
         add_link(le);
@@ -305,8 +284,6 @@ Topology::add_link(const Link_event& le)
     LinkPorts lp = { le.sport, le.dport };
     dlm_iter->second.push_back(lp);
     add_internal(le.dpdst, le.dport);
-
-	printNetworkLinkMap(le);
 }
 
 
@@ -342,16 +319,12 @@ Topology::remove_link(const Link_event& le)
                     topology.erase(nlm_iter);
                 }
             }
-	
-	printNetworkLinkMap(le);
             return;
         }
     }
 
     lg.err("Remove link event for non-existing link %"PRIx64":%hu --> %"PRIx64":%hu",
            le.dpsrc.as_host(), le.sport, le.dpdst.as_host(), le.dport);
-
-	//printNetworkLinkMap(le);
 }
 
 
@@ -406,176 +379,6 @@ Topology::remove_internal(const datapathid& dp, uint16_t port)
 }
 
 }
-
-/*
-        Uma maneira aparentemente bem mais simples eh passar link_event (le) como parametro para remove_internal e add_internal
-        e repassar para printNetworkLinkMap. printNetworkLinkMap imprime le.dpsrc, le.dpdst, le.sport e le.dport.
-        Esse metodo nao foi testado.
-*/
-void
-Topology::printNetworkLinkMap(const Link_event& le) {
-        NetworkLinkMap::iterator nlm_iter = topology.find(le.dpsrc);
-
-//        std::cout << "######################\n";
-//        std::cout << "Enlace adicionado\n";
-//        std::cout << "######################\n";
-//        std::cout << le.dpsrc.string() << ":" << le.sport <<  " -> "<< le.dpdst.string() << ":" << le.dport << "\n";
-
-        nlm_iter = topology.begin();
-        LinkSet ls;
-//        std::cout << "######################\n";
-//        std::cout << "Topologia\n";
-//        std::cout << "######################\n";
-        while(nlm_iter != topology.end()) {
-
-                DatapathLinkMap::iterator dplm_iter = nlm_iter->second.outlinks.begin();
-                while(dplm_iter != nlm_iter->second.outlinks.end()) {
-
-                        ls = dplm_iter->second;
-                        LinkSet::iterator ls_iter = ls.begin();
-                        while(ls_iter != ls.end()) {
-//                                std::cout <<  nlm_iter->first.string() << ":" << ls_iter->src << " -> " << dplm_iter->first.string() <<":" << ls_iter->dst <<"\n";
-                                ls_iter++;
-                        }
-                        dplm_iter++;
-                }
-		nlm_iter++;
-        }
-
-	
-	hash_map<datapathid, int>::iterator it;
-//	for(it=latitudeList.begin(); it!=latitudeList.end(); ++it) {
-//		std::cout << "datapath: " << it->first.string() << "; latitude :" << it->second << "\n";
-//	}
-    
-	ofstream file("../../../rfweb/data/topology.json");
-	if (file.is_open())
-	{
-		file << "{ \"nodes\": [\n";
-		file << "\t{\n";
-                file << "\t\t\"id\": \"rf-server\",\n";
-                file << "\t\t\"name\": \"RouteFlow Server\",\n";
-                file << "\t\t\"adjacencies\": [\n";
-                file << "\t\t\t{\n";
-                file << "\t\t\t\t\"nodeTo\": \"controller\",\n";
-                file << "\t\t\t\t\"nodeFrom\": \"rf-server\",\n";
-                file << "\t\t\t\t\"data\": {\n";
-                file << "\t\t\t\t\t\"$color\": \"#145D80\"\n";
-                file << "\t\t\t\t}\n";
-                file << "\t\t\t}\n";
-                file << "\t\t],\n";
-                file << "\t\t\"data\": {\n";
-                file << "\t\t\t\"$type\": \"rf-server\",\n";
-		file << "\t\t\t\"timer\": " << time(NULL) <<",\n";
-                file << "\t\t\t\"$dim\": 20,\n";
-                file << "\t\t\t\"$x\": -50,\n";
-                file << "\t\t\t\"$y\": -170,\n";
-                file << "\t\t\t\"latitude\": -21.950884,\n";
-                file << "\t\t\t\"longitude\": -43.775578\n";
-                file << "\t\t}\n";
-                file << "\t},\n";
-		file << "\t{\n";
-                file << "\t\t\"id\": \"controller\",\n";
-                file << "\t\t\"name\": \"Controller\",\n";
-                file << "\t\t\"adjacencies\": [],\n";
-                file << "\t\t\"Label\": {\n";
-                file << "\t\t\t\"$color\": \"#\"\n";
-                file << "\t\t},\n";
-                file << "\t\t\"data\": {\n";
-                file << "\t\t\t\"$type\": \"controller\",\n";
-                file << "\t\t\t\"timer\": " << time(NULL) <<",\n";
-                file << "\t\t\t\"$dim\": 25,\n";
-                file << "\t\t\t\"$x\": 100,\n";
-                file << "\t\t\t\"$y\": -170,\n";
-                file << "\t\t\t\"latitude\": -22.002466,\n";
-                file << "\t\t\t\"longitude\": -46.062749\n";
-                file << "\t\t}\n";
-                file << "\t}";
-
-		NetworkLinkMap::iterator nlm_iter = topology.begin();
-		for(int i = 0; i<topology.size(); i++) {
-			int aux = nlm_iter->first.string().find_first_not_of("0");
-			if(aux<9) {
-				nlm_iter++;
-				continue;
-			}
-			file << ",\n";
-			file << "\t{\n";
-			stringstream convert (nlm_iter->first.string().erase(0, aux));
-			int d;
-			convert >> std::hex >> d;
-			file << "\t\t\"id\": \"" << dec << d << "\",\n";
-			file << "\t\t\"name\": \"switch" << dec <<  d << "\",\n";
-			file << "\t\t\"adjacencies\": [\n";
-			file << "\t\t\t{\n";
-                        file << "\t\t\t\t\"nodeTo\": \"controller\",\n";
-                        file << "\t\t\t\t\"nodeFrom\": \"" << dec << d << "\",\n";
-                        file << "\t\t\t\t\"data\": {\n";
-                        file << "\t\t\t\t\t\"$color\": \"#145D80\"\n";
-                        file << "\t\t\t\t}\n";
-                        file << "\t\t\t}";
-			if (nlm_iter == topology.end()) {
-                        	file << "************ ERROR ****************\n";
-                        	return;
-
-                	} else {
-				DatapathLinkMap::iterator dplm_iter = nlm_iter->second.outlinks.begin();
-				if(dplm_iter != nlm_iter->second.outlinks.end())
-                                	file << ",\n";
-				else
-                                	file << "\n";
-
-				while(dplm_iter != nlm_iter->second.outlinks.end()) {
-					file << "\t\t\t{\n";
-					int aux2 = dplm_iter->first.string().find_first_not_of("0");
-
-					stringstream convert1 (nlm_iter->first.string().erase(0, aux));
-		                        int d1;
-                		        convert1 >> std::hex >> d1;
-
-					stringstream convert2 (dplm_iter->first.string().erase(0, aux2));
-		                        int d2;
-                		        convert2 >> std::hex >> d2;
-
-					file << "\t\t\t\t\"nodeTo\": \"" << dec << d2 << "\",\n";
-					file << "\t\t\t\t\"nodeFrom\": \"" << dec << d1 << "\",\n";
-                	                file << "\t\t\t\t\"data\": {\n";
-                        	        file << "\t\t\t\t\t\"$color\": \"#010101\"\n";
-                                	file << "\t\t\t\t}\n";
-         	                        dplm_iter++;
-                	                file << "\t\t\t}";
-					if(dplm_iter != nlm_iter->second.outlinks.end())
-                                        	file << ",\n";
-                                	else
-                                        	file << "\n";
-				}
-			}
-
-			file << "\t\t],\n";
-			file << "\t\t\"data\": {\n";
-	                file << "\t\t\t\"$type\": \"of-switch\",\n";
-        	        file << "\t\t\t\"timer\": " << time(NULL) <<",\n";
-                	file << "\t\t\t\"$dim\": 20,\n";
-			//int latitude = rand() % 10 - 23;
-			//int longitude = rand() % 10 - 48;
-                	//file << "\t\t\t\"latitude\": -23.538609,\n";
-	                //file << "\t\t\t\"longitude\": -46.682607\n";
-			file << "\t\t\t\"latitude\": " << latitudeList[nlm_iter->first] << ",\n";
-                        file << "\t\t\t\"longitude\": " << longitudeList[nlm_iter->first] << "\n";
-        	        file << "\t\t}\n";
-                	file << "\t}";
-			nlm_iter++;
-		}
-		file << "]}";
-
-		file.close();
-		
-	}
-	else std::cout << "Unable to open topology file";
-	
 }
-
-
-} //end namespace vigil
 
 REGISTER_COMPONENT(container::Simple_component_factory<Topology>, Topology);

@@ -203,6 +203,7 @@ body {
     width: 100%;
 }
 
+/* TODO: rename */
 ul.switchdesc {
     list-style: none;
     margin: 2px;

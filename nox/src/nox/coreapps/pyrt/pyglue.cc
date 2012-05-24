@@ -29,7 +29,6 @@
 #include "port.hh"
 #include "table-stats-in.hh"
 #include "port-stats-in.hh"
-#include "queue-stats-in.hh"
 #include "pycontext.hh"
 #include "pyrt.hh"
 #include "vlog.hh"
@@ -186,7 +185,8 @@ from_python(PyObject *pymatch)
     if (nw_src) {
         match.nw_src = htons(from_python<uint32_t>(nw_src));
         match.wildcards &= htonl(~OFPFW_NW_SRC_MASK);
-        PyObject* nw_src_n_wild = PyDict_GetItemString(pymatch, "nw_src_n_wild");
+        PyObject* nw_src_n_wild = PyDict_GetItemString(pymatch,
+                                                       "nw_src_n_wild");
         if (nw_src_n_wild) {
             unsigned int n_wild = from_python<unsigned int>(nw_src_n_wild);
             if (n_wild > 0) {
@@ -202,7 +202,8 @@ from_python(PyObject *pymatch)
     if (nw_dst) {
         match.nw_dst = htons(from_python<uint32_t>(nw_dst));
         match.wildcards &= htonl(~OFPFW_NW_DST_MASK);
-        PyObject* nw_dst_n_wild = PyDict_GetItemString(pymatch, "nw_dst_n_wild");
+        PyObject* nw_dst_n_wild = PyDict_GetItemString(pymatch,
+                                                       "nw_dst_n_wild");
         if (nw_dst_n_wild) {
             unsigned int n_wild = from_python<unsigned int>(nw_dst_n_wild);
             if (n_wild > 0) {
@@ -366,8 +367,8 @@ to_python(const Table_stats& ts)
     ret = Py_BuildValue((char*)"{s:l, s:s#, s:l, s:l, s:S, s:S}", 
             "table_id", ts.table_id, 
             "name", ts.name.c_str(), ts.name.size(),
-            "max_entries", ts.max_entries, 
-            "active_count", ts.active_count, 
+            "max_entries",   ts.max_entries, 
+            "active_count",  ts.active_count, 
             "lookup_count", pyo_lookup_count,
             "matched_count", pyo_matched_count );
 error: 
@@ -502,193 +503,12 @@ to_python(const ofp_flow_stats& fs)
     return dict;
 }
 
-/* This macro is used to help build the action list for the to_python for
- * Flow_stats */
-
-#define ACTION(__t) if (sizeof(__t) != len) break; \
-  bad_length = false; \
-  const __t * a = reinterpret_cast<const __t *>(curr_act);
-
 template <>
 PyObject*
 to_python(const Flow_stats& fs)
 {
-    /* create the same dict as ofp_flow_stats */
     PyObject* dict = to_python(static_cast<const ofp_flow_stats&>(fs));
-
-    /* form the action list */
-    PyObject* action_list = PyList_New(0);
-    for (int i = 0; i < fs.v_actions.size(); i++)
-    {
-        const ofp_action_header *curr_act = &fs.v_actions[i];
-
-        if (NULL == curr_act) {
-            VLOG_ERR(lg, "Found null action in flow stats action list.");
-            continue;
-        }
-
-        PyObject *action = PyDict_New();
-
-        /* type and len common to all actions */
-        uint16_t type = ntohs(curr_act->type);
-        uint16_t len = ntohs(curr_act->len);
-
-        pyglue_setdict_string(action, "type", to_python(type));
-	pyglue_setdict_string(action, "len", to_python(len));
-
-        bool bad_length = true; // Set to false by ACTION macro
-
-        /* form an action dictionary based on the action type */
-        switch (type) {
-            case OFPAT_OUTPUT:
-            {
-                ACTION(ofp_action_output);
-                uint16_t port = ntohs(a->port);
-
-                pyglue_setdict_string(action, "port", to_python(port));
-
-                /* max_len is only meaningful if outputting to controller */
-                if (OFPP_CONTROLLER == port) {
-                    pyglue_setdict_string(action, "max_len",
-                      to_python(ntohs(a->max_len)));
-                }
-                break;
-            }
-            case OFPAT_STRIP_VLAN:
-            {
-		/* no struct beyond the basic header */
-                ACTION(ofp_action_header);
-                break;
-            }
-            case OFPAT_SET_VLAN_VID:
-            {
-                ACTION(ofp_action_vlan_vid);
-                pyglue_setdict_string(action, "vlan_vid",
-                  to_python(ntohs(a->vlan_vid)));
-                break;
-            }
-            case OFPAT_SET_VLAN_PCP:
-            {
-                ACTION(ofp_action_vlan_pcp);
-                pyglue_setdict_string(action, "vlan_pcp",
-                  to_python(a->vlan_pcp));
-                break;
-            }
-            case OFPAT_SET_DL_SRC:
-            case OFPAT_SET_DL_DST:
-            {
-                ACTION(ofp_action_dl_addr);
-		if (type == OFPAT_SET_DL_SRC) {
-                    pyglue_setdict_string(action, "dl_src", to_python(ethernetaddr(a->dl_addr)));
-                } else {
-                    pyglue_setdict_string(action, "dl_dst", to_python(ethernetaddr(a->dl_addr)));
-                }
-                break;
-            }
-            case OFPAT_SET_NW_SRC:
-            case OFPAT_SET_NW_DST:
-            {
-                ACTION(ofp_action_nw_addr);
-                if (type == OFPAT_SET_NW_SRC) {
-                    pyglue_setdict_string(action, "nw_src",
-                      to_python(ntohl(a->nw_addr)));
-                } else {
-                    pyglue_setdict_string(action, "nw_dst",
-                      to_python(ntohl(a->nw_addr)));
-                }
-                break;
-            }
-            case OFPAT_SET_NW_TOS:
-            {
-                ACTION(ofp_action_nw_tos);
-                pyglue_setdict_string(action, "nw_tos", to_python(a->nw_tos));
-		break;
-            }
-            case OFPAT_SET_TP_SRC:
-            {
-                ACTION(ofp_action_tp_port);
-                pyglue_setdict_string(action, "tp_src", to_python(ntohs(a->tp_port)));
-                break;
-            }
-            case OFPAT_SET_TP_DST:
-            {
-                ACTION(ofp_action_tp_port);
-                pyglue_setdict_string(action, "tp_dst", to_python(ntohs(a->tp_port)));
-                break;
-            }
-            case OFPAT_ENQUEUE:
-            {
-                ACTION(ofp_action_enqueue);
-                pyglue_setdict_string(action, "port", to_python(ntohs(a->port)));
-                pyglue_setdict_string(action, "queue_id", to_python(ntohl(a->queue_id)));
-                break;
-            }
-            case OFPAT_VENDOR:
-            {
-                ACTION(ofp_action_vendor_header);
-                pyglue_setdict_string(action, "vendor", to_python(ntohl(a->vendor)));
-		break;
-            }
-            default:
-            {
-                VLOG_INFO(lg, "Action with unknown type in Flow_stats.");
-                break;
-            }
-        }
-
-        if (bad_length) {
-            // ... just to silence it. We will improve it in the future.
-            //VLOG_ERR(lg, "Action with incorrect length in Flow_stats.");
-            Py_XDECREF(action);
-        } else {
-            /* add the action to the action list */
-            if (PyList_Append(action_list, action) < 0) {
-                Py_XDECREF(action);
-                VLOG_ERR(lg, "Could not add action dict to action list.");
-            }
-        }
-    }
-
-    /* add the action list to the flow stats dict */
-    pyglue_setdict_string(dict, "actions", action_list);
-
-    return dict;
-
-    //PyObject* dict = to_python(static_cast<const ofp_flow_stats&>(fs));
     /* XXX actions */
-    //return dict;
-
-/*    PyObject* dict = to_python(static_cast<const ofp_flow_stats&>(fs));
-
-    PyObject *list = PyList_New(0);
-    for (int i=0; i<fs.v_actions.size(); ++i) {
-        PyObject *ts = to_python(fs.v_actions[i]);
-        if (PyList_Append(list, ts) < 0) {
-            Py_XDECREF(list);
-            Py_XDECREF(ts);
-            list = NULL;
-        }
-        Py_XDECREF(ts);
-    }
-
-    pyglue_setdict_string(dict, "actions", list);
-    XXX actions */
-    /*return dict;*/
-}
-
-#undef ACTION
-
-template <>
-PyObject*
-to_python(const ofp_action_header& a)
-{
-    PyObject* dict = PyDict_New();
-    if (!dict) {
-        return 0;
-    }
-    pyglue_setdict_string(dict, "type", to_python(a.type));
-    pyglue_setdict_string(dict, "len", to_python(a.len));
-
     return dict;
 }
 
@@ -751,23 +571,6 @@ to_python(const ofp_match& m)
 template <>
 PyObject*
 to_python(const std::vector<Table_stats>& p)
-{
-    PyObject *list = PyList_New(0);
-    for (int i=0; i<p.size(); ++i) {
-        PyObject *ts = to_python(p[i]);
-        if (PyList_Append(list, ts) < 0) {
-            Py_XDECREF(list);
-            Py_XDECREF(ts);
-            return NULL;
-        }
-        Py_XDECREF(ts);
-    }
-    return list;
-}
-
-template <>
-PyObject*
-to_python(const std::vector<Flow_stats>& p)
 {
     PyObject *list = PyList_New(0);
     for (int i=0; i<p.size(); ++i) {

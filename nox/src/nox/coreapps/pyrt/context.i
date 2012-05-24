@@ -122,9 +122,6 @@ public:
                        ethernetaddr addr, uint32_t mask, uint32_t config);
     void send_aggregate_stats_request(uint64_t datapath_ids, const
         struct ofp_match& match, uint8_t table_id);
-    void send_flow_stats_request(uint64_t datapath_ids, const
-        struct ofp_match& match, uint8_t table_id);
-
 private:
     PyContext();
 

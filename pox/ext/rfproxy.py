@@ -12,8 +12,8 @@ ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, RFPROXY_ID)
 
 conn = mongo.Connection()
 rftable = conn[MONGO_DB_NAME][RF_TABLE_NAME]
-        
-        
+
+
 class DatapathJoin(MongoIPC.MongoIPCMessage):
     def __init__(self, **kwargs):
         MongoIPC.MongoIPCMessage.__init__(self, DATAPATH_JOIN, **kwargs)
@@ -50,6 +50,15 @@ class VMMap(MongoIPC.MongoIPCMessage):
         string += "  " + MongoIPC.MongoIPCMessage.str(self).replace("\n", "\n  ")
         return string
 
+def send_ofmsg(dp_id, ofmsg, success, fail):
+    topology = core.components['topology']
+    switch = topology.getEntityByID(dp_id)
+    if switch is not None and switch.connected:
+        switch.send(ofmsg)
+        log.info(success)
+    else:
+        log.debug(fail)
+
 class RFProcessor:
     def process(self, from_, to, channel, msg):
         topology = core.components['topology']
@@ -59,34 +68,44 @@ class RFProcessor:
             operation_id = int(msg["operation_id"])
 
             ofmsg = create_config_msg(operation_id)
-            switch = topology.getEntityByID(dp_id)
-            switch.send(ofmsg)
+            send_ofmsg(dp_id, ofmsg,
+                       "Flow modification (config) sent to datapath %i" % dp_id,
+                       "Switch is disconnected, cannot send flow modification (config)")
         elif type_ == FLOW_MOD:
-            print "Installing flow mod to datapath %s" % msg["dp_id"]
             dp_id = int(msg["dp_id"])
-            
+
             netmask = str(msg["netmask"])
             # TODO: fix this. It was just to make it work...
             netmask = netmask.count("255")*8
-            
+
             address = str(msg["address"]) + "/" + str(netmask)
-            
+
             src_hwaddress = str(msg["src_hwaddress"])
             dst_hwaddress = str(msg["dst_hwaddress"])
             dst_port = int(msg["dst_port"])
-            
-            ofmsg = create_flow_install_msg(address, netmask, src_hwaddress, dst_hwaddress, dst_port)
-            
-            switch = topology.getEntityByID(dp_id)
-            switch.send(ofmsg)
-            
+
+            if (not msg["is_removal"]):
+                ofmsg = create_flow_install_msg(address, netmask, src_hwaddress, dst_hwaddress, dst_port)
+                send_ofmsg(dp_id, ofmsg,
+                           "Flow modification (install) sent to datapath %i" % dp_id,
+                           "Switch is disconnected, cannot send flow modification (install)")
+            else:
+                ofmsg = create_flow_remove_msg(address, netmask, src_hwaddress)
+                send_ofmsg(dp_id, ofmsg,
+                           "Flow modification (removal) sent to datapath %i" % dp_id,
+                           "Switch is disconnected, cannot send flow modification (removal)")
+                ofmsg = create_temporary_flow_msg(address, netmask, src_hwaddress)
+                send_ofmsg(dp_id, ofmsg,
+                           "Flow modification (temporary) sent to datapath %i" % dp_id,
+                           "Switch is disconnected, cannot send flow modification (temporary)")
+
 class RFFactory(IPC.IPCMessageFactory):
     def build_for_type(self, type_):
         if type_ == DATAPATH_CONFIG:
             return DatapathConfig()
         if type_ == FLOW_MOD:
             return FlowMod()
-        
+
 def ofm_match_dl(ofm, match, value):
     ofm.match.wildcards &= ~match;
 
@@ -161,9 +180,8 @@ def create_flow_install_msg(ip, mask, srcMac, dstMac, dstPort):
     ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
     if (MATCH_L2):
 	    ofm_match_dl(ofm, OFPFW_DL_DST, srcMac)
-	    
+
     ofm.match.set_nw_dst(ip)
-    
     ofm.priority = OFP_DEFAULT_PRIORITY + mask
     ofm.command = OFPFC_ADD
     if (mask == 32):
@@ -187,7 +205,7 @@ def create_flow_remove_msg(ip, mask, srcMac):
     if (MATCH_L2):
 	    ofm_match_dl(ofm, OFPFW_DL_DST, srcMac)
 
-    ofm_match_nw(ofm, ((31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip)
+    ofm.match.set_nw_dst(ip)
     ofm.priority = OFP_DEFAULT_PRIORITY + mask
     ofm.command = OFPFC_DELETE_STRICT
     return ofm
@@ -200,8 +218,7 @@ def create_temporary_flow_msg(ip, mask, srcMac):
     if (MATCH_L2):
 	    ofm_match_dl(ofm, OFPFW_DL_DST, srcMac)
 
-    ofm_match_nw(ofm, ((31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip)
-
+    ofm.match.set_nw_dst(ip)
     ofm.priority = OFP_DEFAULT_PRIORITY + mask
 
     ofm.command = OFPFC_ADD
@@ -221,65 +238,62 @@ def dpid_to_switchname(dpid):
     return switchname
 
 def handle_connectionup(event):
-    print "DP is up, installing config flows...", dpid_to_switchname(event.dpid)
+    log.info("Datapath id=%s is up, installing config flows...", dpid_to_switchname(event.dpid))
     topology = core.components['topology']
-    msg = DatapathJoin(dp_id=str(event.dpid), 
-                       n_ports=str((len(topology.getEntityByID(event.dpid).ports) - 1)), 
+    msg = DatapathJoin(dp_id=str(event.dpid),
+                       n_ports=str((len(topology.getEntityByID(event.dpid).ports) - 1)),
                        is_rfvs=(event.dpid == RFVS_DPID))
     ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
 
 def packet_out(data, dp_id, outport):
-    try:
-        msg = ofp_packet_out()
-        msg.actions.append(ofp_action_output(port=outport))
-        msg.data = data
-        msg.in_port = OFPP_NONE
-        topology = core.components['topology']
-        switch = topology.getEntityByID(dp_id)
+    msg = ofp_packet_out()
+    msg.actions.append(ofp_action_output(port=outport))
+    msg.data = data
+    msg.in_port = OFPP_NONE
+    topology = core.components['topology']
+    switch = topology.getEntityByID(dp_id)
+    if switch.connected:
         switch.send(msg)
-    except Exception as e:
-        print e
-    
-def handle_packetin(event):
-    try:
-        packet = event.parsed
-        
-        if packet.type == ethernet.LLDP_TYPE:
-            return
+    else:
+        log.debug("Switch is disconnected, can't send packet out")
 
-        if packet.type == 0x0A0A:
-            vm_id, vm_port = struct.unpack("QB", packet.raw[14:])
-            dp_id = event.dpid
-            in_port = event.port
-            msg = VMMap(vm_id=str(vm_id), 
-                        vm_port=str(vm_port), 
-                        vs_id=str(dp_id), 
-                        vs_port=str(in_port))
-            ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
+def handle_packetin(event):
+    packet = event.parsed
+
+    if packet.type == ethernet.LLDP_TYPE:
+        return
+
+    if packet.type == 0x0A0A:
+        vm_id, vm_port = struct.unpack("QB", packet.raw[14:])
+        dp_id = event.dpid
+        in_port = event.port
+        msg = VMMap(vm_id=str(vm_id),
+                    vm_port=str(vm_port),
+                    vs_id=str(dp_id),
+                    vs_port=str(in_port))
+        ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
+        return
+
+    results = rftable.find({VS_ID: str(event.dpid)})
+    if results.count() == 0 or results[0][VM_ID] == "":
+        results = rftable.find({VS_ID: {"$ne": ""}, DP_ID: str(event.dpid), DP_PORT: str(event.port)})
+        if results.count() == 0:
+            log.debug("Datapath not associated with a VM")
             return
-        
-        results = rftable.find({VS_ID: str(event.dpid)})
-        if results.count() == 0 or results[0][VM_ID] == "":
-            results = rftable.find({VS_ID: {"$ne": ""}, DP_ID: str(event.dpid), DP_PORT: str(event.port)})
-            if results.count() == 0:
-                # log.info("Datapath not associated with a VM")
-                return
-            else:
-                vs_id = int(results[0][VS_ID])
-                vs_port = int(results[0][VS_PORT])
-                packet_out(event.data, vs_id, vs_port)
         else:
-            results = rftable.find({VS_PORT: str(event.port)})
-            if results.count() == 0 or results[0][DP_ID] == "":
-                # log.info("Datapath not associated with a VM")
-                return
-            else:
-                dp_id = int(results[0][DP_ID])
-                dp_port = int(results[0][DP_PORT])
-                packet_out(event.data, dp_id, dp_port)
-    except Exception as e:
-        print e
-                
+            vs_id = int(results[0][VS_ID])
+            vs_port = int(results[0][VS_PORT])
+            packet_out(event.data, vs_id, vs_port)
+    else:
+        results = rftable.find({VS_PORT: str(event.port)})
+        if results.count() == 0 or results[0][DP_ID] == "":
+            log.debug("Datapath not associated with a VM")
+            return
+        else:
+            dp_id = int(results[0][DP_ID])
+            dp_port = int(results[0][DP_PORT])
+            packet_out(event.data, dp_id, dp_port)
+
 def launch ():
     core.openflow.addListenerByName("ConnectionUp", handle_connectionup)
     core.openflow.addListenerByName("PacketIn", handle_packetin)

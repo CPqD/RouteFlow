@@ -82,20 +82,24 @@ def messages(env, conn):
         return (404, "Channel not specified", JSON)
 
 
-def switches(env, conn):
+def switch(env, conn):
     id_ = shift_path_info(env)
     if id_ != None and id_ != "":
-        attr = shift_path_info(env)
-        if attr == "stats":
-            return (200, "Switch stats for switch={0}".format(id_), JSON)
-        elif attr == "flowtable":
-            return (200, "Flow table for switch={0}".format(id_), JSON)
-        else:
-            return (404, "Invalid switch attribute", JSON)
+        switch = conn.db.rfstats.find_one(id_)
+        return (200, json.dumps(switch["data"], default=bson.json_util.default), JSON)
     else:
         return (404, "Switch not specified", JSON)
 
-
+def topology(env, conn):
+    elements_list = []
+    elements = conn.db.rfstats.find()
+    for element in elements:
+        element["id"] = element["_id"]
+        del element["_id"]
+        del element["data"]
+        elements_list.append(element)
+    return (200, json.dumps(elements_list, default=bson.json_util.default), JSON)
+        
 def rftable(env, conn):
     entries = []
     for doc in conn.db.rftable.find():
@@ -124,8 +128,10 @@ def application(env, start_response):
 
     if (path == "rftable"):
         status, rbody, ctype = rftable(env, db_conn)
-    elif (path == "switches"):
-        status, rbody, ctype = switches(env, db_conn)
+    elif (path == "topology"):
+        status, rbody, ctype = topology(env, db_conn)        
+    elif (path == "switch"):
+        status, rbody, ctype = switch(env, db_conn)
     elif (path == "messages"):
         status, rbody, ctype = messages(env, db_conn)
     else:

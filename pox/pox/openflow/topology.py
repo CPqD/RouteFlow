@@ -82,8 +82,10 @@ class OpenFlowTopology (EventMixin):
       sw1.ports[link.port1].addEntity(sw2, single=True)
       sw2.ports[link.port2].addEntity(sw1, single=True)
     elif event.removed:
-      sw1.ports[link.port1].entities.remove(sw2)
-      sw2.ports[link.port2].entities.remove(sw1)
+      if sw2 in sw1.ports[link.port1].entities:
+        sw1.ports[link.port1].entities.remove(sw2)
+      if sw1 in sw2.ports[link.port2].entities:
+        sw2.ports[link.port2].entities.remove(sw1)
 
   def _handle_ComponentRegistered (self, event):
     """

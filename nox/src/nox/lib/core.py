@@ -198,7 +198,7 @@ class Component:
             
 
     def send_openflow_packet(self, dp_id, packet, actions, 
-                             inport=openflow.OFPP_NONE):
+                             inport=openflow.OFPP_CONTROLLER):
         """
         sends an openflow packet to a datapath
 
@@ -221,7 +221,7 @@ class Component:
             raise Exception('Bad argument')
 
     def send_openflow_buffer(self, dp_id, buffer_id, actions, 
-                             inport=openflow.OFPP_NONE):
+                             inport=openflow.OFPP_CONTROLLER):
         """
         Tells a datapath to send out a buffer
         
@@ -272,7 +272,7 @@ class Component:
     # Former PyAPI methods
 
     def send_openflow(self, dp_id, buffer_id, packet, actions,
-                      inport=openflow.OFPP_NONE):
+                      inport=openflow.OFPP_CONTROLLER):
         """
         Sends an openflow packet to a datapath.
 
@@ -528,14 +528,6 @@ class Component:
     def register_for_desc_stats_in(self, handler):
         self.register_handler(Desc_stats_in_event.static_get_name(),
                               gen_ds_in_cb(handler))
-
-    ###############################################################################
-    # Minha funcao para fazer o registro do flow_stats_in
-    # (Diogo)
-    ###############################################################################
-    def register_for_flow_stats_in(self, handler):
-        self.register_handler(Flow_stats_in_event.static_get_name(),
-                              gen_fs_in_cb(handler))
 
     def register_for_datapath_leave(self, handler):
         """

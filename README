@@ -11,7 +11,8 @@ RouteFlow for providing virtualized IP routing services on one or more OpenFlow
 switches.
 
 RouteFlow relies on the following technologies:
-- NOX and OpenFlow v1.0 as the communication protocol for controlling switches.
+- NOX/POX and OpenFlow v1.0 as the communication protocol for controlling 
+  switches.
 - Open vSwitch to provide the connectivity within the virtual environment where
   Linux virtual machines may run the Quagga routing engine.
 - MongoDB as a central database and IPC.
@@ -35,10 +36,12 @@ the rfproxy to instruct it about when to configure flows and also to
 configure the Open vSwitch to maintain the connectivity in the virtual
 environment formed by the set of registered VMs.
 
-- rfproxy is a NOX (OpenFlow controller) application responsible for the
-interactions with the OpenFlow switches (identified by datapaths) via the
-OpenFlow protocol. It listens to instructions from the RFServer and also
-notifies whenever a switch joins or leavens the network.
+- rfproxy is an application (for NOX and POX) responsible for the interactions 
+with the OpenFlow switches (identified by datapaths) via the OpenFlow protocol. 
+It listens to instructions from the RFServer and also notifies whenever a 
+switch joins or leaves the network.
+  We recommend running POX when you are experimenting and testing your network.
+You can use NOX though if you need or want (for production maybe).
 
 There is also a library of common functions (rflib). It defines the IPC, a
 central table for RouteFlow state data and utilities like custom types for IP
@@ -64,7 +67,7 @@ M:1      \ RFProtocol
 +-------------------+
 |      rfproxy      |
 |-------------------|
-|        NOX        |
+|      NOX/POX      |
 +-------------------+
          \
 1:N      \ OpenFlow Protocol
@@ -75,9 +78,7 @@ M:1      \ RFProtocol
 
 
 === Building ===
-These instructions are tested on Ubuntu 11.04. The version of the NOX controller
-we are using does not compile under newer versions of Ubuntu (11.10, 12.04).
-
+These instructions are tested on Ubuntu 11.04.
 
 ** Open vSwitch **
 1) Install the dependencies:
@@ -168,6 +169,11 @@ $ sudo pip install pymongo
 
 
 ** NOX install instructions **
+These instructions are only necessary if you want to run RouteFlow using NOX.
+The version of the NOX controller we are using does not compile under newer 
+versions of Ubuntu (11.10, 12.04). You can use POX, which doesn't require 
+compiling. 
+
 1) Install the dependencies:
 $ sudo apt-get install autoconf automake g++ libtool swig make git-core \
   libboost-dev libboost-test-dev libboost-filesystem-dev libssl-dev \
@@ -229,25 +235,24 @@ The folder rftest contains all that is needed to create and run two test cases.
 First, create the LXC containers that will run as virtual machines:
    $ sudo ./create
 
-Test 1
-   $ sudo ./rftest1
+In the tests below, you can choose to run with either NOX or POX by changing
+the command line arguments.
 
+rftest1
+   $ sudo ./rftest1 --nox
+   To stop running, press CTRL+C.
+    
    You can then log in to the LXC container b1 and try to ping b2:
    $ sudo lxc-console -n b1
    And inside b1:
    # ping 172.31.2.2
 
-   To stop running:
-   $ sudo ./rftest1 clear
-
    For more details on this test, see:
    http://sites.google.com/site/routeflow/documents/first-routeflow
 
-Test 2
-   $ sudo ./rftest2
-
-   To stop running:
-   $ sudo ./rftest2 clear
+rftest2
+   $ sudo ./rftest2 --pox
+   To stop running, press CTRL+C.
 
    This test should be run with a Mininet simulated network:
    http://yuba.stanford.edu/foswiki/bin/view/OpenFlow/Mininet
@@ -266,19 +271,14 @@ Test 2
    Wait for the network to converge (it should take a few seconds), and try to
    ping:
    mininet> pingall
-
-   You'll need to setup the network using virtual machines, and the
-   configuration will depend on the chosen technology. If you have questions
-   about setting up RouteFlow on a particular technology, we might be able to
-   help. See the section "Support".
+   
+   By default, this test will use the virtual machines (LXC containers) created 
+   by the "create" script mentioned above. You can use other virtualization 
+   technologies. If you have experience with or questions about setting up 
+   RouteFlow on a particular technology, contact us! See the section "Support".
 
    For more details on this test, see:
    http://sites.google.com/site/routeflow/documents/tutorial2-four-routers-with-ospf
-
-POX
-   Experimental support for POX is included. There are versions of the tests
-   above written to run using POX (rftest*_pox). Note however that rfweb and
-   SNMP support won't work.
 
 
 === Web interface ===
@@ -286,9 +286,13 @@ The module rfweb provides an web application to inspect the network, showing
 topology, status and statistics. The application is written in Python using the
 WSGI specification: http://wsgi.readthedocs.org/en/latest/
 
+The web interface only works when running under POX.
+
 It's possible to run the application in several servers, and a simple server is
 provided in rfweb_server.py. This server is very simple, and you probably don't
-want to use it for anything more serious than playing around and testing.
+want to use it for anything more serious than testing and playing around:
+
+$ python rfweb_server.py
 
 We've also tested the application with gunicorn (http://gunicorn.org/). You can
 run rfweb on it using the following command:
@@ -300,9 +304,6 @@ Then to access the main page of the web interface (adapt the address to your
 setup), go to:
 http://localhost:8080/index.html
 
-The web interface currently only works with rftest2 running under NOX. Other
-tests should work, but this module still requires improvements.
-
 
 === Support ===
 RouteFlow has a discussion list. You can send your questions on:
@@ -310,15 +311,7 @@ https://groups.google.com/group/routeflow-discuss/topics
 
 
 === Known Bugs ===
-- rfproxy: random (and somewhat rare) segfaults without any clear reason.
-
-- rftest*: When closing the tests, rfproxy segfaults to no effect.
-
-- rfweb: topology monitoring for rftest1 doesn't work
-
-- rfweb: topology monitoring shows switch8 as active when all switches are down
-
-- rfweb: flow colors are not shown correctly
+- rftest*: When closing the tests, segfaults happen, to no effect.
 
 - See: http://bugs.openflowhub.org/browse/ROUTEFLOW
 

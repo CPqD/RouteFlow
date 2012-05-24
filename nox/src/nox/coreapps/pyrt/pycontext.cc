@@ -385,19 +385,6 @@ PyContext::send_aggregate_stats_request(uint64_t datapath_id, const struct ofp_m
     uint8_t*)&asr, sizeof(struct ofp_aggregate_stats_request));
 }
 
-//Criacao do flow stats request
-void
-PyContext::send_flow_stats_request(uint64_t datapath_id, const ofp_match& match, uint8_t table_id)
-{
-    ofp_flow_stats_request fsr;
-    memset(&fsr, 0, sizeof fsr);
-    fsr.table_id = table_id;
-    fsr.out_port = ntohs(OFPP_NONE);
-    fsr.match = match;
-
-    send_stats_request(datapath_id, OFPST_FLOW, (const
-    uint8_t*)&fsr, sizeof(struct ofp_flow_stats_request));
-}
 
 void
 PyContext::send_stats_request(uint64_t datapath_id, ofp_stats_types type, const uint8_t* data, size_t data_size )

@@ -21,6 +21,7 @@
 
 import struct
 import operator
+import collections
 import sys
 from pox.lib.packet.packet_base import packet_base
 from pox.lib.packet.ethernet import ethernet
@@ -48,7 +49,7 @@ EMPTY_ETH = EthAddr(None)
 
 MAX_XID = 0x7fFFffFF
 _nextXID = 1
-USE_MPLS_MATCH = False
+#USE_MPLS_MATCH = False
 
 def generateXID ():
   global _nextXID
@@ -418,23 +419,25 @@ class ofp_match (object):
     match.dl_dst = packet.dst
     match.dl_type = packet.type
     p = packet.next
-    if isinstance(p, mpls):
-      match.mpls_label = p.label
-      match.mpls_tc = p.tc
-    else:
-      match.mpls_label = 0
-      match.mpls_tc = 0
+#    if isinstance(p, mpls):
+#      match.mpls_label = p.label
+#      match.mpls_tc = p.tc
+#    else:
+#      match.mpls_label = 0
+#      match.mpls_tc = 0
     if isinstance(p, vlan):
       match.dl_vlan = p.id
       match.dl_vlan_pcp = p.pcp
       p = p.next
     else:
       match.dl_vlan = OFP_VLAN_NONE
+      match.dl_vlan_pcp = 0
 
     if isinstance(p, ipv4):
       match.nw_src = p.srcip
       match.nw_dst = p.dstip
       match.nw_proto = p.protocol
+      match.nw_tos = p.tos
       p = p.next
 
       if isinstance(p, udp) or isinstance(p, tcp):
@@ -636,8 +639,8 @@ class ofp_match (object):
       return addr.toUnsigned()
     packed += struct.pack("!LLHH", fix(self.nw_src), fix(self.nw_dst),
                           self.tp_src or 0, self.tp_dst or 0)
-    if USE_MPLS_MATCH:
-        packed += struct.pack("!IBxxx", self.mpls_label or 0, self.mpls_tc or 0)
+#    if USE_MPLS_MATCH:
+#        packed += struct.pack("!IBxxx", self.mpls_label or 0, self.mpls_tc or 0)
     return packed
 
   def _normalize_wildcards (self, wildcards):
@@ -671,14 +674,14 @@ class ofp_match (object):
     (self._nw_src, self._nw_dst, self._tp_src, self._tp_dst) = struct.unpack_from("!LLHH", binaryString, 28)
     self._nw_src = IPAddr(self._nw_src)
     self._nw_dst = IPAddr(self._nw_dst)
-    if USE_MPLS_MATCH:
-      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
+#    if USE_MPLS_MATCH:
+#      (self.mpls_label, self.mpls_tc) = struct.unpack_from("!IBxxx", binaryString, 40)
     self.wildcards = self._normalize_wildcards(wildcards) # Overide
     return binaryString[self.__len__():]
 
   def __len__ (self):
-    if USE_MPLS_MATCH:
-      return 48
+ #   if USE_MPLS_MATCH:
+ #     return 48
     return 40
 
   def hash_code (self):
@@ -697,7 +700,7 @@ class ofp_match (object):
 
     return int(h & 0x7fFFffFF)
 
-  def matches_with_wildcards (self, other):
+  def matches_with_wildcards (self, other, consider_other_wildcards=True):
     """
     Test whether /this/ match completely encompasses the other match. Important for non-strict modify flow_mods etc.
     """
@@ -707,9 +710,10 @@ class ofp_match (object):
     # only candidate if all wildcard bits in the *other* match are also set in this match (i.e., a submatch)
 
     # first compare the bitmask part
-    self_bits  = self.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
-    other_bits = other.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
-    if( self_bits | other_bits != self_bits): return False
+    if(consider_other_wildcards):
+      self_bits  = self.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
+      other_bits = other.wildcards & ~(OFPFW_NW_SRC_MASK | OFPFW_NW_DST_MASK)
+      if( self_bits | other_bits != self_bits): return False
 
     def match_fail(mine, others):
       return mine != None and mine != others
@@ -799,8 +803,8 @@ class ofp_match (object):
     outstr += append('nw_dst')
     outstr += append('tp_src')
     outstr += append('tp_dst')
-    outstr += append('mpls_label')
-    outstr += append('mpls_tc')
+#    outstr += append('mpls_label')
+#    outstr += append('mpls_tc')
     return outstr
 
 ofp_flow_wildcards_rev_map = {
@@ -812,10 +816,10 @@ ofp_flow_wildcards_rev_map = {
   'OFPFW_NW_PROTO'     : 32,
   'OFPFW_TP_SRC'       : 64,
   'OFPFW_TP_DST'       : 128,
-  'OFPFW_MPLS_LABEL'   : 1 << 21,
-  'OFPFW_MPLS_TC'      : 1 << 22,
+#  'OFPFW_MPLS_LABEL'   : 1 << 21,
+#  'OFPFW_MPLS_TC'      : 1 << 22,
   'OFPFW_DL_VLAN_PCP'  : 1048576,
-  'OFPFW_NW_TOS'       : 1<<23,
+  'OFPFW_NW_TOS'       : 1<<21,
 }
 
 OFPFW_NW_DST_BITS      = 6
@@ -826,7 +830,10 @@ OFPFW_NW_SRC_ALL       = 8192
 OFPFW_NW_SRC_MASK      = 16128
 OFPFW_NW_DST_ALL       = 524288
 OFPFW_NW_DST_MASK      = 1032192
-OFPFW_ALL              = ((1 << 24) - 1)
+# Note: Need to handle all flags that are set in this
+# glob-all masks in the packet handling methods. (Esp. ofp_match.from_packet)
+# Otherwise, packets are not being matched as they should
+OFPFW_ALL              = ((1 << 22) - 1)
 
 ##2.4 Flow Action Structures
 ofp_action_type_rev_map = {
@@ -2114,13 +2121,32 @@ class ofp_stats_reply (ofp_header):
     self.type = 0
     self.flags = 0
     self.body = b''
+    self._body_data = (None, None)
 
     initHelper(self, kw)
 
   def _assert (self):
     return (True, None)
 
+  @property
+  def body_data (self):
+    if self._body_data[0] is not self.body:
+      def _pack(b):
+        return b.pack() if hasattr(b, 'pack') else b
+
+      data = b''
+      if isinstance(self.body, collections.Iterable):
+        for b in self.body:
+          data += _pack(b)
+      else:
+        data = _pack(self.body)
+      self._body_data = (self.body, data)
+    return self._body_data[1]
+
   def pack (self, assertstruct=True):
+    if type == None or type == 0 and type(self.body) in ofp_stats_reply_class_to_type_map:
+      self.type = ofp_stats_reply_class_to_type_map[type(self.body)]
+
     self.length = len(self)
     if(assertstruct):
       if(not self._assert()[0]):
@@ -2128,7 +2154,7 @@ class ofp_stats_reply (ofp_header):
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!HH", self.type, self.flags)
-    packed += self.body
+    packed += self.body_data
     return packed
 
   def unpack (self, binaryString):
@@ -2340,7 +2366,7 @@ class ofp_flow_stats (object):
     return packed
 
   def unpack (self, binaryString):
-    if (len(binaryString) < 48 + len(self.match())):
+    if (len(binaryString) < 48 + len(self.match)):
       return binaryString
     (self.length, self.table_id, pad) = struct.unpack_from("!HBB", binaryString, 0)
     self.match.unpack(binaryString[4:])
@@ -2443,7 +2469,7 @@ class ofp_aggregate_stats_request (object):
     outstr += prefix + 'out_port: ' + str(self.out_port) + '\n'
     return outstr
 
-class ofp_aggregate_stats_reply (object):
+class ofp_aggregate_stats (object):
   def __init__ (self, **kw):
     self.packet_count = 0
     self.byte_count = 0
@@ -2651,6 +2677,23 @@ class ofp_port_stats (object):
 
   def __ne__ (self, other): return not self.__eq__(other)
 
+  def __add__(self, other):
+    if type(self) != type(other): raise NotImplemented()
+    return ofp_port_stats(
+        port_no=OFPP_NONE,
+        rx_packets = self.rx_packets + other.rx_packets,
+        tx_packets = self.tx_packets + other.tx_packets,
+        rx_bytes = self.rx_bytes + other.rx_bytes,
+        tx_bytes = self.tx_bytes + other.tx_bytes,
+        rx_dropped = self.rx_dropped + other.rx_dropped,
+        tx_dropped = self.tx_dropped + other.tx_dropped,
+        rx_errors = self.rx_errors + other.rx_errors,
+        tx_errors = self.tx_errors + other.tx_errors,
+        rx_frame_err = self.rx_frame_err + other.rx_frame_err,
+        rx_over_err = self.rx_over_err + other.rx_over_err,
+        rx_crc_err = self.rx_crc_err + other.rx_crc_err,
+        collisions = self.collisions + other.collisions)
+
   def show (self, prefix=''):
     outstr = ''
     outstr += prefix + 'port_no: ' + str(self.port_no) + '\n'
@@ -2764,6 +2807,16 @@ class ofp_queue_stats (object):
     outstr += prefix + 'tx_packets: ' + str(self.tx_packets) + '\n'
     outstr += prefix + 'tx_errors: ' + str(self.tx_errors) + '\n'
     return outstr
+
+ofp_stats_reply_class_to_type_map = {
+    ofp_desc_stats : ofp_stats_types_rev_map['OFPST_DESC'],
+    ofp_flow_stats : ofp_stats_types_rev_map['OFPST_FLOW'],
+    ofp_aggregate_stats : ofp_stats_types_rev_map['OFPST_AGGREGATE'],
+    ofp_table_stats : ofp_stats_types_rev_map['OFPST_TABLE'],
+    ofp_port_stats : ofp_stats_types_rev_map['OFPST_PORT'],
+    ofp_queue_stats : ofp_stats_types_rev_map['OFPST_QUEUE']
+}
+
 
 ##3.6 Send Packet Message
 class ofp_packet_out (ofp_header):
@@ -3496,7 +3549,7 @@ class ofp_vendor (ofp_header):
     self.header_type = OFPT_VENDOR
     self.vendor = 0
     self.data = b''
-
+    self.length = 12
     initHelper(self, kw)
 
   def _assert (self):
@@ -3506,10 +3559,14 @@ class ofp_vendor (ofp_header):
     if(assertstruct):
       if(not self._assert()[0]):
         return None
+    self.length = 12 + len(self.data)
     packed = ""
     packed += ofp_header.pack(self)
     packed += struct.pack("!L", self.vendor)
-    packed += self.data
+    if hasattr(self.data, "pack"):
+      packed += self.data.pack()
+    else:
+      packed += self.data
     return packed
 
   def unpack (self, binaryString):
@@ -3947,6 +4004,6 @@ ofp_match_data = {
   'nw_dst' : (0, OFPFW_NW_DST_ALL),
   'tp_src' : (0, OFPFW_TP_SRC),
   'tp_dst' : (0, OFPFW_TP_DST),
-  'mpls_label': (0, OFPFW_MPLS_LABEL),
-  'mpls_tc': (0, OFPFW_MPLS_TC),
+#  'mpls_label': (0, OFPFW_MPLS_LABEL),
+#  'mpls_tc': (0, OFPFW_MPLS_TC),
 }

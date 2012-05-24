@@ -38,7 +38,6 @@
 #include "desc-stats-in.hh"
 #include "table-stats-in.hh"
 #include "port-stats-in.hh"
-#include "flow-stats-in.hh"
 #include "flow-mod-event.hh"
 #include "flow-removed.hh"
 #include "packet-in.hh"
@@ -208,16 +207,6 @@ static void convert_table_stats_in(const Event& e, PyObject* proxy) {
     pyglue_setattr_string(proxy, "xid", to_python(tsi.xid()));
     pyglue_setattr_string(proxy, "datapath_id", to_python(tsi.datapath_id));
     pyglue_setattr_string(proxy, "tables"    , to_python<vector<Table_stats> >(tsi.tables));
-
-    ((Event*)SWIG_Python_GetSwigThis(proxy)->ptr)->operator=(e);
-}
-
-static void convert_flow_stats_in(const Event& e, PyObject* proxy) {
-    const Flow_stats_in_event& fsi
-                = dynamic_cast<const Flow_stats_in_event&>(e);
-
-    pyglue_setattr_string(proxy, "datapath_id", to_python(fsi.datapath_id));
-    pyglue_setattr_string(proxy, "flows"    , to_python<vector<Flow_stats> >(fsi.flows));
 
     ((Event*)SWIG_Python_GetSwigThis(proxy)->ptr)->operator=(e);
 }
@@ -465,8 +454,6 @@ PyRt::PyRt(const Context* c,
                              &convert_bootstrap_complete);
     register_event_converter(Table_stats_in_event::static_get_name(), 
                              &convert_table_stats_in);
-    register_event_converter(Flow_stats_in_event::static_get_name(),
-                             &convert_flow_stats_in);
     register_event_converter(Port_stats_in_event::static_get_name(), 
                              &convert_port_stats_in);
     register_event_converter(Aggregate_stats_in_event::static_get_name(), 
