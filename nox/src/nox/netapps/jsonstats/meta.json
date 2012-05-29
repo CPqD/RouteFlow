@@ -1,0 +1,11 @@
+{
+    "components": [
+        {
+            "name": "jsonstats",
+            "library": "jsonstats",
+            "dependencies": [
+                "jsonmessenger"
+            ]
+        }
+    ]
+}
