@@ -68,7 +68,7 @@ ACI_PACKAGE([netapps],[misc network apps],
                	routing user_event_log tests topology discovery 
                	bindings_storage switchstats flow_fetcher data
                	switch_management networkstate hoststate tablog 
-               	route lavi rfproxy
+               	route lavi rfproxy jsonstats
                 #add netapps component here
 		],
                [TURN_ON_NETAPPS])
