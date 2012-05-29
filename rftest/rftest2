@@ -147,7 +147,7 @@ if [ "$ACTION" != "RESET" ]; then
     echo "-> Starting the controller ($ACTION) and RFPRoxy..."
     case "$ACTION" in
     POX)
-        ( cd pox && ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy & &>> $LOG_FILE & )
+        ( cd pox && ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats & &>> $LOG_FILE & )
         ;;
     NOX)
         ( cd nox/build/src && ./nox_core -i ptcp:6633 rfproxy --verbose="rfproxy:ANY:INFO" &>> $LOG_FILE & )
