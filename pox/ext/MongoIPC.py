@@ -70,13 +70,17 @@ class MongoIPCMessageService(IPC.IPCMessageService):
         cursor = collection.find({TO_FIELD: self.get_id(), READ_FIELD: False}, sort=[("_id", mongo.ASCENDING)])
 
         while True:
-            for envelope in cursor:
-                msg = take_from_envelope(envelope, factory)
-                processor.process(envelope[FROM_FIELD], envelope[TO_FIELD], channel_id, msg);
-                collection.update({"_id": envelope["_id"]}, {"$set": {READ_FIELD: True}})
-            time.sleep(0.05)
-            cursor = collection.find({TO_FIELD: self.get_id(), READ_FIELD: False}, sort=[("_id", mongo.ASCENDING)])
-
+            try:
+                for envelope in cursor:
+                    msg = take_from_envelope(envelope, factory)
+                    processor.process(envelope[FROM_FIELD], envelope[TO_FIELD], channel_id, msg);
+                    collection.update({"_id": envelope["_id"]}, {"$set": {READ_FIELD: True}})
+                time.sleep(0.05)
+                cursor = collection.find({TO_FIELD: self.get_id(), READ_FIELD: False}, sort=[("_id", mongo.ASCENDING)])
+            except:
+                # TODO: alert the user of the failure
+                pass
+                
     def _create_channel(self, connection, name):
         db = connection[self._db]
         try:

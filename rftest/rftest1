@@ -28,61 +28,84 @@ esac
 
 LXCDIR=/var/lib/lxc
 RF_HOME=..
-LOG_FILE=/var/log/rftest1.log
 
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
-cd $RF_HOME &> $LOG_FILE
+cd $RF_HOME
 
+echo_bold() {
+    echo -e "\033[1m${1}\033[0m"
+}
+
+kill_process_tree() {
+    top=$1
+    pid=$2
+    
+    children=`ps -o pid --no-headers --ppid ${pid}`
+    
+    for child in $children
+    do
+        kill_process_tree 0 $child
+    done
+    
+    if [ $top -eq 0 ]; then
+        kill -9 $pid &> /dev/null
+    fi
+}
+
+reset() {
+    killtree=$1;
+    if [ $killtree -eq 1 ]; then
+        echo_bold "-> Stopping child processes...";
+        kill_process_tree 1 $$
+    fi
+
+    sudo ovs-vsctl del-br sw0 &> /dev/null;
+    sudo ovs-vsctl del-br br0 &> /dev/null;
+    sudo ovs-vsctl del-br dp0 &> /dev/null;
+    sudo ovs-vsctl del-br switch1 &> /dev/null;
+    sudo ovs-vsctl emer-reset &> /dev/null;
+    
+    echo_bold "-> Stopping and resetting LXC VMs...";
+    lxc-stop -n rfvm1 &> /dev/null;
+    lxc-stop -n b1 &> /dev/null;
+    lxc-stop -n b2 &> /dev/null;
+        
+    rm -rf $LXCDIR/rfvm1/rootfs/var/run/network/ifstate;
+    rm -rf $LXCDIR/b1/rootfs/var/run/network/ifstate;
+    rm -rf $LXCDIR/b2/rootfs/var/run/network/ifstate;
+    
+    echo_bold "-> Deleting data from previous runs...";
+    rm -rf $HOME/db;
+    rm -rf /var/lib/lxc/rfvm1/rootfs/opt/rfclient;
+}
+reset 0
+trap "reset 1; exit 0" INT
+
+echo_bold "-> Starting OVS daemons...";
 # Always try to start OVS
 ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
 	                 --remote=db:Open_vSwitch,manager_options \
 	                 --private-key=db:SSL,private_key \
 	                 --certificate=db:SSL,certificate \
 	                 --bootstrap-ca-cert=db:SSL,ca_cert \
-	                 --pidfile --detach &>> $LOG_FILE
-ovs-vswitchd --pidfile --detach &>> $LOG_FILE
-
-reset() {
-    echo "-> Stopping any running instances of rf-server, NOX, POX, OVS and MongoDB...";
-    pkill -15 rfserver;
-    pkill -15 python2.7;
-    pkill -15 lt-nox_core;
-    pkill -15 mongod;
-
-    sudo ovs-vsctl del-br br0;
-    sudo ovs-vsctl del-br dp0;
-    sudo ovs-vsctl del-br switch1;
-    sudo ovs-vsctl emer-reset;
-    
-    echo "-> Resetting and stopping LXC VMs...";
-    lxc-stop -n rfvm1;
-    lxc-stop -n b1;
-    lxc-stop -n b2;
-        
-    rm -rf $LXCDIR/rfvm1/rootfs/var/run/network/ifstate;
-
-    echo "-> Deleting data from previous runs...";
-    rm -rf $HOME/db;
-    rm -rf /var/lib/lxc/rfvm1/rootfs/opt/rfclient;
-}
-reset
-trap reset 2
+	                 --pidfile --detach
+ovs-vswitchd --pidfile --detach
 
 if [ "$ACTION" != "RESET" ]; then
-    echo "-> Starting MongoDB..."
-    mkdir $HOME/db &>> $LOG_FILE
+    echo_bold "-> Starting MongoDB..."
+    mkdir $HOME/db
     mongod --quiet --dbpath $HOME/db --logpath /dev/null &
     sleep 3
 
-    echo "-> Starting the rfvm1 virtual machine..."
+    echo_bold "-> Starting the rfvm1 virtual machine..."
     # Create the rfclient dir
-    mkdir /var/lib/lxc/rfvm1/rootfs/opt/rfclient &>> $LOG_FILE
+    mkdir /var/lib/lxc/rfvm1/rootfs/opt/rfclient
 
     # Copy the rfclient executable
-    cp build/rfclient /var/lib/lxc/rfvm1/rootfs/opt/rfclient/rfclient &>> $LOG_FILE
+    cp build/rfclient /var/lib/lxc/rfvm1/rootfs/opt/rfclient/rfclient
 
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvm1/rootfs/usr/lib &>> $LOG_FILE
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvm1/rootfs/usr/lib &>> $LOG_FILE
+    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvm1/rootfs/usr/lib
+    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvm1/rootfs/usr/lib
 
     echo "#!/bin/sh" > /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
     echo "sleep 5" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
@@ -90,59 +113,62 @@ if [ "$ACTION" != "RESET" ]; then
 
     chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
-    lxc-start -n rfvm1 -d &>> $LOG_FILE
+    lxc-start -n rfvm1 -d
     
-    echo "-> Starting the management network (br0)..."
+    echo_bold "-> Starting the management network (br0)..."
     sleep 5
 	ovs-vsctl add-br br0 \
-		-- add-port br0 rfvm1.0 &>> $LOG_FILE
+		-- add-port br0 rfvm1.0
     ifconfig br0 up
     ifconfig br0 192.169.1.1
 
-    echo "-> Starting the controller ($ACTION) and RFPRoxy..."
+    echo_bold "-> Starting the controller ($ACTION) and RFPRoxy..."
     case "$ACTION" in
     POX)
-        ( cd pox && ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats & &>> $LOG_FILE & )
+        cd pox
+        ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
+        cd - &> /dev/null
         ;;
     NOX)
-        ( cd nox/build/src && ./nox_core -i ptcp:6633 rfproxy --verbose="rfproxy:ANY:INFO" &>> $LOG_FILE & )
+        cd nox/build/src
+        ./nox_core -i ptcp:6633 rfproxy --verbose="rfproxy:ANY:INFO" &
+        cd - &> /dev/null
         ;;
     esac
     sleep 5
     
-    echo "-> Starting the RFServer..."
-    build/rfserver &>> $LOG_FILE &
+    echo_bold "-> Starting RFServer..."
+    build/rfserver &
     sleep 3
 
-    echo "-> Starting the control plane network (dp0 VS)..."
+    echo_bold "-> Starting the control plane network (dp0 VS)..."
 	ovs-vsctl add-br dp0 \
 		-- add-port dp0 rfvm1.1 \
-		-- add-port dp0 rfvm1.2 &>> $LOG_FILE
-	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673 &>> $LOG_FILE
+		-- add-port dp0 rfvm1.2
+	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
 	ovs-vsctl set-controller dp0 tcp:127.0.0.1:6633
-    ifconfig dp0 up &>> $LOG_FILE
+    ifconfig dp0 up
     sleep 3
 
-    echo "-> Starting the sample network..."
-    lxc-start -n b1 -d &>> $LOG_FILE
-    lxc-start -n b2 -d &>> $LOG_FILE
+    echo_bold "-> Starting the sample network..."
+    lxc-start -n b1 -d
+    lxc-start -n b2 -d
 	ovs-vsctl add-br switch1 \
 		-- add-port switch1 b1.0 \
-		-- add-port switch1 b2.0 &>> $LOG_FILE
+		-- add-port switch1 b2.0
 	ovs-vsctl set-controller switch1 tcp:127.0.0.1:6633
-    ifconfig switch1 up &>> $LOG_FILE
+    ifconfig switch1 up
     
-    cd - &> /dev/null
     sleep 5
 
-    echo "---"    
-    echo "Now we'll open this test's log."
-    echo "Try pinging b1 from b2:"
-    echo "  $ sudo lxc-console -n b1"
-    echo "Login and run:"
-    echo "  $ ping 172.31.2.2"
-    echo "You can stop this test by pressing CTRL+C."
-    echo "---"
-    tail -f $LOG_FILE
+    echo_bold "---"    
+    echo_bold "This test is up and running."
+    echo_bold "Try pinging host b2 from host b1:"
+    echo_bold "  $ sudo lxc-console -n b1"
+    echo_bold "Login and run:"
+    echo_bold "  $ ping 172.31.2.2"
+    echo_bold "You can stop this test by pressing Ctrl+C."
+    echo_bold "---"
+    wait
 fi
 exit 0

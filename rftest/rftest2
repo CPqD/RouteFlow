@@ -28,32 +28,44 @@ esac
 
 LXCDIR=/var/lib/lxc
 RF_HOME=..
-LOG_FILE=/var/log/rftest2.log
 
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
-cd $RF_HOME &> $LOG_FILE
+cd $RF_HOME
 
-# Always try to start OVS
-ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
-	                 --remote=db:Open_vSwitch,manager_options \
-	                 --private-key=db:SSL,private_key \
-	                 --certificate=db:SSL,certificate \
-	                 --bootstrap-ca-cert=db:SSL,ca_cert \
-	                 --pidfile --detach &>> $LOG_FILE
-ovs-vswitchd --pidfile --detach &>> $LOG_FILE
+echo_bold() {
+    echo -e "\033[1m${1}\033[0m"
+}
+
+kill_process_tree() {
+    top=$1
+    pid=$2
+    
+    children=`ps -o pid --no-headers --ppid ${pid}`
+    
+    for child in $children
+    do
+        kill_process_tree 0 $child
+    done
+    
+    if [ $top -eq 0 ]; then
+        kill -9 $pid &> /dev/null
+    fi
+}
 
 reset() {
-    echo "-> Stopping any running instances of rf-server, NOX, POX, OVS and MongoDB...";
-    pkill -15 rfserver;
-    pkill -15 python2.7;
-    pkill -15 lt-nox_core;
-    pkill -15 mongod;
+    killtree=$1;
+    if [ $killtree -eq 1 ]; then
+        echo_bold "-> Stopping child processes...";
+        kill_process_tree 1 $$
+    fi
 
-    sudo ovs-vsctl del-br br0;
-    sudo ovs-vsctl del-br dp0;
-    sudo ovs-vsctl emer-reset;
+    sudo ovs-vsctl del-br sw0 &> /dev/null;
+    sudo ovs-vsctl del-br br0 &> /dev/null;
+    sudo ovs-vsctl del-br dp0 &> /dev/null;
+    sudo ovs-vsctl del-br switch1 &> /dev/null;
+    sudo ovs-vsctl emer-reset &> /dev/null;
     
-    echo "-> Resetting and stopping LXC VMs...";
+    echo_bold "-> Stopping and resetting LXC VMs...";
     lxc-stop -n rfvmA;
     lxc-stop -n rfvmB;
     lxc-stop -n rfvmC;
@@ -63,44 +75,54 @@ reset() {
     rm -rf $LXCDIR/rfvmB/rootfs/var/run/network/ifstate;
     rm -rf $LXCDIR/rfvmC/rootfs/var/run/network/ifstate;
     rm -rf $LXCDIR/rfvmD/rootfs/var/run/network/ifstate;
-
-    echo "-> Deleting data from previous runs...";
+        
+    echo_bold "-> Deleting data from previous runs...";
     rm -rf $HOME/db;
     rm -rf /var/lib/lxc/rfvmA/rootfs/opt/rfclient;
     rm -rf /var/lib/lxc/rfvmB/rootfs/opt/rfclient;
     rm -rf /var/lib/lxc/rfvmC/rootfs/opt/rfclient;
     rm -rf /var/lib/lxc/rfvmD/rootfs/opt/rfclient;
 }
-reset
-trap reset 2
+reset 0
+trap "reset 1; exit 0" INT
+
+echo_bold "-> Starting OVS daemons...";
+# Always try to start OVS
+ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
+	                 --remote=db:Open_vSwitch,manager_options \
+	                 --private-key=db:SSL,private_key \
+	                 --certificate=db:SSL,certificate \
+	                 --bootstrap-ca-cert=db:SSL,ca_cert \
+	                 --pidfile --detach
+ovs-vswitchd --pidfile --detach
 
 if [ "$ACTION" != "RESET" ]; then
-    echo "-> Starting MongoDB..."
-    mkdir $HOME/db &>> $LOG_FILE
+    echo_bold "-> Starting MongoDB..."
+    mkdir $HOME/db
     mongod --quiet --dbpath $HOME/db --logpath /dev/null &
     sleep 3
 
-    echo "-> Starting the virtual machines..."
+    echo_bold "-> Starting the virtual machines..."
     # Create the rfclient dir
-    mkdir /var/lib/lxc/rfvmA/rootfs/opt/rfclient &>> $LOG_FILE
-    mkdir /var/lib/lxc/rfvmB/rootfs/opt/rfclient &>> $LOG_FILE
-    mkdir /var/lib/lxc/rfvmC/rootfs/opt/rfclient &>> $LOG_FILE
-    mkdir /var/lib/lxc/rfvmD/rootfs/opt/rfclient &>> $LOG_FILE
+    mkdir /var/lib/lxc/rfvmA/rootfs/opt/rfclient
+    mkdir /var/lib/lxc/rfvmB/rootfs/opt/rfclient
+    mkdir /var/lib/lxc/rfvmC/rootfs/opt/rfclient
+    mkdir /var/lib/lxc/rfvmD/rootfs/opt/rfclient
 
     # Copy the rfclient executable
-    cp build/rfclient /var/lib/lxc/rfvmA/rootfs/opt/rfclient/rfclient &>> $LOG_FILE
-    cp build/rfclient /var/lib/lxc/rfvmB/rootfs/opt/rfclient/rfclient &>> $LOG_FILE
-    cp build/rfclient /var/lib/lxc/rfvmC/rootfs/opt/rfclient/rfclient &>> $LOG_FILE
-    cp build/rfclient /var/lib/lxc/rfvmD/rootfs/opt/rfclient/rfclient &>> $LOG_FILE
+    cp build/rfclient /var/lib/lxc/rfvmA/rootfs/opt/rfclient/rfclient
+    cp build/rfclient /var/lib/lxc/rfvmB/rootfs/opt/rfclient/rfclient
+    cp build/rfclient /var/lib/lxc/rfvmC/rootfs/opt/rfclient/rfclient
+    cp build/rfclient /var/lib/lxc/rfvmD/rootfs/opt/rfclient/rfclient
 
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmA/rootfs/usr/lib &>> $LOG_FILE
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmA/rootfs/usr/lib &>> $LOG_FILE
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmB/rootfs/usr/lib &>> $LOG_FILE
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmB/rootfs/usr/lib &>> $LOG_FILE
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmC/rootfs/usr/lib &>> $LOG_FILE
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmC/rootfs/usr/lib &>> $LOG_FILE
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmD/rootfs/usr/lib &>> $LOG_FILE
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmD/rootfs/usr/lib &>> $LOG_FILE
+    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmA/rootfs/usr/lib
+    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmA/rootfs/usr/lib
+    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmB/rootfs/usr/lib
+    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmB/rootfs/usr/lib
+    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmC/rootfs/usr/lib
+    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmC/rootfs/usr/lib
+    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmD/rootfs/usr/lib
+    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmD/rootfs/usr/lib
 
     # We need to start the VMs with different sleep times to guarantee their order.
     # This is a known Routeflow limitation, and we plan to eliminate it in the future.
@@ -129,37 +151,41 @@ if [ "$ACTION" != "RESET" ]; then
     chmod +x /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
     chmod +x /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
 
-    lxc-start -n rfvmA -d &>> $LOG_FILE
-    lxc-start -n rfvmB -d &>> $LOG_FILE
-    lxc-start -n rfvmC -d &>> $LOG_FILE
-    lxc-start -n rfvmD -d &>> $LOG_FILE
+    lxc-start -n rfvmA -d
+    lxc-start -n rfvmB -d
+    lxc-start -n rfvmC -d
+    lxc-start -n rfvmD -d
     
-    echo "-> Starting the management network (br0)..."
+    echo_bold "-> Starting the management network (br0)..."
     sleep 5
 	ovs-vsctl add-br br0 \
 		-- add-port br0 rfvmA.0 \
 		-- add-port br0 rfvmB.0 \
 		-- add-port br0 rfvmC.0 \
-		-- add-port br0 rfvmD.0 &>> $LOG_FILE
+		-- add-port br0 rfvmD.0
     ifconfig br0 up
     ifconfig br0 192.169.1.1
 
-    echo "-> Starting the controller ($ACTION) and RFPRoxy..."
+    echo_bold "-> Starting the controller ($ACTION) and RFPRoxy..."
     case "$ACTION" in
     POX)
-        ( cd pox && ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats & &>> $LOG_FILE & )
+        cd pox
+        ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
+        cd - &> /dev/null
         ;;
     NOX)
-        ( cd nox/build/src && ./nox_core -i ptcp:6633 rfproxy --verbose="rfproxy:ANY:INFO" &>> $LOG_FILE & )
+        cd nox/build/src
+        ./nox_core -i ptcp:6633 rfproxy --verbose="rfproxy:ANY:INFO" &
+        cd - &> /dev/null
         ;;
     esac
     sleep 5
     
-    echo "-> Starting the RFServer..."
-    build/rfserver &>> $LOG_FILE &
+    echo_bold "-> Starting RFServer..."
+    build/rfserver &
     sleep 3
 
-    echo "-> Starting the control plane network (dp0 VS)..."
+    echo_bold "-> Starting the control plane network (dp0 VS)..."
 	ovs-vsctl add-br dp0 \
 		-- add-port dp0 rfvmA.1 \
 		-- add-port dp0 rfvmA.2 \
@@ -174,26 +200,23 @@ if [ "$ACTION" != "RESET" ]; then
 		-- add-port dp0 rfvmD.1 \
 		-- add-port dp0 rfvmD.2 \
 		-- add-port dp0 rfvmD.3 \
-		-- add-port dp0 rfvmD.4 &>> $LOG_FILE
-	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673 &>> $LOG_FILE
+		-- add-port dp0 rfvmD.4
+	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
 	ovs-vsctl set-controller dp0 tcp:127.0.0.1:6633
-    ifconfig dp0 up &>> $LOG_FILE
-    sleep 3
+    ifconfig dp0 up
+    sleep 10
 
-    cd - &> /dev/null
-    sleep 5
-    
-    echo "---"
-    echo "Now we'll open this test's log."
-    echo "Start Mininet:"
-    echo "  $ sudo mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo"
-    echo "    --controller=remote --ip=ADDRESS --port=6633"
-    echo "Replace ADDRESS with the address of this host's interface connected "
-    echo "to the Mininet VM."
-    echo "Then try pinging everything:"
-    echo "  > pingall"
-    echo "You can stop this test by pressing CTRL+C."
-    echo "---"
-    tail -f $LOG_FILE
+    echo_bold "---"
+    echo_bold "This test is up and running."
+    echo_bold "Start Mininet:"
+    echo_bold "  $ sudo mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo"
+    echo_bold "    --controller=remote --ip=ADDRESS --port=6633"
+    echo_bold "Replace ADDRESS with the address of this host's interface connected "
+    echo_bold "to the Mininet VM."
+    echo_bold "Then try pinging everything:"
+    echo_bold "  > pingall"
+    echo_bold "You can stop this test by pressing CTRL+C."
+    echo_bold "---"
+    wait
 fi
 exit 0
