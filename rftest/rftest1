@@ -53,8 +53,18 @@ kill_process_tree() {
 }
 
 reset() {
-    killtree=$1;
-    if [ $killtree -eq 1 ]; then
+    init=$1;
+    if [ $init -eq 1 ]; then
+        echo_bold "-> Starting OVS daemons...";
+        # Always try to start OVS
+        ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
+	                         --remote=db:Open_vSwitch,manager_options \
+	                         --private-key=db:SSL,private_key \
+	                         --certificate=db:SSL,certificate \
+	                         --bootstrap-ca-cert=db:SSL,ca_cert \
+	                         --pidfile --detach
+        ovs-vswitchd --pidfile --detach
+    else
         echo_bold "-> Stopping child processes...";
         kill_process_tree 1 $$
     fi
@@ -78,18 +88,8 @@ reset() {
     rm -rf $HOME/db;
     rm -rf /var/lib/lxc/rfvm1/rootfs/opt/rfclient;
 }
-reset 0
-trap "reset 1; exit 0" INT
-
-echo_bold "-> Starting OVS daemons...";
-# Always try to start OVS
-ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
-	                 --remote=db:Open_vSwitch,manager_options \
-	                 --private-key=db:SSL,private_key \
-	                 --certificate=db:SSL,certificate \
-	                 --bootstrap-ca-cert=db:SSL,ca_cert \
-	                 --pidfile --detach
-ovs-vswitchd --pidfile --detach
+reset 1
+trap "reset 0; exit 0" INT
 
 if [ "$ACTION" != "RESET" ]; then
     echo_bold "-> Starting MongoDB..."

@@ -338,7 +338,7 @@ https://groups.google.com/group/routeflow-discuss/topics
 
 - Wireshark dissector plugin for the RouteFlow protocol
 
-- Experiment with NEC Trema controller: Port routeflowc to Trema
+- Experiment with NEC Trema controller: Port rfproxy to Trema
 
 - Add TTL-decrement action (if supported by the datapath devices)
 
