@@ -1,5 +1,8 @@
 #!/bin/bash
 
+MONGODB_PORT=27017
+CONTROLLER_PORT=6633
+
 if [ "$EUID" != "0" ]; then
   echo "You must be root to run this script."
   exit 1
@@ -31,6 +34,14 @@ RF_HOME=..
 
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
 cd $RF_HOME
+
+wait_port_listen() {
+    port=$1
+    while ! `nc -z localhost $port` ; do
+        echo -n .
+        sleep 1
+    done
+}
 
 echo_bold() {
     echo -e "\033[1m${1}\033[0m"
@@ -95,7 +106,7 @@ if [ "$ACTION" != "RESET" ]; then
     echo_bold "-> Starting MongoDB..."
     mkdir $HOME/db
     mongod --quiet --dbpath $HOME/db --logpath /dev/null &
-    sleep 3
+    wait_port_listen $MONGODB_PORT
 
     echo_bold "-> Starting the rfvm1 virtual machine..."
     # Create the rfclient dir
@@ -108,7 +119,6 @@ if [ "$ACTION" != "RESET" ]; then
     cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvm1/rootfs/usr/lib
 
     echo "#!/bin/sh" > /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
-    echo "sleep 5" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
     chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
@@ -116,7 +126,6 @@ if [ "$ACTION" != "RESET" ]; then
     lxc-start -n rfvm1 -d
     
     echo_bold "-> Starting the management network (br0)..."
-    sleep 5
 	ovs-vsctl add-br br0 \
 		-- add-port br0 rfvm1.0
     ifconfig br0 up
@@ -131,24 +140,22 @@ if [ "$ACTION" != "RESET" ]; then
         ;;
     NOX)
         cd nox/build/src
-        ./nox_core -i ptcp:6633 rfproxy --verbose="rfproxy:ANY:INFO" &
+        ./nox_core -i ptcp:$CONTROLLER_PORT rfproxy --verbose="rfproxy:ANY:INFO" &
         cd - &> /dev/null
         ;;
     esac
-    sleep 5
+    wait_port_listen $CONTROLLER_PORT
     
     echo_bold "-> Starting RFServer..."
     build/rfserver &
-    sleep 3
 
     echo_bold "-> Starting the control plane network (dp0 VS)..."
 	ovs-vsctl add-br dp0 \
 		-- add-port dp0 rfvm1.1 \
 		-- add-port dp0 rfvm1.2
 	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
-	ovs-vsctl set-controller dp0 tcp:127.0.0.1:6633
+	ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
     ifconfig dp0 up
-    sleep 3
 
     echo_bold "-> Starting the sample network..."
     lxc-start -n b1 -d
@@ -156,11 +163,9 @@ if [ "$ACTION" != "RESET" ]; then
 	ovs-vsctl add-br switch1 \
 		-- add-port switch1 b1.0 \
 		-- add-port switch1 b2.0
-	ovs-vsctl set-controller switch1 tcp:127.0.0.1:6633
+	ovs-vsctl set-controller switch1 tcp:127.0.0.1:$CONTROLLER_PORT
     ifconfig switch1 up
     
-    sleep 5
-
     echo_bold "---"    
     echo_bold "This test is up and running."
     echo_bold "Try pinging host b2 from host b1:"
