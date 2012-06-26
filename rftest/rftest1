@@ -50,14 +50,14 @@ echo_bold() {
 kill_process_tree() {
     top=$1
     pid=$2
-    
+
     children=`ps -o pid --no-headers --ppid ${pid}`
-    
+
     for child in $children
     do
         kill_process_tree 0 $child
     done
-    
+
     if [ $top -eq 0 ]; then
         kill -9 $pid &> /dev/null
     fi
@@ -85,16 +85,16 @@ reset() {
     sudo ovs-vsctl del-br dp0 &> /dev/null;
     sudo ovs-vsctl del-br switch1 &> /dev/null;
     sudo ovs-vsctl emer-reset &> /dev/null;
-    
+
     echo_bold "-> Stopping and resetting LXC VMs...";
     lxc-stop -n rfvm1 &> /dev/null;
     lxc-stop -n b1 &> /dev/null;
     lxc-stop -n b2 &> /dev/null;
-        
+
     rm -rf $LXCDIR/rfvm1/rootfs/var/run/network/ifstate;
     rm -rf $LXCDIR/b1/rootfs/var/run/network/ifstate;
     rm -rf $LXCDIR/b2/rootfs/var/run/network/ifstate;
-    
+
     echo_bold "-> Deleting data from previous runs...";
     rm -rf $HOME/db;
     rm -rf /var/lib/lxc/rfvm1/rootfs/opt/rfclient;
@@ -124,7 +124,7 @@ if [ "$ACTION" != "RESET" ]; then
     chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
     lxc-start -n rfvm1 -d
-    
+
     echo_bold "-> Starting the management network (br0)..."
 	ovs-vsctl add-br br0 \
 		-- add-port br0 rfvm1.0
@@ -145,14 +145,14 @@ if [ "$ACTION" != "RESET" ]; then
         ;;
     esac
     wait_port_listen $CONTROLLER_PORT
-    
+
     echo_bold "-> Starting RFServer..."
     build/rfserver &
 
     echo_bold "-> Starting the control plane network (dp0 VS)..."
-	ovs-vsctl add-br dp0 \
-		-- add-port dp0 rfvm1.1 \
-		-- add-port dp0 rfvm1.2
+	ovs-vsctl add-br dp0
+	ovs-vsctl add-port dp0 rfvm1.1
+	ovs-vsctl add-port dp0 rfvm1.2
 	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
 	ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
     ifconfig dp0 up
@@ -160,13 +160,13 @@ if [ "$ACTION" != "RESET" ]; then
     echo_bold "-> Starting the sample network..."
     lxc-start -n b1 -d
     lxc-start -n b2 -d
-	ovs-vsctl add-br switch1 \
-		-- add-port switch1 b1.0 \
-		-- add-port switch1 b2.0
+	ovs-vsctl add-br switch1
+	ovs-vsctl add-port switch1 b1.0
+	ovs-vsctl add-port switch1 b2.0
 	ovs-vsctl set-controller switch1 tcp:127.0.0.1:$CONTROLLER_PORT
     ifconfig switch1 up
-    
-    echo_bold "---"    
+
+    echo_bold "---"
     echo_bold "This test is up and running."
     echo_bold "Try pinging host b2 from host b1:"
     echo_bold "  $ sudo lxc-console -n b1"

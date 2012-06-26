@@ -168,11 +168,11 @@ if [ "$ACTION" != "RESET" ]; then
     lxc-start -n rfvmD -d
     
     echo_bold "-> Starting the management network (br0)..."
-	ovs-vsctl add-br br0 \
-		-- add-port br0 rfvmA.0 \
-		-- add-port br0 rfvmB.0 \
-		-- add-port br0 rfvmC.0 \
-		-- add-port br0 rfvmD.0
+	ovs-vsctl add-br br0
+	ovs-vsctl add-port br0 rfvmA.0 
+	ovs-vsctl add-port br0 rfvmB.0 
+	ovs-vsctl add-port br0 rfvmC.0 
+	ovs-vsctl add-port br0 rfvmD.0
     ifconfig br0 up
     ifconfig br0 192.169.1.1
 
@@ -195,21 +195,21 @@ if [ "$ACTION" != "RESET" ]; then
     build/rfserver &
 
     echo_bold "-> Starting the control plane network (dp0 VS)..."
-	ovs-vsctl add-br dp0 \
-		-- add-port dp0 rfvmA.1 \
-		-- add-port dp0 rfvmA.2 \
-		-- add-port dp0 rfvmA.3 \
-		-- add-port dp0 rfvmA.4 \
-		-- add-port dp0 rfvmB.1 \
-		-- add-port dp0 rfvmB.2 \
-		-- add-port dp0 rfvmB.3 \
-		-- add-port dp0 rfvmC.1 \
-		-- add-port dp0 rfvmC.2 \
-		-- add-port dp0 rfvmC.3 \
-		-- add-port dp0 rfvmD.1 \
-		-- add-port dp0 rfvmD.2 \
-		-- add-port dp0 rfvmD.3 \
-		-- add-port dp0 rfvmD.4
+	ovs-vsctl add-br dp0
+	ovs-vsctl add-port dp0 rfvmA.1
+    ovs-vsctl add-port dp0 rfvmA.2
+    ovs-vsctl add-port dp0 rfvmA.3
+    ovs-vsctl add-port dp0 rfvmA.4
+    ovs-vsctl add-port dp0 rfvmB.1
+    ovs-vsctl add-port dp0 rfvmB.2
+    ovs-vsctl add-port dp0 rfvmB.3
+    ovs-vsctl add-port dp0 rfvmC.1
+    ovs-vsctl add-port dp0 rfvmC.2
+    ovs-vsctl add-port dp0 rfvmC.3
+    ovs-vsctl add-port dp0 rfvmD.1
+    ovs-vsctl add-port dp0 rfvmD.2
+    ovs-vsctl add-port dp0 rfvmD.3
+    ovs-vsctl add-port dp0 rfvmD.4
 	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
 	ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
     ifconfig dp0 up
