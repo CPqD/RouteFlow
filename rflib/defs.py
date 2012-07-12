@@ -30,16 +30,6 @@ class DATAPATH_CONFIG_OPERATION:
 	DC_ALL = 8				# Send all traffic to the controller.
 
 # TODO: move these to their proper locations as developments furthers around POX
-VM_REGISTER_REQUEST = 0
-VM_REGISTER_RESPONSE = 1
-VM_CONFIG = 2
-DATAPATH_CONFIG = 3
-ROUTE_INFO = 4
-FLOW_MOD = 5
-DATAPATH_JOIN = 6
-DATAPATH_LEAVE = 7
-VM_MAP = 8
-
 # RFTable
 ID = "_id"
 VM_ID = "vm_id"

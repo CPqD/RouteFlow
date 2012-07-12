@@ -180,6 +180,7 @@ if [ "$ACTION" != "RESET" ]; then
     case "$ACTION" in
     POX)
         cd pox
+        export PYTHONPATH=$PYTHONPATH:$RF_HOME
         ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
         cd - &> /dev/null
         ;;
