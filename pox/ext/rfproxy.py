@@ -83,11 +83,10 @@ def dpid_to_switchname(dpid):
 def handle_connectionup(event):
     log.info("Datapath id=%s is up, installing config flows...", dpid_to_switchname(event.dpid))
     topology = core.components['topology']
-    msg = DatapathJoin(dp_id=str(event.dpid),
-                       n_ports=str((len(topology.getEntityByID(event.dpid).ports) - 1)),
-                       is_rfvs=(event.dpid == RFVS_DPID))
-    print "Ports: ", topology.getEntityByID(event.dpid).ports
-    ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
+    ports = topology.getEntityByID(event.dpid).ports
+    for port in ports:
+        msg = DatapathPortRegister(dp_id=str(event.dpid), dp_port=str(port.number))
+        ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
 
 def packet_out(data, dp_id, outport):
     msg = ofp_packet_out()
@@ -111,10 +110,10 @@ def handle_packetin(event):
         vm_id, vm_port = struct.unpack("QB", packet.raw[14:])
         dp_id = event.dpid
         in_port = event.port
-        msg = VMMap(vm_id=str(vm_id),
-                    vm_port=str(vm_port),
-                    vs_id=str(dp_id),
-                    vs_port=str(in_port))
+        msg = PortMap(vm_id=str(vm_id),
+                      vm_port=str(vm_port),
+                      vs_id=str(dp_id),
+                      vs_port=str(in_port))
         ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
         return
 

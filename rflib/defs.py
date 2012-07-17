@@ -1,4 +1,4 @@
-MONGO_ADDRESS = "192.169.1.1:27017"
+MONGO_ADDRESS = "localhost:27017"
 MONGO_DB_NAME = "db"
 
 RFCLIENT_RFSERVER_CHANNEL = "rfclient<->rfserver"
@@ -18,16 +18,15 @@ RFVS_DPID = 0x7266767372667673
 
 MATCH_L2 = True
 
-class DATAPATH_CONFIG_OPERATION:
-	DC_DROP_ALL = 0			# Drop all incoming packets.
-	DC_CLEAR_FLOW_TABLE = 1 # Clear flow table.
-	DC_VM_INFO = 2		    # Flow to communicate two linked VMs.
-	DC_RIPV2 = 3			# RIPv2 protocol.
-	DC_OSPF = 4 			# OSPF protocol.
-	DC_BGP = 5			    # BGP protocol.
-	DC_ARP = 6			    # ARP protocol.
-	DC_ICMP = 7 			# ICMP protocol.
-	DC_ALL = 8				# Send all traffic to the controller.
+DC_DROP_ALL = 0			# Drop all incoming packets.
+DC_CLEAR_FLOW_TABLE = 1 # Clear flow table.
+DC_VM_INFO = 2		    # Flow to communicate two linked VMs.
+DC_RIPV2 = 3			# RIPv2 protocol.
+DC_OSPF = 4 			# OSPF protocol.
+DC_BGP = 5			    # BGP protocol.
+DC_ARP = 6			    # ARP protocol.
+DC_ICMP = 7 			# ICMP protocol.
+DC_ALL = 8				# Send all traffic to the controller.
 
 # TODO: move these to their proper locations as developments furthers around POX
 # RFTable

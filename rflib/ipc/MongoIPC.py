@@ -34,20 +34,22 @@ def take_from_envelope(envelope, factory):
     msg.from_dict(envelope[CONTENT_FIELD]);
     return msg;
 
-
+def format_address(address):
+    try:
+        tmp = address.split(":")
+        if len(tmp) == 2:
+            return (tmp[0], int(tmp[1]))
+        elif len(tmp) == 1:
+            return (tmp[0],)
+    except:
+        raise ValueError, "Invalid address: " + str(address)
+            
 class MongoIPCMessageService(IPC.IPCMessageService):
     def __init__(self, address, db, id_):
         self._db = db
-        try:
-            tmp = address.split(":")
-            if len(tmp) == 2:
-                self._address = (tmp[0], int(tmp[1]))
-            elif len(tmp) == 1:
-                self._address = (tmp[0],)
-        except:
-            raise ValueError, "Invalid address: " + str(address)
+        self.address = format_address(address)
         self._id = id_
-        self._producer_connection = mongo.Connection(*self._address)
+        self._producer_connection = mongo.Connection(*self.address)
         
         
     def listen(self, channel_id, factory, processor, block=True):
@@ -63,7 +65,7 @@ class MongoIPCMessageService(IPC.IPCMessageService):
         return True
 
     def _listen_worker(self, channel_id, factory, processor):
-        connection = mongo.Connection(*self._address)
+        connection = mongo.Connection(*self.address)
         self._create_channel(connection, channel_id)
         
         collection = connection[self._db][channel_id]

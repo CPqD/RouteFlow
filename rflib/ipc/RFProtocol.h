@@ -1,5 +1,5 @@
-#ifndef __RFPROTOCOL_H__
-#define __RFPROTOCOL_H__
+#ifndef __NEWRFPROTOCOL_H__
+#define __NEWRFPROTOCOL_H__
 
 #include <stdint.h>
 
@@ -9,24 +9,26 @@
 #include "converter.h"
 
 enum {
-	VM_REGISTER_REQUEST,
-	VM_REGISTER_RESPONSE,
-	VM_CONFIG,
+	PORT_REGISTER,
+	PORT_CONFIG,
 	DATAPATH_CONFIG,
 	ROUTE_INFO,
 	FLOW_MOD,
-	DATAPATH_JOIN,
-	DATAPATH_LEAVE,
-	VM_MAP
+	DATAPATH_PORT_REGISTER,
+	DATAPATH_DOWN,
+	PORT_MAP
 };
 
-class VMRegisterRequest : public IPCMessage {
+class PortRegister : public IPCMessage {
     public:
-        VMRegisterRequest();
-        VMRegisterRequest(uint64_t vm_id);
+        PortRegister();
+        PortRegister(uint64_t vm_id, uint32_t port);
 
         uint64_t get_vm_id();
         void set_vm_id(uint64_t vm_id);
+
+        uint32_t get_port();
+        void set_port(uint32_t port);
 
         virtual int get_type();
         virtual void from_BSON(const char* data);
@@ -35,15 +37,22 @@ class VMRegisterRequest : public IPCMessage {
 
     private:
         uint64_t vm_id;
+        uint32_t port;
 };
 
-class VMRegisterResponse : public IPCMessage {
+class PortConfig : public IPCMessage {
     public:
-        VMRegisterResponse();
-        VMRegisterResponse(bool accept);
+        PortConfig();
+        PortConfig(uint64_t vm_id, uint32_t port, uint32_t operation_id);
 
-        bool get_accept();
-        void set_accept(bool accept);
+        uint64_t get_vm_id();
+        void set_vm_id(uint64_t vm_id);
+
+        uint32_t get_port();
+        void set_port(uint32_t port);
+
+        uint32_t get_operation_id();
+        void set_operation_id(uint32_t operation_id);
 
         virtual int get_type();
         virtual void from_BSON(const char* data);
@@ -51,24 +60,9 @@ class VMRegisterResponse : public IPCMessage {
         virtual string str();
 
     private:
-        bool accept;
-};
-
-class VMConfig : public IPCMessage {
-    public:
-        VMConfig();
-        VMConfig(uint32_t n_ports);
-
-        uint32_t get_n_ports();
-        void set_n_ports(uint32_t n_ports);
-
-        virtual int get_type();
-        virtual void from_BSON(const char* data);
-        virtual const char* to_BSON();
-        virtual string str();
-
-    private:
-        uint32_t n_ports;
+        uint64_t vm_id;
+        uint32_t port;
+        uint32_t operation_id;
 };
 
 class DatapathConfig : public IPCMessage {
@@ -95,10 +89,13 @@ class DatapathConfig : public IPCMessage {
 class RouteInfo : public IPCMessage {
     public:
         RouteInfo();
-        RouteInfo(uint64_t vm_id, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal);
+        RouteInfo(uint64_t vm_id, uint32_t vm_port, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal);
 
         uint64_t get_vm_id();
         void set_vm_id(uint64_t vm_id);
+
+        uint32_t get_vm_port();
+        void set_vm_port(uint32_t vm_port);
 
         IPAddress get_address();
         void set_address(IPAddress address);
@@ -125,6 +122,7 @@ class RouteInfo : public IPCMessage {
 
     private:
         uint64_t vm_id;
+        uint32_t vm_port;
         IPAddress address;
         IPAddress netmask;
         uint32_t dst_port;
@@ -174,19 +172,16 @@ class FlowMod : public IPCMessage {
         bool is_removal;
 };
 
-class DatapathJoin : public IPCMessage {
+class DatapathPortRegister : public IPCMessage {
     public:
-        DatapathJoin();
-        DatapathJoin(uint64_t dp_id, uint32_t n_ports, bool is_rfvs);
+        DatapathPortRegister();
+        DatapathPortRegister(uint64_t dp_id, uint32_t dp_port);
 
         uint64_t get_dp_id();
         void set_dp_id(uint64_t dp_id);
 
-        uint32_t get_n_ports();
-        void set_n_ports(uint32_t n_ports);
-
-        bool get_is_rfvs();
-        void set_is_rfvs(bool is_rfvs);
+        uint32_t get_dp_port();
+        void set_dp_port(uint32_t dp_port);
 
         virtual int get_type();
         virtual void from_BSON(const char* data);
@@ -195,14 +190,13 @@ class DatapathJoin : public IPCMessage {
 
     private:
         uint64_t dp_id;
-        uint32_t n_ports;
-        bool is_rfvs;
+        uint32_t dp_port;
 };
 
-class DatapathLeave : public IPCMessage {
+class DatapathDown : public IPCMessage {
     public:
-        DatapathLeave();
-        DatapathLeave(uint64_t dp_id);
+        DatapathDown();
+        DatapathDown(uint64_t dp_id);
 
         uint64_t get_dp_id();
         void set_dp_id(uint64_t dp_id);
@@ -216,10 +210,10 @@ class DatapathLeave : public IPCMessage {
         uint64_t dp_id;
 };
 
-class VMMap : public IPCMessage {
+class PortMap : public IPCMessage {
     public:
-        VMMap();
-        VMMap(uint64_t vm_id, uint32_t vm_port, uint64_t vs_id, uint32_t vs_port);
+        PortMap();
+        PortMap(uint64_t vm_id, uint32_t vm_port, uint64_t vs_id, uint32_t vs_port);
 
         uint64_t get_vm_id();
         void set_vm_id(uint64_t vm_id);
@@ -245,4 +239,4 @@ class VMMap : public IPCMessage {
         uint32_t vs_port;
 };
 
-#endif /* __RFPROTOCOL_H__ */
+#endif /* __NEWRFPROTOCOL_H__ */

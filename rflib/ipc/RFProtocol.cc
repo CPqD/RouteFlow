@@ -1,127 +1,125 @@
-#include "RFProtocol.h"
+#include "NewRFProtocol.h"
 
 #include <mongo/client/dbclient.h>
 
-VMRegisterRequest::VMRegisterRequest() {
+PortRegister::PortRegister() {
     set_vm_id(0);
+    set_port(0);
 }
 
-VMRegisterRequest::VMRegisterRequest(uint64_t vm_id) {
+PortRegister::PortRegister(uint64_t vm_id, uint32_t port) {
     set_vm_id(vm_id);
+    set_port(port);
 }
 
-int VMRegisterRequest::get_type() {
-    return VM_REGISTER_REQUEST;
+int PortRegister::get_type() {
+    return PORT_REGISTER;
 }
 
-uint64_t VMRegisterRequest::get_vm_id() {
+uint64_t PortRegister::get_vm_id() {
     return this->vm_id;
 }
 
-void VMRegisterRequest::set_vm_id(uint64_t vm_id) {
+void PortRegister::set_vm_id(uint64_t vm_id) {
     this->vm_id = vm_id;
 }
 
-void VMRegisterRequest::from_BSON(const char* data) {
+uint32_t PortRegister::get_port() {
+    return this->port;
+}
+
+void PortRegister::set_port(uint32_t port) {
+    this->port = port;
+}
+
+void PortRegister::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_vm_id(string_to<uint64_t>(obj["vm_id"].String()));
+    set_port(string_to<uint32_t>(obj["port"].String()));
 }
 
-const char* VMRegisterRequest::to_BSON() {
+const char* PortRegister::to_BSON() {
     mongo::BSONObjBuilder _b;
     _b.append("vm_id", to_string<uint64_t>(get_vm_id()));
+    _b.append("port", to_string<uint32_t>(get_port()));
     mongo::BSONObj o = _b.obj();
     char* data = new char[o.objsize()];
     memcpy(data, o.objdata(), o.objsize());
     return data;
 }
 
-string VMRegisterRequest::str() {
+string PortRegister::str() {
     stringstream ss;
-    ss << "VMRegisterRequest" << endl;
+    ss << "PortRegister" << endl;
     ss << "  vm_id: " << to_string<uint64_t>(get_vm_id()) << endl;
+    ss << "  port: " << to_string<uint32_t>(get_port()) << endl;
     return ss.str();
 }
 
-VMRegisterResponse::VMRegisterResponse() {
-    set_accept(false);
+PortConfig::PortConfig() {
+    set_vm_id(0);
+    set_port(0);
+    set_operation_id(0);
 }
 
-VMRegisterResponse::VMRegisterResponse(bool accept) {
-    set_accept(accept);
+PortConfig::PortConfig(uint64_t vm_id, uint32_t port, uint32_t operation_id) {
+    set_vm_id(vm_id);
+    set_port(port);
+    set_operation_id(operation_id);
 }
 
-int VMRegisterResponse::get_type() {
-    return VM_REGISTER_RESPONSE;
+int PortConfig::get_type() {
+    return PORT_CONFIG;
 }
 
-bool VMRegisterResponse::get_accept() {
-    return this->accept;
+uint64_t PortConfig::get_vm_id() {
+    return this->vm_id;
 }
 
-void VMRegisterResponse::set_accept(bool accept) {
-    this->accept = accept;
+void PortConfig::set_vm_id(uint64_t vm_id) {
+    this->vm_id = vm_id;
 }
 
-void VMRegisterResponse::from_BSON(const char* data) {
+uint32_t PortConfig::get_port() {
+    return this->port;
+}
+
+void PortConfig::set_port(uint32_t port) {
+    this->port = port;
+}
+
+uint32_t PortConfig::get_operation_id() {
+    return this->operation_id;
+}
+
+void PortConfig::set_operation_id(uint32_t operation_id) {
+    this->operation_id = operation_id;
+}
+
+void PortConfig::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
-    set_accept(obj["accept"].Bool());
+    set_vm_id(string_to<uint64_t>(obj["vm_id"].String()));
+    set_port(string_to<uint32_t>(obj["port"].String()));
+    set_operation_id(string_to<uint32_t>(obj["operation_id"].String()));
 }
 
-const char* VMRegisterResponse::to_BSON() {
+const char* PortConfig::to_BSON() {
     mongo::BSONObjBuilder _b;
-    _b.append("accept", get_accept());
+    _b.append("vm_id", to_string<uint64_t>(get_vm_id()));
+    _b.append("port", to_string<uint32_t>(get_port()));
+    _b.append("operation_id", to_string<uint32_t>(get_operation_id()));
     mongo::BSONObj o = _b.obj();
     char* data = new char[o.objsize()];
     memcpy(data, o.objdata(), o.objsize());
     return data;
 }
 
-string VMRegisterResponse::str() {
+string PortConfig::str() {
     stringstream ss;
-    ss << "VMRegisterResponse" << endl;
-    ss << "  accept: " << get_accept() << endl;
-    return ss.str();
-}
-
-VMConfig::VMConfig() {
-    set_n_ports(0);
-}
-
-VMConfig::VMConfig(uint32_t n_ports) {
-    set_n_ports(n_ports);
-}
-
-int VMConfig::get_type() {
-    return VM_CONFIG;
-}
-
-uint32_t VMConfig::get_n_ports() {
-    return this->n_ports;
-}
-
-void VMConfig::set_n_ports(uint32_t n_ports) {
-    this->n_ports = n_ports;
-}
-
-void VMConfig::from_BSON(const char* data) {
-    mongo::BSONObj obj(data);
-    set_n_ports(string_to<uint32_t>(obj["n_ports"].String()));
-}
-
-const char* VMConfig::to_BSON() {
-    mongo::BSONObjBuilder _b;
-    _b.append("n_ports", to_string<uint32_t>(get_n_ports()));
-    mongo::BSONObj o = _b.obj();
-    char* data = new char[o.objsize()];
-    memcpy(data, o.objdata(), o.objsize());
-    return data;
-}
-
-string VMConfig::str() {
-    stringstream ss;
-    ss << "VMConfig" << endl;
-    ss << "  n_ports: " << to_string<uint32_t>(get_n_ports()) << endl;
+    ss << "PortConfig" << endl;
+    ss << "  vm_id: " << to_string<uint64_t>(get_vm_id()) << endl;
+    ss << "  port: " << to_string<uint32_t>(get_port()) << endl;
+    ss << "  operation_id: " << to_string<uint32_t>(get_operation_id()) << endl;
     return ss.str();
 }
 
@@ -181,6 +179,7 @@ string DatapathConfig::str() {
 
 RouteInfo::RouteInfo() {
     set_vm_id(0);
+    set_vm_port(0);
     set_address(IPAddress(IPV4));
     set_netmask(IPAddress(IPV4));
     set_dst_port(0);
@@ -189,8 +188,9 @@ RouteInfo::RouteInfo() {
     set_is_removal(false);
 }
 
-RouteInfo::RouteInfo(uint64_t vm_id, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal) {
+RouteInfo::RouteInfo(uint64_t vm_id, uint32_t vm_port, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal) {
     set_vm_id(vm_id);
+    set_vm_port(vm_port);
     set_address(address);
     set_netmask(netmask);
     set_dst_port(dst_port);
@@ -209,6 +209,14 @@ uint64_t RouteInfo::get_vm_id() {
 
 void RouteInfo::set_vm_id(uint64_t vm_id) {
     this->vm_id = vm_id;
+}
+
+uint32_t RouteInfo::get_vm_port() {
+    return this->vm_port;
+}
+
+void RouteInfo::set_vm_port(uint32_t vm_port) {
+    this->vm_port = vm_port;
 }
 
 IPAddress RouteInfo::get_address() {
@@ -262,6 +270,7 @@ void RouteInfo::set_is_removal(bool is_removal) {
 void RouteInfo::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_vm_id(string_to<uint64_t>(obj["vm_id"].String()));
+    set_vm_port(string_to<uint32_t>(obj["vm_port"].String()));
     set_address(IPAddress(IPV4, obj["address"].String()));
     set_netmask(IPAddress(IPV4, obj["netmask"].String()));
     set_dst_port(string_to<uint32_t>(obj["dst_port"].String()));
@@ -273,6 +282,7 @@ void RouteInfo::from_BSON(const char* data) {
 const char* RouteInfo::to_BSON() {
     mongo::BSONObjBuilder _b;
     _b.append("vm_id", to_string<uint64_t>(get_vm_id()));
+    _b.append("vm_port", to_string<uint32_t>(get_vm_port()));
     _b.append("address", get_address().toString());
     _b.append("netmask", get_netmask().toString());
     _b.append("dst_port", to_string<uint32_t>(get_dst_port()));
@@ -289,6 +299,7 @@ string RouteInfo::str() {
     stringstream ss;
     ss << "RouteInfo" << endl;
     ss << "  vm_id: " << to_string<uint64_t>(get_vm_id()) << endl;
+    ss << "  vm_port: " << to_string<uint32_t>(get_vm_port()) << endl;
     ss << "  address: " << get_address().toString() << endl;
     ss << "  netmask: " << get_netmask().toString() << endl;
     ss << "  dst_port: " << to_string<uint32_t>(get_dst_port()) << endl;
@@ -417,99 +428,86 @@ string FlowMod::str() {
     return ss.str();
 }
 
-DatapathJoin::DatapathJoin() {
+DatapathPortRegister::DatapathPortRegister() {
     set_dp_id(0);
-    set_n_ports(0);
-    set_is_rfvs(false);
+    set_dp_port(0);
 }
 
-DatapathJoin::DatapathJoin(uint64_t dp_id, uint32_t n_ports, bool is_rfvs) {
+DatapathPortRegister::DatapathPortRegister(uint64_t dp_id, uint32_t dp_port) {
     set_dp_id(dp_id);
-    set_n_ports(n_ports);
-    set_is_rfvs(is_rfvs);
+    set_dp_port(dp_port);
 }
 
-int DatapathJoin::get_type() {
-    return DATAPATH_JOIN;
+int DatapathPortRegister::get_type() {
+    return DATAPATH_PORT_REGISTER;
 }
 
-uint64_t DatapathJoin::get_dp_id() {
+uint64_t DatapathPortRegister::get_dp_id() {
     return this->dp_id;
 }
 
-void DatapathJoin::set_dp_id(uint64_t dp_id) {
+void DatapathPortRegister::set_dp_id(uint64_t dp_id) {
     this->dp_id = dp_id;
 }
 
-uint32_t DatapathJoin::get_n_ports() {
-    return this->n_ports;
+uint32_t DatapathPortRegister::get_dp_port() {
+    return this->dp_port;
 }
 
-void DatapathJoin::set_n_ports(uint32_t n_ports) {
-    this->n_ports = n_ports;
+void DatapathPortRegister::set_dp_port(uint32_t dp_port) {
+    this->dp_port = dp_port;
 }
 
-bool DatapathJoin::get_is_rfvs() {
-    return this->is_rfvs;
-}
-
-void DatapathJoin::set_is_rfvs(bool is_rfvs) {
-    this->is_rfvs = is_rfvs;
-}
-
-void DatapathJoin::from_BSON(const char* data) {
+void DatapathPortRegister::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_dp_id(string_to<uint64_t>(obj["dp_id"].String()));
-    set_n_ports(string_to<uint32_t>(obj["n_ports"].String()));
-    set_is_rfvs(obj["is_rfvs"].Bool());
+    set_dp_port(string_to<uint32_t>(obj["dp_port"].String()));
 }
 
-const char* DatapathJoin::to_BSON() {
+const char* DatapathPortRegister::to_BSON() {
     mongo::BSONObjBuilder _b;
     _b.append("dp_id", to_string<uint64_t>(get_dp_id()));
-    _b.append("n_ports", to_string<uint32_t>(get_n_ports()));
-    _b.append("is_rfvs", get_is_rfvs());
+    _b.append("dp_port", to_string<uint32_t>(get_dp_port()));
     mongo::BSONObj o = _b.obj();
     char* data = new char[o.objsize()];
     memcpy(data, o.objdata(), o.objsize());
     return data;
 }
 
-string DatapathJoin::str() {
+string DatapathPortRegister::str() {
     stringstream ss;
-    ss << "DatapathJoin" << endl;
+    ss << "DatapathPortRegister" << endl;
     ss << "  dp_id: " << to_string<uint64_t>(get_dp_id()) << endl;
-    ss << "  n_ports: " << to_string<uint32_t>(get_n_ports()) << endl;
-    ss << "  is_rfvs: " << get_is_rfvs() << endl;
+    ss << "  dp_port: " << to_string<uint32_t>(get_dp_port()) << endl;
     return ss.str();
 }
 
-DatapathLeave::DatapathLeave() {
+DatapathDown::DatapathDown() {
     set_dp_id(0);
 }
 
-DatapathLeave::DatapathLeave(uint64_t dp_id) {
+DatapathDown::DatapathDown(uint64_t dp_id) {
     set_dp_id(dp_id);
 }
 
-int DatapathLeave::get_type() {
-    return DATAPATH_LEAVE;
+int DatapathDown::get_type() {
+    return DATAPATH_DOWN;
 }
 
-uint64_t DatapathLeave::get_dp_id() {
+uint64_t DatapathDown::get_dp_id() {
     return this->dp_id;
 }
 
-void DatapathLeave::set_dp_id(uint64_t dp_id) {
+void DatapathDown::set_dp_id(uint64_t dp_id) {
     this->dp_id = dp_id;
 }
 
-void DatapathLeave::from_BSON(const char* data) {
+void DatapathDown::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_dp_id(string_to<uint64_t>(obj["dp_id"].String()));
 }
 
-const char* DatapathLeave::to_BSON() {
+const char* DatapathDown::to_BSON() {
     mongo::BSONObjBuilder _b;
     _b.append("dp_id", to_string<uint64_t>(get_dp_id()));
     mongo::BSONObj o = _b.obj();
@@ -518,64 +516,64 @@ const char* DatapathLeave::to_BSON() {
     return data;
 }
 
-string DatapathLeave::str() {
+string DatapathDown::str() {
     stringstream ss;
-    ss << "DatapathLeave" << endl;
+    ss << "DatapathDown" << endl;
     ss << "  dp_id: " << to_string<uint64_t>(get_dp_id()) << endl;
     return ss.str();
 }
 
-VMMap::VMMap() {
+PortMap::PortMap() {
     set_vm_id(0);
     set_vm_port(0);
     set_vs_id(0);
     set_vs_port(0);
 }
 
-VMMap::VMMap(uint64_t vm_id, uint32_t vm_port, uint64_t vs_id, uint32_t vs_port) {
+PortMap::PortMap(uint64_t vm_id, uint32_t vm_port, uint64_t vs_id, uint32_t vs_port) {
     set_vm_id(vm_id);
     set_vm_port(vm_port);
     set_vs_id(vs_id);
     set_vs_port(vs_port);
 }
 
-int VMMap::get_type() {
-    return VM_MAP;
+int PortMap::get_type() {
+    return PORT_MAP;
 }
 
-uint64_t VMMap::get_vm_id() {
+uint64_t PortMap::get_vm_id() {
     return this->vm_id;
 }
 
-void VMMap::set_vm_id(uint64_t vm_id) {
+void PortMap::set_vm_id(uint64_t vm_id) {
     this->vm_id = vm_id;
 }
 
-uint32_t VMMap::get_vm_port() {
+uint32_t PortMap::get_vm_port() {
     return this->vm_port;
 }
 
-void VMMap::set_vm_port(uint32_t vm_port) {
+void PortMap::set_vm_port(uint32_t vm_port) {
     this->vm_port = vm_port;
 }
 
-uint64_t VMMap::get_vs_id() {
+uint64_t PortMap::get_vs_id() {
     return this->vs_id;
 }
 
-void VMMap::set_vs_id(uint64_t vs_id) {
+void PortMap::set_vs_id(uint64_t vs_id) {
     this->vs_id = vs_id;
 }
 
-uint32_t VMMap::get_vs_port() {
+uint32_t PortMap::get_vs_port() {
     return this->vs_port;
 }
 
-void VMMap::set_vs_port(uint32_t vs_port) {
+void PortMap::set_vs_port(uint32_t vs_port) {
     this->vs_port = vs_port;
 }
 
-void VMMap::from_BSON(const char* data) {
+void PortMap::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_vm_id(string_to<uint64_t>(obj["vm_id"].String()));
     set_vm_port(string_to<uint32_t>(obj["vm_port"].String()));
@@ -583,7 +581,7 @@ void VMMap::from_BSON(const char* data) {
     set_vs_port(string_to<uint32_t>(obj["vs_port"].String()));
 }
 
-const char* VMMap::to_BSON() {
+const char* PortMap::to_BSON() {
     mongo::BSONObjBuilder _b;
     _b.append("vm_id", to_string<uint64_t>(get_vm_id()));
     _b.append("vm_port", to_string<uint32_t>(get_vm_port()));
@@ -595,9 +593,9 @@ const char* VMMap::to_BSON() {
     return data;
 }
 
-string VMMap::str() {
+string PortMap::str() {
     stringstream ss;
-    ss << "VMMap" << endl;
+    ss << "PortMap" << endl;
     ss << "  vm_id: " << to_string<uint64_t>(get_vm_id()) << endl;
     ss << "  vm_port: " << to_string<uint32_t>(get_vm_port()) << endl;
     ss << "  vs_id: " << to_string<uint64_t>(get_vs_id()) << endl;
