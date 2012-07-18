@@ -335,6 +335,7 @@ int32_t FlowTable::addFlowToHw(const RouteEntry& rentry) {
     RouteInfo msg;
     msg.set_is_removal(false);
     msg.set_vm_id(FlowTable::vm_id);
+    msg.set_vm_port(rentry.interface.port);
     // Action
     msg.set_dst_port(rentry.interface.port);
     msg.set_src_hwaddress(rentry.interface.hwaddress);
@@ -353,6 +354,7 @@ int32_t FlowTable::addFlowToHw(const HostEntry& hentry) {
     RouteInfo msg;
     msg.set_is_removal(false);
     msg.set_vm_id(FlowTable::vm_id);
+    msg.set_vm_port(hentry.interface.port);
     // Action
     msg.set_dst_port(hentry.interface.port);
     msg.set_src_hwaddress(hentry.interface.hwaddress);
@@ -374,6 +376,7 @@ int32_t FlowTable::delFlowFromHw(const RouteEntry& rentry) {
     RouteInfo msg;
     msg.set_is_removal(true);
     msg.set_vm_id(FlowTable::vm_id);
+    msg.set_vm_port(rentry.interface.port);
     // Action
     msg.set_dst_port(0);
     msg.set_src_hwaddress(rentry.interface.hwaddress);
@@ -392,6 +395,7 @@ int32_t FlowTable::delFlowFromHw(const HostEntry& hentry) {
     RouteInfo msg;
     msg.set_is_removal(true);
     msg.set_vm_id(FlowTable::vm_id);
+    msg.set_vm_port(hentry.interface.port);
     // Action
     msg.set_dst_port(hentry.interface.port);
     msg.set_src_hwaddress(hentry.interface.hwaddress);

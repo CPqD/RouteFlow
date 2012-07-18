@@ -8,12 +8,14 @@ import rflib.ipc.IPC as IPC
 import rflib.ipc.MongoIPC as MongoIPC
 from rflib.ipc.RFProtocol import *
 from rflib.openflow.rfofmsg import *
+from rflib.rftable.rftable import *
+from rflib.ipc.rfprotocolfactory import RFProtocolFactory
 from rflib.defs import *
 
+netmask_prefix = lambda a: sum([bin(int(x)).count("1") for x in a.split(".", 4)])
 ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, RFPROXY_ID)
-
-conn = mongo.Connection()
-rftable = conn[MONGO_DB_NAME][RF_TABLE_NAME]
+rftable = RFTable()
+log = core.getLogger()
 
 def send_ofmsg(dp_id, ofmsg, success, fail):
     topology = core.components['topology']
@@ -29,27 +31,22 @@ class RFProcessor(IPC.IPCMessageProcessor):
         topology = core.components['topology']
         type_ = msg.get_type()
         if type_ == DATAPATH_CONFIG:
-            dp_id = int(msg["dp_id"])
-            operation_id = int(msg["operation_id"])
-
+            dp_id = msg.get_dp_id()
+            operation_id = msg.get_operation_id()
             ofmsg = create_config_msg(operation_id)
             send_ofmsg(dp_id, ofmsg,
                        "Flow modification (config) sent to datapath %i" % dp_id,
                        "Switch is disconnected, cannot send flow modification (config)")
         elif type_ == FLOW_MOD:
-            dp_id = int(msg["dp_id"])
+            dp_id = msg.get_dp_id()
+            netmask = msg.get_netmask()
+            netmask = netmask_prefix(netmask)
+            address = msg.get_address() + "/" + str(netmask)
+            src_hwaddress = msg.get_src_hwaddress()
+            dst_hwaddress = msg.get_dst_hwaddress()
+            dst_port = msg.get_dst_port()
 
-            netmask = str(msg["netmask"])
-            # TODO: fix this. It was just to make it work...
-            netmask = netmask.count("255")*8
-
-            address = str(msg["address"]) + "/" + str(netmask)
-
-            src_hwaddress = str(msg["src_hwaddress"])
-            dst_hwaddress = str(msg["dst_hwaddress"])
-            dst_port = int(msg["dst_port"])
-
-            if (not msg["is_removal"]):
+            if (not msg.get_is_removal()):
                 ofmsg = create_flow_install_msg(address, netmask, src_hwaddress, dst_hwaddress, dst_port)
                 send_ofmsg(dp_id, ofmsg,
                            "Flow modification (install) sent to datapath %i" % dp_id,
@@ -63,16 +60,8 @@ class RFProcessor(IPC.IPCMessageProcessor):
                 send_ofmsg(dp_id, ofmsg,
                            "Flow modification (temporary) sent to datapath %i" % dp_id,
                            "Switch is disconnected, cannot send flow modification (temporary)")
-
-class RFFactory(IPC.IPCMessageFactory):
-    def build_for_type(self, type_):
-        if type_ == DATAPATH_CONFIG:
-            return DatapathConfig()
-        if type_ == FLOW_MOD:
-            return FlowMod()
-
-log = core.getLogger()
-
+        return True
+    
 def dpid_to_switchname(dpid):
     dpid = hex(dpid)[2:][:-1]
     switchname = ""
@@ -81,13 +70,21 @@ def dpid_to_switchname(dpid):
     return switchname
 
 def handle_connectionup(event):
-    log.info("Datapath id=%s is up, installing config flows...", dpid_to_switchname(event.dpid))
+    log.info("Datapath id=%s is up, installing config flows...", event.dpid)
     topology = core.components['topology']
     ports = topology.getEntityByID(event.dpid).ports
     for port in ports:
-        msg = DatapathPortRegister(dp_id=str(event.dpid), dp_port=str(port.number))
+        # Discard the local OpenFlow port
+        if port == OFPP_LOCAL:
+            continue
+        msg = DatapathPortRegister(dp_id=event.dpid, dp_port=port)
         ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
 
+def handle_connectiondown(event):
+    log.info("Datapath id=%s is down, disabling it...", event.dpid)
+    msg = DatapathDown(dp_id=event.dpid)
+    ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
+        
 def packet_out(data, dp_id, outport):
     msg = ofp_packet_out()
     msg.actions.append(ofp_action_output(port=outport))
@@ -105,40 +102,32 @@ def handle_packetin(event):
 
     if packet.type == ethernet.LLDP_TYPE:
         return
-
+    # If we have a mapping packet, inform RFServer through a PortMap message
     if packet.type == 0x0A0A:
         vm_id, vm_port = struct.unpack("QB", packet.raw[14:])
-        dp_id = event.dpid
-        in_port = event.port
-        msg = PortMap(vm_id=str(vm_id),
-                      vm_port=str(vm_port),
-                      vs_id=str(dp_id),
-                      vs_port=str(in_port))
+        msg = PortMap(vm_id=vm_id, vm_port=vm_port,
+                      vs_id=event.dpid, vs_port=event.port)
         ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
         return
 
-    results = rftable.find({VS_ID: str(event.dpid)})
-    if results.count() == 0 or results[0][VM_ID] == "":
-        results = rftable.find({VS_ID: {"$ne": ""}, DP_ID: str(event.dpid), DP_PORT: str(event.port)})
-        if results.count() == 0:
-            log.debug("Datapath not associated with a VM")
-            return
+    # If the packet came from RFVS, redirect it to the right switch port
+    if event.dpid == RFVS_DPID:
+        entry = rftable.get_entry_by_vs_port(event.dpid, event.port)
+        if entry is not None and entry.get_status() == RFENTRY_ACTIVE:
+            packet_out(event.data, int(entry.dp_id), int(entry.dp_port))
         else:
-            vs_id = int(results[0][VS_ID])
-            vs_port = int(results[0][VS_PORT])
-            packet_out(event.data, vs_id, vs_port)
+            log.debug("Unmapped RFVS port")
+    # If the packet came from a switch, redirect it to the right RFVS port
     else:
-        results = rftable.find({VS_PORT: str(event.port)})
-        if results.count() == 0 or results[0][DP_ID] == "":
-            log.debug("Datapath not associated with a VM")
-            return
+        entry = rftable.get_entry_by_dp_port(event.dpid, event.port)
+        if entry is not None and entry.get_status() == RFENTRY_ACTIVE:
+            packet_out(event.data, int(entry.vs_id), int(entry.vs_port))
         else:
-            dp_id = int(results[0][DP_ID])
-            dp_port = int(results[0][DP_PORT])
-            packet_out(event.data, dp_id, dp_port)
+            log.debug("Datapath port not associated with a VM port")
 
 def launch ():
     core.openflow.addListenerByName("ConnectionUp", handle_connectionup)
+    core.openflow.addListenerByName("ConnectionDown", handle_connectiondown)
     core.openflow.addListenerByName("PacketIn", handle_packetin)
-    ipc.listen(RFSERVER_RFPROXY_CHANNEL, RFFactory(), RFProcessor(), False)
+    ipc.listen(RFSERVER_RFPROXY_CHANNEL, RFProtocolFactory(), RFProcessor(), False)
     log.info("RFProxy running.")

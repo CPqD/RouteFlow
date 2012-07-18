@@ -95,7 +95,9 @@ class RFEntry:
         for k, v in data.items():
             if str(v) is "":
                 data[k] = None
-        load = lambda src, attr, obj: setattr(obj, attr, src[attr])
+        def load(src, attr, obj):
+            setattr(obj, attr, src[attr])
+            
         self.id = data["_id"]
         load(data, "vm_id", self)
         load(data, "vm_port", self)
@@ -206,6 +208,13 @@ class RFTable:
             return None
         return result[0]
 
+    def get_entry_by_vs_port(self, vs_id, vs_port):
+        result = self.get_entries(vs_id=vs_id, 
+                                  vs_port=vs_port)
+        if not result:
+            return None
+        return result[0]
+        
     def get_dp_entries(self, dp_id):
         return self.get_entries(dp_id=dp_id)
                 

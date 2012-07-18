@@ -24,7 +24,7 @@ def put_in_envelope(from_, to, msg):
     envelope[TYPE_FIELD] = msg.get_type()
 
     envelope[CONTENT_FIELD] = {}
-    for (k, v) in msg.items():
+    for (k, v) in msg.to_dict().items():
         envelope[CONTENT_FIELD][k] = v
 
     return envelope
@@ -72,16 +72,12 @@ class MongoIPCMessageService(IPC.IPCMessageService):
         cursor = collection.find({TO_FIELD: self.get_id(), READ_FIELD: False}, sort=[("_id", mongo.ASCENDING)])
 
         while True:
-            try:
-                for envelope in cursor:
-                    msg = take_from_envelope(envelope, factory)
-                    processor.process(envelope[FROM_FIELD], envelope[TO_FIELD], channel_id, msg);
-                    collection.update({"_id": envelope["_id"]}, {"$set": {READ_FIELD: True}})
-                time.sleep(0.05)
-                cursor = collection.find({TO_FIELD: self.get_id(), READ_FIELD: False}, sort=[("_id", mongo.ASCENDING)])
-            except:
-                # TODO: alert the user of the failure
-                pass
+            for envelope in cursor:
+                msg = take_from_envelope(envelope, factory)
+                processor.process(envelope[FROM_FIELD], envelope[TO_FIELD], channel_id, msg);
+                collection.update({"_id": envelope["_id"]}, {"$set": {READ_FIELD: True}})
+            time.sleep(0.05)
+            cursor = collection.find({TO_FIELD: self.get_id(), READ_FIELD: False}, sort=[("_id", mongo.ASCENDING)])
                 
     def _create_channel(self, connection, name):
         db = connection[self._db]

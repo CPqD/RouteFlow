@@ -1,5 +1,5 @@
-#ifndef __NEWRFPROTOCOL_H__
-#define __NEWRFPROTOCOL_H__
+#ifndef __RFPROTOCOL_H__
+#define __RFPROTOCOL_H__
 
 #include <stdint.h>
 
@@ -22,13 +22,13 @@ enum {
 class PortRegister : public IPCMessage {
     public:
         PortRegister();
-        PortRegister(uint64_t vm_id, uint32_t port);
+        PortRegister(uint64_t vm_id, uint32_t vm_port);
 
         uint64_t get_vm_id();
         void set_vm_id(uint64_t vm_id);
 
-        uint32_t get_port();
-        void set_port(uint32_t port);
+        uint32_t get_vm_port();
+        void set_vm_port(uint32_t vm_port);
 
         virtual int get_type();
         virtual void from_BSON(const char* data);
@@ -37,19 +37,19 @@ class PortRegister : public IPCMessage {
 
     private:
         uint64_t vm_id;
-        uint32_t port;
+        uint32_t vm_port;
 };
 
 class PortConfig : public IPCMessage {
     public:
         PortConfig();
-        PortConfig(uint64_t vm_id, uint32_t port, uint32_t operation_id);
+        PortConfig(uint64_t vm_id, uint32_t vm_port, uint32_t operation_id);
 
         uint64_t get_vm_id();
         void set_vm_id(uint64_t vm_id);
 
-        uint32_t get_port();
-        void set_port(uint32_t port);
+        uint32_t get_vm_port();
+        void set_vm_port(uint32_t vm_port);
 
         uint32_t get_operation_id();
         void set_operation_id(uint32_t operation_id);
@@ -61,7 +61,7 @@ class PortConfig : public IPCMessage {
 
     private:
         uint64_t vm_id;
-        uint32_t port;
+        uint32_t vm_port;
         uint32_t operation_id;
 };
 
@@ -239,4 +239,4 @@ class PortMap : public IPCMessage {
         uint32_t vs_port;
 };
 
-#endif /* __NEWRFPROTOCOL_H__ */
+#endif /* __RFPROTOCOL_H__ */

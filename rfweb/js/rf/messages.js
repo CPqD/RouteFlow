@@ -3,56 +3,50 @@ RFSERVER_RFPROXY = 1
 
 types = {
     0: {
-        "name": "VMRegisterRequest",
+        "name": "PortRegister",
         "show": true,
         "channel": RFCLIENT_RFSERVER,
     },
     
     1: {
-        "name": "VMRegisterResponse",
+        "name": "PortConfig",
         "show": true,
         "channel": RFCLIENT_RFSERVER,
     },
     
     2: {
-        "name": "VMConfig",
-        "show": true,
-        "channel": RFCLIENT_RFSERVER,
-    },
-    
-    3: {
         "name": "DatapathConfig",
         "show": false,
         "channel": RFSERVER_RFPROXY,
     },
     
-    4: {
+    3: {
         "name": "RouteInfo",
         "show": false,
         "channel": RFCLIENT_RFSERVER,
     },
     
-    5: {
+    4: {
         "name": "FlowMod",
         "show": false,
         "channel": RFSERVER_RFPROXY,
     },
     
+    5: {
+        "name": "DatapathPortRegister",
+        "show": true,
+        "channel": RFSERVER_RFPROXY,
+    },
+    
     6: {
-        "name": "DatapathJoin",
+        "name": "DatapathDown",
         "show": true,
         "channel": RFSERVER_RFPROXY,
     },
     
     7: {
-        "name": "DatapathLeave",
+        "name": "PortMap",
         "show": true,
-        "channel": RFSERVER_RFPROXY,
-    },
-    
-    8: {
-        "name": "VMMap",
-        "show": false,
         "channel": RFSERVER_RFPROXY,
     },
 }

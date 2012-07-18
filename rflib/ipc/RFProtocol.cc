@@ -1,15 +1,15 @@
-#include "NewRFProtocol.h"
+#include "RFProtocol.h"
 
 #include <mongo/client/dbclient.h>
 
 PortRegister::PortRegister() {
     set_vm_id(0);
-    set_port(0);
+    set_vm_port(0);
 }
 
-PortRegister::PortRegister(uint64_t vm_id, uint32_t port) {
+PortRegister::PortRegister(uint64_t vm_id, uint32_t vm_port) {
     set_vm_id(vm_id);
-    set_port(port);
+    set_vm_port(vm_port);
 }
 
 int PortRegister::get_type() {
@@ -24,24 +24,24 @@ void PortRegister::set_vm_id(uint64_t vm_id) {
     this->vm_id = vm_id;
 }
 
-uint32_t PortRegister::get_port() {
-    return this->port;
+uint32_t PortRegister::get_vm_port() {
+    return this->vm_port;
 }
 
-void PortRegister::set_port(uint32_t port) {
-    this->port = port;
+void PortRegister::set_vm_port(uint32_t vm_port) {
+    this->vm_port = vm_port;
 }
 
 void PortRegister::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_vm_id(string_to<uint64_t>(obj["vm_id"].String()));
-    set_port(string_to<uint32_t>(obj["port"].String()));
+    set_vm_port(string_to<uint32_t>(obj["vm_port"].String()));
 }
 
 const char* PortRegister::to_BSON() {
     mongo::BSONObjBuilder _b;
     _b.append("vm_id", to_string<uint64_t>(get_vm_id()));
-    _b.append("port", to_string<uint32_t>(get_port()));
+    _b.append("vm_port", to_string<uint32_t>(get_vm_port()));
     mongo::BSONObj o = _b.obj();
     char* data = new char[o.objsize()];
     memcpy(data, o.objdata(), o.objsize());
@@ -52,19 +52,19 @@ string PortRegister::str() {
     stringstream ss;
     ss << "PortRegister" << endl;
     ss << "  vm_id: " << to_string<uint64_t>(get_vm_id()) << endl;
-    ss << "  port: " << to_string<uint32_t>(get_port()) << endl;
+    ss << "  vm_port: " << to_string<uint32_t>(get_vm_port()) << endl;
     return ss.str();
 }
 
 PortConfig::PortConfig() {
     set_vm_id(0);
-    set_port(0);
+    set_vm_port(0);
     set_operation_id(0);
 }
 
-PortConfig::PortConfig(uint64_t vm_id, uint32_t port, uint32_t operation_id) {
+PortConfig::PortConfig(uint64_t vm_id, uint32_t vm_port, uint32_t operation_id) {
     set_vm_id(vm_id);
-    set_port(port);
+    set_vm_port(vm_port);
     set_operation_id(operation_id);
 }
 
@@ -80,12 +80,12 @@ void PortConfig::set_vm_id(uint64_t vm_id) {
     this->vm_id = vm_id;
 }
 
-uint32_t PortConfig::get_port() {
-    return this->port;
+uint32_t PortConfig::get_vm_port() {
+    return this->vm_port;
 }
 
-void PortConfig::set_port(uint32_t port) {
-    this->port = port;
+void PortConfig::set_vm_port(uint32_t vm_port) {
+    this->vm_port = vm_port;
 }
 
 uint32_t PortConfig::get_operation_id() {
@@ -99,14 +99,14 @@ void PortConfig::set_operation_id(uint32_t operation_id) {
 void PortConfig::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_vm_id(string_to<uint64_t>(obj["vm_id"].String()));
-    set_port(string_to<uint32_t>(obj["port"].String()));
+    set_vm_port(string_to<uint32_t>(obj["vm_port"].String()));
     set_operation_id(string_to<uint32_t>(obj["operation_id"].String()));
 }
 
 const char* PortConfig::to_BSON() {
     mongo::BSONObjBuilder _b;
     _b.append("vm_id", to_string<uint64_t>(get_vm_id()));
-    _b.append("port", to_string<uint32_t>(get_port()));
+    _b.append("vm_port", to_string<uint32_t>(get_vm_port()));
     _b.append("operation_id", to_string<uint32_t>(get_operation_id()));
     mongo::BSONObj o = _b.obj();
     char* data = new char[o.objsize()];
@@ -118,7 +118,7 @@ string PortConfig::str() {
     stringstream ss;
     ss << "PortConfig" << endl;
     ss << "  vm_id: " << to_string<uint64_t>(get_vm_id()) << endl;
-    ss << "  port: " << to_string<uint32_t>(get_port()) << endl;
+    ss << "  vm_port: " << to_string<uint32_t>(get_vm_port()) << endl;
     ss << "  operation_id: " << to_string<uint32_t>(get_operation_id()) << endl;
     return ss.str();
 }

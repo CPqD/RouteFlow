@@ -31,8 +31,9 @@ esac
 
 LXCDIR=/var/lib/lxc
 RF_HOME=..
-
+export PYTHONPATH=$PYTHONPATH:$RF_HOME
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
+
 cd $RF_HOME
 
 wait_port_listen() {
@@ -180,7 +181,6 @@ if [ "$ACTION" != "RESET" ]; then
     case "$ACTION" in
     POX)
         cd pox
-        export PYTHONPATH=$PYTHONPATH:$RF_HOME
         ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
         cd - &> /dev/null
         ;;
@@ -193,7 +193,7 @@ if [ "$ACTION" != "RESET" ]; then
     wait_port_listen $CONTROLLER_PORT
         
     echo_bold "-> Starting RFServer..."
-    build/rfserver &
+    python rfserver/rfserver.py &
 
     echo_bold "-> Starting the control plane network (dp0 VS)..."
 	ovs-vsctl add-br dp0

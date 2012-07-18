@@ -1,10 +1,10 @@
 rowtemplate = "<tr class=\"bg\{style}\">"
 rowtemplate += "<td>{vm_id}</td>"
 rowtemplate += "<td>{vm_port}</td>"
-rowtemplate += "<td>{vs_id}</td>"
-rowtemplate += "<td>{vs_port}</td>"
 rowtemplate += "<td>{dp_id}</td>"
 rowtemplate += "<td>{dp_port}</td>"
+rowtemplate += "<td>{vs_id}</td>"
+rowtemplate += "<td>{vs_port}</td>"
 rowtemplate += "</tr>"
 
 function process_entry(i, msg) {

@@ -39,27 +39,27 @@ def ofm_match_tp(ofm, match, src, dst):
 def create_config_msg(operation):
     ofm = ofp_flow_mod()
 
-    if operation == DATAPATH_CONFIG_OPERATION.DC_RIPV2:
+    if operation == DC_RIPV2:
         ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
         ofm_match_nw(ofm, (OFPFW_NW_PROTO | OFPFW_NW_DST_MASK), 0x11, 0, 0, IPAddr("224.0.0.9"))
-    elif operation == DATAPATH_CONFIG_OPERATION.DC_OSPF:
+    elif operation == DC_OSPF:
         ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
         ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x59, 0, 0, 0)
-    elif operation == DATAPATH_CONFIG_OPERATION.DC_ARP:
+    elif operation == DC_ARP:
         ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0806)
-    elif operation == DATAPATH_CONFIG_OPERATION.DC_ICMP:
+    elif operation == DC_ICMP:
         ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
         ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x01, 0, 0, 0)
-    elif operation == DATAPATH_CONFIG_OPERATION.DC_BGP:
+    elif operation == DC_BGP:
         ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
         ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0)
         ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x00B3)
-    elif operation == DATAPATH_CONFIG_OPERATION.DC_VM_INFO:
+    elif operation == DC_VM_INFO:
         ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0A0A)
-    elif operation == DATAPATH_CONFIG_OPERATION.DC_DROP_ALL:
+    elif operation == DC_DROP_ALL:
         ofm.priority = 1;
 
-    if operation == DATAPATH_CONFIG_OPERATION.DC_CLEAR_FLOW_TABLE:
+    if operation == DC_CLEAR_FLOW_TABLE:
         ofm.command = OFPFC_DELETE
         ofm.priority = 0
     else:

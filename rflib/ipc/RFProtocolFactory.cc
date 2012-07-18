@@ -2,24 +2,22 @@
 
 IPCMessage* RFProtocolFactory::buildForType(int type) {
     switch (type) {
-        case VM_REGISTER_REQUEST:
-            return new VMRegisterRequest();
-        case VM_REGISTER_RESPONSE:
-            return new VMRegisterResponse();
-        case VM_CONFIG:
-            return new VMConfig();
+        case PORT_REGISTER:
+            return new PortRegister();
+        case PORT_CONFIG:
+            return new PortConfig();
         case DATAPATH_CONFIG:
             return new DatapathConfig();
         case ROUTE_INFO:
             return new RouteInfo();
         case FLOW_MOD:
             return new FlowMod();
-        case DATAPATH_JOIN:
-            return new DatapathJoin();
-        case DATAPATH_LEAVE:
-            return new DatapathLeave();
-        case VM_MAP:
-            return new VMMap();
+        case DATAPATH_PORT_REGISTER:
+            return new DatapathPortRegister();
+        case DATAPATH_DOWN:
+            return new DatapathDown();
+        case PORT_MAP:
+            return new PortMap();
         default:
             return NULL;
     }
