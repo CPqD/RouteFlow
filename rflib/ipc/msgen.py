@@ -2,6 +2,7 @@ import sys
 
 messages = []
 
+# C++
 typesMap = {
 "i32": "uint32_t",
 "i64": "uint64_t",
@@ -36,6 +37,34 @@ importType = {
 "ip": "IPAddress(IPV4, {0}.String())",
 "mac": "MACAddress({0}.String())",
 "string": "{0}.String()",
+}
+
+# Python
+pyDefaultValues = {
+"i32": "0",
+"i64": "0",
+"bool": "False",
+"ip": "\"\"",
+"mac": "\"\"",
+"string": "\"\"",
+}
+
+pyExportType = {
+"i32": "str({0})",
+"i64": "str({0})",
+"bool": "bool({0})",
+"ip": "str({0})",
+"mac": "str({0})",
+"string": "{0}",
+}
+
+pyImportType = {
+"i32": "int({0})",
+"i64": "int({0})",
+"bool": "bool({0})",
+"ip": "str({0})",
+"mac": "str({0})",
+"string": "str({0})",
 }
 
 def convmsgtype(string):
@@ -79,7 +108,7 @@ class CodeGenerator:
         return "\n".join(self.code)
         
     
-def genH(messages, fname="exprotocol"):
+def genH(messages, fname):
     g = CodeGenerator()
     
     g.addLine("#ifndef __" + fname.upper() + "_H__")
@@ -129,7 +158,7 @@ def genH(messages, fname="exprotocol"):
     g.addLine("#endif /* __" + fname.upper() + "_H__ */")
     return str(g)
     
-def genCPP(messages, fname="exprotocol"):
+def genCPP(messages, fname):
     g = CodeGenerator()
     
     g.addLine("#include \"{0}.h\"".format(fname))
@@ -213,6 +242,100 @@ def genCPP(messages, fname="exprotocol"):
         g.blankLine();
         
     return str(g)
+
+def genPy(messages, fname):
+    g = CodeGenerator()
+
+    g.addLine("import bson")    
+    g.addLine("import pymongo as mongo")
+    g.blankLine()
+    g.addLine("from MongoIPC import MongoIPCMessage")
+    
+    g.blankLine()
+    v = 0
+    for name, msg in messages:
+        g.addLine("{0} = {1}".format(convmsgtype(name), v))
+        v += 1
+    g.blankLine()
+    for name, msg in messages:
+        g.addLine("class {0}(MongoIPCMessage):".format(name))
+        g.increaseIndent()
+        g.addLine("def __init__(self, {0}):".format(", ".join([f + "=None" for t, f in msg])))
+        g.increaseIndent()
+        for t, f in msg:
+            g.addLine("self.set_{0}({0})".format(f))
+        g.decreaseIndent()
+        g.blankLine();
+        
+        g.addLine("def get_type(self):")
+        g.increaseIndent();
+        g.addLine("return {0}".format(convmsgtype(name)))
+        g.decreaseIndent()
+        g.blankLine();
+
+        for t, f in msg:
+            g.addLine("def get_{0}(self):".format(f))
+            g.increaseIndent();
+            g.addLine("return self.{0}".format(f))
+            g.decreaseIndent()
+            g.blankLine();
+
+            g.addLine("def set_{0}(self, {0}):".format(f))
+            g.increaseIndent();
+            g.addLine("{0} = {1} if {0} is None else {0}".format(f, pyDefaultValues[t]))
+            g.addLine("try:")
+            g.increaseIndent()
+            g.addLine("self.{0} = {1}".format(f, pyImportType[t].format(f)))
+            g.decreaseIndent()
+            g.addLine("except:")
+            g.increaseIndent()
+            g.addLine("self.{0} = {1}".format(f, pyDefaultValues[t]))
+            g.decreaseIndent()
+            g.decreaseIndent()
+            g.blankLine();
+
+        g.addLine("def from_dict(self, data):")
+        g.increaseIndent();
+        for t, f in msg:
+            g.addLine("self.set_{0}(data[\"{0}\"])".format(f))
+        g.decreaseIndent()
+        g.blankLine();
+        
+        g.addLine("def to_dict(self):")
+        g.increaseIndent();
+        g.addLine("data = {}")
+        for t, f in msg:
+            value = pyExportType[t].format("self.get_{0}()".format(f))
+            g.addLine("data[\"{0}\"] = {1}".format(f, value))
+        g.addLine("return data")
+        g.decreaseIndent()
+        g.blankLine();
+        
+        g.addLine("def from_bson(self, data):")
+        g.increaseIndent()
+        g.addLine("data = bson.BSON.decode(data)")
+        g.addLine("self.from_dict(data)")
+        g.decreaseIndent()
+        g.blankLine()
+        
+        g.addLine("def to_bson(self):")
+        g.increaseIndent()
+        g.addLine("return bson.BSON.encode(self.get_dict())")
+        g.decreaseIndent()
+        g.blankLine()
+                
+        g.addLine("def __str__(self):")
+        g.increaseIndent();
+        g.addLine("s = \"{0}\\n\"".format(name))
+        for t, f in msg:
+            value = "self.get_{0}()".format(f)
+            g.addLine("s += \"  {0}: \" + {1} + \"\\n\"".format(f, pyExportType[t].format(value)))
+        g.addLine("return s")
+        g.decreaseIndent()
+        g.decreaseIndent()
+        g.blankLine();
+        
+    return str(g)
     
 # Text processing
 fname = sys.argv[1]
@@ -241,4 +364,8 @@ f.close()
 
 f = open(fname + ".cc", "w")
 f.write(genCPP(messages, fname))
+f.close()
+
+f = open(fname + ".py", "w")
+f.write(genPy(messages, fname))
 f.close()
