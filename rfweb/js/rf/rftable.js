@@ -21,6 +21,7 @@ function rftable_init() {
         url: "/rftable",
         dataType: 'jsonp',
         success: function (data) {
+            // TODO: this sort doesn't seem to be working. Figure out why.
             data.sort(function(a, b) { return a["vm_id"] < b["vm_id"]; });
             for (var i in data) {
                 process_entry(i, data[i])

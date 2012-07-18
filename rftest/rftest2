@@ -193,7 +193,7 @@ if [ "$ACTION" != "RESET" ]; then
     wait_port_listen $CONTROLLER_PORT
         
     echo_bold "-> Starting RFServer..."
-    python rfserver/rfserver.py &
+    ./rfserver/rfserver.py rftest/rftest2config.csv &
 
     echo_bold "-> Starting the control plane network (dp0 VS)..."
 	ovs-vsctl add-br dp0

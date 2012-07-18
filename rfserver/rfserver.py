@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
+import sys
+
 import rflib.ipc.IPC as IPC
 import rflib.ipc.MongoIPC as MongoIPC
 from rflib.ipc.RFProtocol import *
@@ -17,6 +19,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         self.rftable = RFTable()
         self.config = RFConfig(configfile)
         self.configured_rfvs = False
+        
         self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, RFSERVER_ID)
         self.ipc.listen(RFCLIENT_RFSERVER_CHANNEL, self, self, False)
         self.ipc.listen(RFSERVER_RFPROXY_CHANNEL, self, self, True)
@@ -191,4 +194,14 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             entry.activate(vs_id, vs_port)
             self.rftable.set_entry(entry)
 
-s = RFServer("rfconfig.csv")
+if len(sys.argv) == 2:
+    configfile = sys.argv[1]
+    try:
+        RFServer(configfile)
+    except IOError:
+        sys.exit("Error opening file: {}".format(configfile))
+else:
+    sys.exit("Invalid parameters.\n"\
+             "Usage:\n"\
+             "  ./server.py [configfile]\n"\
+             "    configfile: path to CSV configuration file")
