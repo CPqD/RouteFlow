@@ -320,25 +320,20 @@ https://groups.google.com/group/routeflow-discuss/topics
 
 
 === TODO (+ features expected in upcoming versions) ===
-- Preload VM-datapath association (and also the ports used) in RFServer, 
-  allowing for flexible configuration.
-  
 - Tests and instructions for other virtualization environments
 
 - Hooks into Quagga Zebra to reflect link up/down events and extract additional route / label information
 
 - Create headers for RFClient.cc and RFServer.cc.
 
-- Let the (RFServer order the) RFClient set the VM's non-administrative
+- Let the RFServer order the RFClient to set the VM's non-administrative
   interfaces to the same MAC Address.
 
 - Create a verbose mode for RFServer.
 
 - Configuration arguments for RFServer.
 
-- Wireshark dissector plugin for the RouteFlow protocol
-
-- Experiment with NEC Trema controller: Port rfproxy to Trema
+- Port rfproxy to Trema, Floodlight
 
 - Add TTL-decrement action (if supported by the datapath devices)
 
