@@ -12,7 +12,7 @@ class IPCMessage:
         raise NotImplementedError
 
     def __str__(self):
-        return self.str();
+        return self.str()
 
 class IPCMessageFactory:
     def build_for_type(self, type_):

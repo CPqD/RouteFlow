@@ -31,8 +31,8 @@ esac
 
 LXCDIR=/var/lib/lxc
 RF_HOME=..
-export PYTHONPATH=$PYTHONPATH:$RF_HOME
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
+export PYTHONPATH=$PYTHONPATH:$RF_HOME
 
 cd $RF_HOME
 

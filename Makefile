@@ -10,8 +10,8 @@ export BUILD_OBJ_DIR=$(BUILD_DIR)/obj
 export RFLIB_NAME=rflib
 
 #the lib subdirs should be done first
-export libdirs := ipc rftable types openflow
-export srcdirs := rfserver rfclient
+export libdirs := ipc types openflow
+export srcdirs := rfclient
 
 export CPP := g++
 export CFLAGS := -Wall -W
@@ -43,15 +43,6 @@ app: lib
 		echo "done."; \
 	done
 
-rfserver: lib
-	@mkdir -p $(BUILD_OBJ_DIR);
-	@for dir in "rfserver"; do \
-		mkdir -p $(BUILD_OBJ_DIR)/$$dir; \
-		echo "Compiling Application $$dir..."; \
-		make -C $(ROOT_DIR)/$$dir all; \
-		echo "done."; \
-	done
-	
 rfclient: lib 
 	@mkdir -p $(BUILD_OBJ_DIR);
 	@for dir in "rfclient" ; do \

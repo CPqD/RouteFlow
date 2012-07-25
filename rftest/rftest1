@@ -31,8 +31,9 @@ esac
 
 LXCDIR=/var/lib/lxc
 RF_HOME=..
-
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
+export PYTHONPATH=$PYTHONPATH:$RF_HOME
+
 cd $RF_HOME
 
 wait_port_listen() {
@@ -147,7 +148,7 @@ if [ "$ACTION" != "RESET" ]; then
     wait_port_listen $CONTROLLER_PORT
 
     echo_bold "-> Starting RFServer..."
-    build/rfserver &
+    ./rfserver/rfserver.py rftest/rftest1config.csv &
 
     echo_bold "-> Starting the control plane network (dp0 VS)..."
 	ovs-vsctl add-br dp0
@@ -163,6 +164,7 @@ if [ "$ACTION" != "RESET" ]; then
 	ovs-vsctl add-br switch1
 	ovs-vsctl add-port switch1 b1.0
 	ovs-vsctl add-port switch1 b2.0
+	ovs-vsctl set Bridge switch1 other-config:datapath-id=0000000000000099
 	ovs-vsctl set-controller switch1 tcp:127.0.0.1:$CONTROLLER_PORT
     ifconfig switch1 up
 

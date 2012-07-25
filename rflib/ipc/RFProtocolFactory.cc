@@ -16,10 +16,11 @@ IPCMessage* RFProtocolFactory::buildForType(int type) {
             return new DatapathPortRegister();
         case DATAPATH_DOWN:
             return new DatapathDown();
-        case PORT_MAP:
-            return new PortMap();
+        case VIRTUAL_PLANE_MAP:
+            return new VirtualPlaneMap();
+        case DATA_PLANE_MAP:
+            return new DataPlaneMap();
         default:
             return NULL;
     }
 }
-

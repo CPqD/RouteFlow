@@ -55,7 +55,7 @@ def create_config_msg(operation):
         ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0)
         ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x00B3)
     elif operation == DC_VM_INFO:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0A0A)
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO)
     elif operation == DC_DROP_ALL:
         ofm.priority = 1;
 
@@ -105,6 +105,7 @@ def create_flow_remove_msg(ip, mask, srcMac):
     ofm.match.set_nw_dst(ip)
     ofm.priority = OFP_DEFAULT_PRIORITY + mask
     ofm.command = OFPFC_DELETE_STRICT
+    
     return ofm
 
 
@@ -121,6 +122,6 @@ def create_temporary_flow_msg(ip, mask, srcMac):
     ofm.command = OFPFC_ADD
     ofm.idle_timeout = 60
     ofm.out_port = OFPP_NONE
-
     ofm.actions.append(ofp_action_output(port=0))
+    
     return ofm

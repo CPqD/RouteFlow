@@ -17,5 +17,7 @@ class RFProtocolFactory(IPC.IPCMessageFactory):
             return DatapathPortRegister()
         if type_ == DATAPATH_DOWN:
             return DatapathDown()
-        if type_ == PORT_MAP:
-            return PortMap()
+        if type_ == VIRTUAL_PLANE_MAP:
+            return VirtualPlaneMap()
+        if type_ == DATA_PLANE_MAP:
+            return DataPlaneMap()

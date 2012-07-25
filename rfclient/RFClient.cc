@@ -9,18 +9,18 @@
 #include <map>
 #include <vector>
 #include <boost/thread.hpp>
+#include <iomanip>
 
 #include "ipc/IPC.h"
 #include "ipc/MongoIPC.h"
 #include "ipc/RFProtocol.h"
 #include "ipc/RFProtocolFactory.h"
-#include "defs.h"
 #include "converter.h"
+#include "defs.h"
 
 #include "FlowTable.h"
 
 #define BUFFER_SIZE 23 /* Mapping packet size. */
-#define ETH_P_RFP 0x0A0A /* RF protocol. */
 
 using namespace std;
 
@@ -54,28 +54,29 @@ int get_hwaddr_byname(const char * ifname, uint8_t hwaddr[]) {
 }
 
 /* Get the interface associated VM identification number. */
-uint64_t get_vmId(const char *ifname) {
+uint64_t get_interface_id(const char *ifname) {
     if (ifname == NULL)
         return 0;
         
     uint8_t mac[6];
-    get_hwaddr_byname(ifname, mac);
-    stringstream vmId;
-    vmId << (int) mac[0] << (int) mac[1] << (int) mac[2] << (int) mac[3] << (int) mac[4] << (int) mac[5];
-    int64_t dVmId = atoll(vmId.str().c_str());
-
-    return (dVmId > 0) ? dVmId : 0;
+    uint64_t id;
+    stringstream hexmac;
+    
+    if (get_hwaddr_byname(ifname, mac) == -1)
+        return 0;
+        
+    for (int i = 0; i < 6; i++)
+        hexmac << std::hex << setfill ('0') << setw (2) << (int) mac[i];
+    hexmac >> id;
+    return id;
 }
 
 class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
     public:
-        RFClient(const string &id, const string &address) {
+        RFClient(uint64_t id, const string &address) {
             this->id = id;
-            this->gVmId = string_to<uint64_t>(this->id); // TODO: turn into id
-            
-            std::cout << this->id << std::endl;
-            syslog(LOG_INFO, "Creating client id=%s", this->id.c_str());
-            ipc = (IPCMessageService*) new MongoIPCMessageService(address, MONGO_DB_NAME, this->id);
+            syslog(LOG_INFO, "Creating client id=%s", to_string<uint64_t>(this->id).c_str());
+            ipc = (IPCMessageService*) new MongoIPCMessageService(address, MONGO_DB_NAME, to_string<uint64_t>(this->id));
                     
             this->init_ports = 0;
             this->load_interfaces();
@@ -88,19 +89,19 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
         }
 
         void startFlowTable() {
-            boost::thread t(&FlowTable::start, this->gVmId, this->ifacesMap, this->ipc);
+            boost::thread t(&FlowTable::start, this->id, this->ifacesMap, this->ipc);
             t.detach();
         }
 
     private:
         FlowTable* flowTable;
         IPCMessageService* ipc;
-        string id;
-
+        uint64_t id;
+        
         map<string, Interface> ifacesMap;
         map<int, Interface> interfaces;
         
-        uint64_t gVmId;
+
         uint8_t gVmMAC[IFHWADDRLEN];
         int init_ports;
         
@@ -127,7 +128,7 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 	        struct ifreq req;
 	        uint8_t dstAddress[IFHWADDRLEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
-	        int SockFd = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_RFP));
+	        int SockFd = socket(PF_PACKET, SOCK_RAW, htons(RF_ETH_PROTO));
 
 	        strcpy(req.ifr_name, ethName);
 
@@ -172,7 +173,7 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 
 	        memcpy((void *) buffer, (void *) dstAddress, IFHWADDRLEN);
 	        memcpy((void *) (buffer + IFHWADDRLEN), (void *) srcAddress, IFHWADDRLEN);
-	        ethType = htons(ETH_P_RFP);
+	        ethType = htons(RF_ETH_PROTO);
 	        memcpy((void *) (buffer + 2 * IFHWADDRLEN), (void *) &ethType,
 			        sizeof(uint16_t));
 	        memcpy((void *) (buffer + 14), (void *) &VMid, sizeof(uint64_t));
@@ -300,7 +301,7 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 
         void send_port_map(uint32_t port) {
             Interface i = this->interfaces[port];
-	        if (send_packet(i.name.c_str(), gVmMAC, i.port, gVmId) == -1)
+	        if (send_packet(i.name.c_str(), gVmMAC, i.port, this->id) == -1)
 	            syslog(LOG_INFO, "Failed to send mapping packet to port %d", i.port);
 	        else
 	            syslog(LOG_INFO, "Sent mapping packet to port %d", i.port);
@@ -312,7 +313,7 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
             for (map<int, Interface>::iterator it = this->interfaces.begin() ; it != this->interfaces.end(); it++) {
                 Interface i = it->second;
                 ifacesMap[i.name] = i;
-                PortRegister msg(gVmId, i.port);
+                PortRegister msg(this->id, i.port);
                 this->ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
                 syslog(LOG_INFO, "Port register message sent to RFServer for port=%d", i.port);
             }
@@ -342,10 +343,10 @@ int main(int argc, char* argv[]) {
                 break;
             case 'i':
                 if (!id.empty()) {
-                    fprintf (stderr, "-n is already defined");
+                    fprintf(stderr, "-n is already defined");
                     exit(EXIT_FAILURE);
                 }
-                id = to_string<uint64_t>(get_vmId(optarg));
+                id = to_string<uint64_t>(get_interface_id(optarg));
                 break;
             case 'a':
                 address = optarg;
@@ -362,14 +363,9 @@ int main(int argc, char* argv[]) {
                 abort();
         }
 
-    // If no ID is given, get it from the default NIC MAC address.
-    if (id.empty()) {
-        ss << get_vmId(DEFAULT_RFCLIENT_INTERFACE);
-        id = ss.str();
-    }
+    
     openlog("rfclient", LOG_NDELAY | LOG_NOWAIT | LOG_PID, SYSLOGFACILITY);
-
-    RFClient s(id, address);
+    RFClient s(get_interface_id(DEFAULT_RFCLIENT_INTERFACE), address);
 
     return 0;
 }

@@ -37,8 +37,14 @@ DatapathPortRegister
 DatapathDown
     i64 dp_id
 
-PortMap
+VirtualPlaneMap
     i64 vm_id
     i32 vm_port
+    i64 vs_id
+    i32 vs_port
+    
+DataPlaneMap
+    i64 dp_id
+    i32 dp_port
     i64 vs_id
     i32 vs_port

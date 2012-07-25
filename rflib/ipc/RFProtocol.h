@@ -16,7 +16,8 @@ enum {
 	FLOW_MOD,
 	DATAPATH_PORT_REGISTER,
 	DATAPATH_DOWN,
-	PORT_MAP
+	VIRTUAL_PLANE_MAP,
+	DATA_PLANE_MAP
 };
 
 class PortRegister : public IPCMessage {
@@ -210,10 +211,10 @@ class DatapathDown : public IPCMessage {
         uint64_t dp_id;
 };
 
-class PortMap : public IPCMessage {
+class VirtualPlaneMap : public IPCMessage {
     public:
-        PortMap();
-        PortMap(uint64_t vm_id, uint32_t vm_port, uint64_t vs_id, uint32_t vs_port);
+        VirtualPlaneMap();
+        VirtualPlaneMap(uint64_t vm_id, uint32_t vm_port, uint64_t vs_id, uint32_t vs_port);
 
         uint64_t get_vm_id();
         void set_vm_id(uint64_t vm_id);
@@ -235,6 +236,35 @@ class PortMap : public IPCMessage {
     private:
         uint64_t vm_id;
         uint32_t vm_port;
+        uint64_t vs_id;
+        uint32_t vs_port;
+};
+
+class DataPlaneMap : public IPCMessage {
+    public:
+        DataPlaneMap();
+        DataPlaneMap(uint64_t dp_id, uint32_t dp_port, uint64_t vs_id, uint32_t vs_port);
+
+        uint64_t get_dp_id();
+        void set_dp_id(uint64_t dp_id);
+
+        uint32_t get_dp_port();
+        void set_dp_port(uint32_t dp_port);
+
+        uint64_t get_vs_id();
+        void set_vs_id(uint64_t vs_id);
+
+        uint32_t get_vs_port();
+        void set_vs_port(uint32_t vs_port);
+
+        virtual int get_type();
+        virtual void from_BSON(const char* data);
+        virtual const char* to_BSON();
+        virtual string str();
+
+    private:
+        uint64_t dp_id;
+        uint32_t dp_port;
         uint64_t vs_id;
         uint32_t vs_port;
 };

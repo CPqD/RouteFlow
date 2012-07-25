@@ -10,7 +10,8 @@ ROUTE_INFO = 3
 FLOW_MOD = 4
 DATAPATH_PORT_REGISTER = 5
 DATAPATH_DOWN = 6
-PORT_MAP = 7
+VIRTUAL_PLANE_MAP = 7
+DATA_PLANE_MAP = 8
 
 class PortRegister(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None):
@@ -523,7 +524,7 @@ class DatapathDown(MongoIPCMessage):
         s += "  dp_id: " + str(self.get_dp_id()) + "\n"
         return s
 
-class PortMap(MongoIPCMessage):
+class VirtualPlaneMap(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None, vs_id=None, vs_port=None):
         self.set_vm_id(vm_id)
         self.set_vm_port(vm_port)
@@ -531,7 +532,7 @@ class PortMap(MongoIPCMessage):
         self.set_vs_port(vs_port)
 
     def get_type(self):
-        return PORT_MAP
+        return VIRTUAL_PLANE_MAP
 
     def get_vm_id(self):
         return self.vm_id
@@ -595,9 +596,88 @@ class PortMap(MongoIPCMessage):
         return bson.BSON.encode(self.get_dict())
 
     def __str__(self):
-        s = "PortMap\n"
+        s = "VirtualPlaneMap\n"
         s += "  vm_id: " + str(self.get_vm_id()) + "\n"
         s += "  vm_port: " + str(self.get_vm_port()) + "\n"
+        s += "  vs_id: " + str(self.get_vs_id()) + "\n"
+        s += "  vs_port: " + str(self.get_vs_port()) + "\n"
+        return s
+
+class DataPlaneMap(MongoIPCMessage):
+    def __init__(self, dp_id=None, dp_port=None, vs_id=None, vs_port=None):
+        self.set_dp_id(dp_id)
+        self.set_dp_port(dp_port)
+        self.set_vs_id(vs_id)
+        self.set_vs_port(vs_port)
+
+    def get_type(self):
+        return DATA_PLANE_MAP
+
+    def get_dp_id(self):
+        return self.dp_id
+
+    def set_dp_id(self, dp_id):
+        dp_id = 0 if dp_id is None else dp_id
+        try:
+            self.dp_id = int(dp_id)
+        except:
+            self.dp_id = 0
+
+    def get_dp_port(self):
+        return self.dp_port
+
+    def set_dp_port(self, dp_port):
+        dp_port = 0 if dp_port is None else dp_port
+        try:
+            self.dp_port = int(dp_port)
+        except:
+            self.dp_port = 0
+
+    def get_vs_id(self):
+        return self.vs_id
+
+    def set_vs_id(self, vs_id):
+        vs_id = 0 if vs_id is None else vs_id
+        try:
+            self.vs_id = int(vs_id)
+        except:
+            self.vs_id = 0
+
+    def get_vs_port(self):
+        return self.vs_port
+
+    def set_vs_port(self, vs_port):
+        vs_port = 0 if vs_port is None else vs_port
+        try:
+            self.vs_port = int(vs_port)
+        except:
+            self.vs_port = 0
+
+    def from_dict(self, data):
+        self.set_dp_id(data["dp_id"])
+        self.set_dp_port(data["dp_port"])
+        self.set_vs_id(data["vs_id"])
+        self.set_vs_port(data["vs_port"])
+
+    def to_dict(self):
+        data = {}
+        data["dp_id"] = str(self.get_dp_id())
+        data["dp_port"] = str(self.get_dp_port())
+        data["vs_id"] = str(self.get_vs_id())
+        data["vs_port"] = str(self.get_vs_port())
+        return data
+
+    def from_bson(self, data):
+        data = bson.BSON.decode(data)
+        self.from_dict(data)
+
+    def to_bson(self):
+        return bson.BSON.encode(self.get_dict())
+
+    def __str__(self):
+        s = "DataPlaneMap\n"
+        s += "  dp_id: " + str(self.get_dp_id()) + "\n"
+        s += "  dp_port: " + str(self.get_dp_port()) + "\n"
         s += "  vs_id: " + str(self.get_vs_id()) + "\n"
         s += "  vs_port: " + str(self.get_vs_port()) + "\n"
         return s

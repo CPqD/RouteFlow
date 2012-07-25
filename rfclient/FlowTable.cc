@@ -10,8 +10,11 @@
 #include "defs.h"
 
 #include "FlowTable.h"
-                
+
 using namespace std;
+
+#define FULL_IPV4_MASK "255.255.255.255"
+#define EMPTY_MAC_ADDRESS "00:00:00:00:00:00"
 
 struct rtnl_handle FlowTable::rthNeigh;
 struct rtnl_handle FlowTable::rth;

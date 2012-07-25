@@ -51,7 +51,6 @@ class MongoIPCMessageService(IPC.IPCMessageService):
         self._id = id_
         self._producer_connection = mongo.Connection(*self.address)
         
-        
     def listen(self, channel_id, factory, processor, block=True):
         worker = threading.Thread(target=self._listen_worker, args=(channel_id, factory, processor))
         worker.start()

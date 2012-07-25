@@ -159,7 +159,7 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
 		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
 		ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x00B3);
 	} else if (operation == DC_VM_INFO) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0A0A, 0, 0);
+		ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO, 0, 0);
 	} else if (operation == DC_DROP_ALL) {
 		ofm->priority = htons(1);
 	}
@@ -217,6 +217,28 @@ MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ip = htonl(ip);
     
     ofp_flow_mod* ofm;
+    size_t size = sizeof *ofm;
+    boost::shared_array<char> raw_of(new char[size]);
+    ofm = (ofp_flow_mod*) raw_of.get();
+
+    ofm_init(ofm, size);
+
+    ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800, 0, 0);
+    if (MATCH_L2)
+	    ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
+
+    ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
+
+    ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
+    ofm_set_command(ofm, OFPFC_DELETE_STRICT, UINT32_MAX, 0, OFP_FLOW_PERMANENT, OFPP_NONE);
+
+    return msg_new((uint8_t*) &ofm->header, size);
+}
+
+MSG create_temporary_flow_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
+    ip = htonl(ip);
+    
+    ofp_flow_mod* ofm;
     size_t size = sizeof *ofm + sizeof(ofp_action_output);
     boost::shared_array<char> raw_of(new char[size]);
     ofm = (ofp_flow_mod*) raw_of.get();
@@ -230,7 +252,7 @@ MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
-    ofm_set_command(ofm, OFPFC_MODIFY_STRICT, UINT32_MAX, 60, OFP_FLOW_PERMANENT, OFPP_NONE);
+    ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, 60, OFP_FLOW_PERMANENT, OFPP_NONE);
     ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), 0, 0, 0);
 
     return msg_new((uint8_t*) &ofm->header, size);
