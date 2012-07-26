@@ -152,23 +152,14 @@ $ sudo apt-get install autoconf automake g++ libtool swig make git-core \
 ``` shell
 $ sudo vi /usr/lib/python2.6/dist-packages/twisted/internet/base.py
 ```
-Insert the method `_handleSigchld` at the end of the file, just before the last statement (the one that reads `__all__ = []`):
+Insert the method `_handleSigchld` at the end of the file, at the same level as the `mainLoop` method, just before the last statement (the one that reads `__all__ = []`):
 ```python
-[other lines above... (supressed) ]
-            except:
-                log.msg("Unexpected error in main loop.")
-                log.err()
-            else:
-                log.msg('Main loop terminated.')
-    # Start of patch
     def _handleSigchld(self, signum, frame, _threadSupport=platform.supportsThreads()):
         from twisted.internet.process import reapAllProcesses
         if _threadSupport:
             self.callFromThread(reapAllProcesses)
         else:
             self.callLater(0, reapAllProcesses)
-    # End of patch
-__all__ = []
 ```
 Save the file and you're ready to go.
 
