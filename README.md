@@ -149,17 +149,17 @@ $ sudo apt-get install autoconf automake g++ libtool swig make git-core \
 ```
 
 2. TwistedPython, one of the dependencies of the NOX controller bundled with the RouteFlow distribution, got an update that made it stop working. To get around this issue, edit the following file:
-``` shell
+```
 $ sudo vi /usr/lib/python2.6/dist-packages/twisted/internet/base.py
 ```
 Insert the method `_handleSigchld` at the end of the file, at the same level as the `mainLoop` method, just before the last statement (the one that reads `__all__ = []`):
 ```python
-    def _handleSigchld(self, signum, frame, _threadSupport=platform.supportsThreads()):
-        from twisted.internet.process import reapAllProcesses
-        if _threadSupport:
-            self.callFromThread(reapAllProcesses)
-        else:
-            self.callLater(0, reapAllProcesses)
+        def _handleSigchld(self, signum, frame, _threadSupport=platform.supportsThreads()):
+            from twisted.internet.process import reapAllProcesses
+            if _threadSupport:
+                self.callFromThread(reapAllProcesses)
+            else:
+                self.callLater(0, reapAllProcesses)
 ```
 Save the file and you're ready to go.
 
