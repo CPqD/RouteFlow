@@ -1,4 +1,5 @@
 import struct
+import logging
 
 from pox.core import core
 from pox.openflow.libopenflow_01 import *
@@ -48,12 +49,12 @@ class Table:
     # to the wrong places. We have to fix this.
 
 netmask_prefix = lambda a: sum([bin(int(x)).count("1") for x in a.split(".", 4)])
-format_id = lambda dp_id: hex(dp_id).rstrip("L")
-
 ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, RFPROXY_ID)
 table = Table()
-log = core.getLogger()
 
+# Logging
+log = core.getLogger("rfproxy")
+                
 # Base methods
 def send_of_msg(dp_id, ofmsg):
     topology = core.components['topology']

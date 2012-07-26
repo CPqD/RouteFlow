@@ -33,4 +33,7 @@ typedef enum dp_config {
 	DC_ALL					/* Send all traffic to the controller */
 } DATAPATH_CONFIG_OPERATION;
 
+#define PC_MAP 0
+#define PC_RESET 1
+
 #endif /* __DEFS_H__ */

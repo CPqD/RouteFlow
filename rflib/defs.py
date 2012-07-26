@@ -27,3 +27,9 @@ DC_BGP = 5			    # BGP protocol
 DC_ARP = 6			    # ARP protocol
 DC_ICMP = 7 			# ICMP protocol
 DC_ALL = 8				# Send all traffic to the controller
+
+PC_MAP = 0
+PC_RESET = 1
+
+# Format 12-digit hex ID
+format_id = lambda dp_id: hex(dp_id).rstrip("L")
