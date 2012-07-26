@@ -160,14 +160,14 @@ Insert the method `_handleSigchld` at the end of the file, just before the last 
                 log.err()
             else:
                 log.msg('Main loop terminated.')
-
+    # Start of patch
     def _handleSigchld(self, signum, frame, _threadSupport=platform.supportsThreads()):
         from twisted.internet.process import reapAllProcesses
         if _threadSupport:
             self.callFromThread(reapAllProcesses)
         else:
             self.callLater(0, reapAllProcesses)
-
+    # End of patch
 __all__ = []
 ```
 Save the file and you're ready to go.
