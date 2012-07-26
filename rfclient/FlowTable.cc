@@ -26,6 +26,7 @@ int FlowTable::lroute = 0;
 boost::thread FlowTable::HTPolling;
 boost::thread FlowTable::RTPolling;
 map<string, Interface> FlowTable::interfaces;
+vector<uint32_t>* FlowTable::down_ports;
 IPCMessageService* FlowTable::ipc;
 uint64_t FlowTable::vm_id;
 
@@ -47,11 +48,12 @@ void FlowTable::clear() {
     FlowTable::hostTable.clear();
 }
 
-void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces, IPCMessageService* ipc) {
+void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces, IPCMessageService* ipc, vector<uint32_t>* down_ports) {
 	FlowTable::vm_id = vm_id;
 	FlowTable::interfaces = interfaces;
 	FlowTable::ipc = ipc;
-
+    FlowTable::down_ports = down_ports;
+    
 	rtnl_open(&rth, RTMGRP_IPV4_MROUTE | RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_MROUTE | RTMGRP_IPV6_ROUTE);
 	rtnl_open(&rthNeigh, RTMGRP_NEIGH);
 
@@ -306,7 +308,18 @@ void FlowTable::fakeReq(const char *hostAddr, const char *intf) {
 	close(s);
 }
 
-int32_t FlowTable::addFlowToHw(const RouteEntry& rentry) {
+bool FlowTable::is_port_down(uint32_t port) {
+    vector<uint32_t>::iterator it;
+    for (it=down_ports->begin() ; it < down_ports->end(); it++)
+        if (*it == port)
+            return true;
+    return false;
+}
+
+void FlowTable::addFlowToHw(const RouteEntry& rentry) {
+    if (is_port_down(rentry.interface.port))
+        return;
+        
 	list<HostEntry>::iterator iter;
 	MACAddress dstMac;
 
@@ -333,7 +346,7 @@ int32_t FlowTable::addFlowToHw(const RouteEntry& rentry) {
 	}
 
 	if (not found)
-		return -1;
+		return;
 
     RouteInfo msg;
     msg.set_is_removal(false);
@@ -349,11 +362,12 @@ int32_t FlowTable::addFlowToHw(const RouteEntry& rentry) {
 
     // Send
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-
-	return 0;
 }
 
-int32_t FlowTable::addFlowToHw(const HostEntry& hentry) {
+void FlowTable::addFlowToHw(const HostEntry& hentry) {
+    if (is_port_down(hentry.interface.port))
+        return;
+        
     RouteInfo msg;
     msg.set_is_removal(false);
     msg.set_vm_id(FlowTable::vm_id);
@@ -368,14 +382,14 @@ int32_t FlowTable::addFlowToHw(const HostEntry& hentry) {
 
     // Send
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-
-	return 0;
 }
 
-int32_t FlowTable::delFlowFromHw(const RouteEntry& rentry) {
+void FlowTable::delFlowFromHw(const RouteEntry& rentry) {
 	// We don't need to resolve the gateway's IP on route flow deletion.
 	// The MAC address of the next-hop is useless when deleting flows.
-
+    if (is_port_down(rentry.interface.port))
+        return;
+        
     RouteInfo msg;
     msg.set_is_removal(true);
     msg.set_vm_id(FlowTable::vm_id);
@@ -390,11 +404,12 @@ int32_t FlowTable::delFlowFromHw(const RouteEntry& rentry) {
 
     // Send
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-
-	return 0;
 }
 
-int32_t FlowTable::delFlowFromHw(const HostEntry& hentry) {
+void FlowTable::delFlowFromHw(const HostEntry& hentry) {
+    if (is_port_down(hentry.interface.port))
+        return;
+        
     RouteInfo msg;
     msg.set_is_removal(true);
     msg.set_vm_id(FlowTable::vm_id);
@@ -409,6 +424,4 @@ int32_t FlowTable::delFlowFromHw(const HostEntry& hentry) {
 
     // Send
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-
-	return 0;
 }

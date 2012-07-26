@@ -129,7 +129,6 @@ def flow_delete(dp_id, address, netmask, src_hwaddress):
                  
 # Event handlers
 def on_datapath_up(event):
-    log.info("Datapath id=%s is up, installing config flows...", event.dpid)
     topology = core.components['topology']
     dp_id = event.dpid
     

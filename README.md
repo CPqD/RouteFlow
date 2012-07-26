@@ -22,30 +22,30 @@ JIT and RouteFlow licenses and terms.
 
 
 === Overview ===
-RouteFlow is a distribution composed by three basic applications: rfclient,
-rfserver and rfproxy.
+RouteFlow is a distribution composed by three basic applications: RFClient,
+RFServer and RFProxy.
 
-- rfclient is the module running as a daemon in the Virtual Machine (VM)
-responsible for detecting changes in the linux ARP and routing tables.
-When a change is detected (via netlink events) messages are sent to the server.
+- RFClient is the module running as a daemon in the Virtual Machine (VM)
+responsible for detecting changes in the Linux ARP and routing tables.
+Routing information are send to the RFServer when they're updated.
 
-- rfserver is a standalone application that manages the VMs running the
+- RFServer is a standalone application that manages the VMs running the
 RFClient daemons. The RFServer keeps the mapping between the RFClient VM
-instances and the corresponding switches and their datapaths. It connects to
-the rfproxy to instruct it about when to configure flows and also to
-configure the Open vSwitch to maintain the connectivity in the virtual
-environment formed by the set of registered VMs.
+instances and interfaces and the corresponding switches and ports. It connects 
+to RFProxy to instruct it about when to configure flows and also to configure 
+the Open vSwitch to maintain the connectivity in the virtual environment formed 
+by the set of VMs.
 
-- rfproxy is an application (for NOX and POX) responsible for the interactions 
+- RFProxy is an application (for NOX and POX) responsible for the interactions 
 with the OpenFlow switches (identified by datapaths) via the OpenFlow protocol. 
-It listens to instructions from the RFServer and also notifies whenever a 
-switch joins or leaves the network.
+It listens to instructions from the RFServer and notifies it about events in
+the network.
   We recommend running POX when you are experimenting and testing your network.
-You can use NOX though if you need or want (for production maybe).
+You can also use NOX though if you need or want (for production maybe).
 
-There is also a library of common functions (rflib). It defines the IPC, a
-central table for RouteFlow state data and utilities like custom types for IP
-and MAC addresses, OpenFlow message creation and type conversion.
+There is also a library of common functions (rflib). It has implementations of 
+the IPC, utilities like custom types for IP and MAC addresses manipulation and 
+OpenFlow message creation.
 
 Additionally, there are two extra modules: rfweb, an web interface for
 RouteFlow and jsonflowagent, an SNMP agent.
@@ -172,7 +172,7 @@ $ sudo pip install pymongo
 These instructions are only necessary if you want to run RouteFlow using NOX.
 The version of the NOX controller we are using does not compile under newer 
 versions of Ubuntu (11.10, 12.04). You can use POX, which doesn't require 
-compiling. 
+compiling.
 
 1) Install the dependencies:
 $ sudo apt-get install autoconf automake g++ libtool swig make git-core \
@@ -214,7 +214,6 @@ $ sudo apt-get install build-essential iproute-dev swig1.3
 
 2) Checkout the RouteFlow distribution:
 $ git clone git://github.com/CPqD/RouteFlow.git
-$ git checkout NewRouteFlow
 
 3) You can compile all RouteFlow applications by running the following command
 in the project root:
@@ -222,10 +221,9 @@ $ make all
 
 You can also compile them individually:
 $ make rfclient
-$ make rfserver
 $ make nox
 
-4) That's it, everything is installed! After the build, you can run tests 1 and
+4) That's it, everything is compiled! After the build, you can run tests 1 and
 2. The setup to run them is described in the section "Running".
 
 
@@ -316,24 +314,30 @@ https://groups.google.com/group/routeflow-discuss/topics
 === Known Bugs ===
 - rftest*: When closing the tests, segfaults happen, to no effect.
 
-- See: http://bugs.openflowhub.org/browse/ROUTEFLOW
+- RouteFlow: when all datapaths go down and come back after a short while, 
+  bogus routes are installed on them caused by delayed updates from RFClients.
+
+- See also: 
+  http://bugs.openflowhub.org/browse/ROUTEFLOW
+  https://github.com/CPqD/RouteFlow/issues
 
 
-=== TODO (+ features expected in upcoming versions) ===
+=== TODO (and features expected in upcoming versions) ===
 - Tests and instructions for other virtualization environments
 
-- Hooks into Quagga Zebra to reflect link up/down events and extract additional route / label information
+- Hooks into Quagga Zebra to reflect link up/down events and extract additional 
+  route / label information
 
-- Create headers for RFClient.cc and RFServer.cc.
+- Create headers for RFClient.cc
 
 - Let the RFServer order the RFClient to set the VM's non-administrative
-  interfaces to the same MAC Address.
+  interfaces to the same MAC Address
 
-- Create a verbose mode for RFServer.
+- Create a verbose mode for RFServer
 
-- Configuration arguments for RFServer.
+- Configuration arguments for RFServer
 
-- Port rfproxy to Trema, Floodlight
+- Port RFProxy to Trema, Floodlight
 
 - Add TTL-decrement action (if supported by the datapath devices)
 

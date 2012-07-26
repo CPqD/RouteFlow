@@ -88,7 +88,7 @@ class FlowTable {
         static void fakeReq(const char *hostAddr, const char *intf);
         static void clear();
         
-        static void start(uint64_t vm_id, map<string, Interface> interfaces, IPCMessageService* ipc);
+        static void start(uint64_t vm_id, map<string, Interface> interfaces, IPCMessageService* ipc, vector<uint32_t>* down_ports);
         static void print_test();
 
         static int updateHostTable(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg);
@@ -104,6 +104,7 @@ class FlowTable {
         static int lroute;
 
         static map<string, Interface> interfaces;
+        static vector<uint32_t>* down_ports;
         static IPCMessageService* ipc;
         static uint64_t vm_id;
         
@@ -113,10 +114,11 @@ class FlowTable {
         static list<RouteEntry> routeTable;
         static list<HostEntry> hostTable;
 
-        static int32_t addFlowToHw(const RouteEntry& route);
-        static int32_t addFlowToHw(const HostEntry& host);
-        static int32_t delFlowFromHw(const RouteEntry& route);
-        static int32_t delFlowFromHw(const HostEntry& host);
+        static bool is_port_down(uint32_t port);
+        static void addFlowToHw(const RouteEntry& route);
+        static void addFlowToHw(const HostEntry& host);
+        static void delFlowFromHw(const RouteEntry& route);
+        static void delFlowFromHw(const HostEntry& host);
 };
 
 #endif /* FLOWTABLE_HH_ */

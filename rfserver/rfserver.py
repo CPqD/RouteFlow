@@ -107,7 +107,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         # If the entry is not active, don't try to update
         if entry.get_status() != RFENTRY_ACTIVE:
             return
-
+            
         msg = FlowMod(dp_id=entry.dp_id,
             address=ri.address,
             netmask=ri.netmask,
@@ -184,8 +184,9 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.reset_vm_port(vm_id, vm_port)
 
     def reset_vm_port(self, vm_id, vm_port):
-        # TODO: implement
-        pass
+        self.ipc.send(RFCLIENT_RFSERVER_CHANNEL, str(vm_id),
+                      PortConfig(vm_id=vm_id, vm_port=vm_port, operation_id=1))
+        print "Sent port reset to vm id=%s" % str(vm_id)
 
     # PortMap methods
     def map_port(self, vm_id, vm_port, vs_id, vs_port):

@@ -57,14 +57,14 @@ int get_hwaddr_byname(const char * ifname, uint8_t hwaddr[]) {
 uint64_t get_interface_id(const char *ifname) {
     if (ifname == NULL)
         return 0;
-        
+
     uint8_t mac[6];
     uint64_t id;
     stringstream hexmac;
-    
+
     if (get_hwaddr_byname(ifname, mac) == -1)
         return 0;
-        
+
     for (int i = 0; i < 6; i++)
         hexmac << std::hex << setfill ('0') << setw (2) << (int) mac[i];
     hexmac >> id;
@@ -75,57 +75,79 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
     public:
         RFClient(uint64_t id, const string &address) {
             this->id = id;
-            syslog(LOG_INFO, "Creating client id=%s", to_string<uint64_t>(this->id).c_str());
+            syslog(LOG_INFO, "Starting RFClient (vm_id=%s)", to_string<uint64_t>(this->id).c_str());
             ipc = (IPCMessageService*) new MongoIPCMessageService(address, MONGO_DB_NAME, to_string<uint64_t>(this->id));
-                    
+
             this->init_ports = 0;
             this->load_interfaces();
-            init_Interfaces();
+
+            for (map<int, Interface>::iterator it = this->interfaces.begin() ; it != this->interfaces.end(); it++) {
+                Interface i = it->second;
+                ifacesMap[i.name] = i;
+
+                PortRegister msg(this->id, i.port);
+                this->ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
+                syslog(LOG_INFO, "Registering client port (vm_port=%d)", i.port);
+            }
+
             this->startFlowTable();
 
-            syslog(LOG_INFO, "Listening for messages from RFServer...");
-            std::cout << "Listening for messages from RFServer..." << std::endl;
             ipc->listen(RFCLIENT_RFSERVER_CHANNEL, this, this, true);
-        }
-
-        void startFlowTable() {
-            boost::thread t(&FlowTable::start, this->id, this->ifacesMap, this->ipc);
-            t.detach();
         }
 
     private:
         FlowTable* flowTable;
         IPCMessageService* ipc;
         uint64_t id;
-        
+
         map<string, Interface> ifacesMap;
         map<int, Interface> interfaces;
-        
+        vector<uint32_t> down_ports;
 
-        uint8_t gVmMAC[IFHWADDRLEN];
+        uint8_t hwaddress[IFHWADDRLEN];
         int init_ports;
-        
+
+        void startFlowTable() {
+            boost::thread t(&FlowTable::start, this->id, this->ifacesMap, this->ipc, &(this->down_ports));
+            t.detach();
+        }
+
         bool process(const string &from, const string &to, const string &channel, IPCMessage& msg) {
             int type = msg.get_type();
-            std::cout << "Got message type " << type << std::endl;
             if (type == PORT_CONFIG) {
                 PortConfig *config = dynamic_cast<PortConfig*>(&msg);
-                std::cout << "Port config for " << config->get_vm_port() << std::endl;
-                send_port_map(config->get_vm_port());
+                uint32_t vm_port = config->get_vm_port();
+                uint32_t operation_id = config->get_operation_id();
+
+                if (operation_id == 0) {
+                    syslog(LOG_INFO,
+                           "Received port configuration (vm_port=%d)",
+                           vm_port);
+                    vector<uint32_t>::iterator it;
+                    for (it=down_ports.begin(); it < down_ports.end(); it++)
+                        if (*it == vm_port)
+                            down_ports.erase(it);
+                    send_port_map(vm_port);
+                }
+                else if (operation_id == 1) {
+                    syslog(LOG_INFO, 
+                           "Received port reset (vm_port=%d)", 
+                           vm_port);
+                    down_ports.push_back(vm_port);
+                }
             }
             else
-                // This message is not processed by this processor
                 return false;
-                
-            // The message was successfully processed
+
             return true;
         }
 
-        int send_packet(const char ethName[], uint8_t srcAddress[IFHWADDRLEN], uint8_t port, uint64_t VMid) {
+        int send_packet(const char ethName[], uint64_t vm_id, uint8_t port) {
 	        char buffer[BUFFER_SIZE];
 	        uint16_t ethType;
-	        struct sockaddr_ll sll;
 	        struct ifreq req;
+	        struct sockaddr_ll sll;
+	        uint8_t srcAddress[IFHWADDRLEN];
 	        uint8_t dstAddress[IFHWADDRLEN] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
 
 	        int SockFd = socket(PF_PACKET, SOCK_RAW, htons(RF_ETH_PROTO));
@@ -174,11 +196,9 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 	        memcpy((void *) buffer, (void *) dstAddress, IFHWADDRLEN);
 	        memcpy((void *) (buffer + IFHWADDRLEN), (void *) srcAddress, IFHWADDRLEN);
 	        ethType = htons(RF_ETH_PROTO);
-	        memcpy((void *) (buffer + 2 * IFHWADDRLEN), (void *) &ethType,
-			        sizeof(uint16_t));
-	        memcpy((void *) (buffer + 14), (void *) &VMid, sizeof(uint64_t));
+	        memcpy((void *) (buffer + 2 * IFHWADDRLEN), (void *) &ethType, sizeof(uint16_t));
+	        memcpy((void *) (buffer + 14), (void *) &vm_id, sizeof(uint64_t));
 	        memcpy((void *) (buffer + 22), (void *) &port, sizeof(uint8_t));
-            syslog(LOG_INFO, "Sending mapping packet for interface name=%s", ethName);
 	        return (sendto(SockFd, buffer, BUFFER_SIZE, 0, (struct sockaddr *) &sll, (socklen_t) addrLen));
 
         }
@@ -226,33 +246,6 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 	        return 0;
         }
 
-        /* Get the IP address of the interface. */
-        uint32_t get_ipaddr_byname(const char * ifname) {
-	        struct ifreq ifr;
-	        int sock;
-
-	        if (NULL == ifname) {
-		        return -1;
-	        }
-
-	        sock = socket(AF_INET, SOCK_STREAM, 0);
-	        if (sock < 0) {
-		        return -1;
-	        }
-
-	        strncpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name) - 1);
-	        ifr.ifr_name[sizeof(ifr.ifr_name) - 1] = '\0';
-
-	        if (-1 == ioctl(sock, SIOCGIFADDR, &ifr)) {
-		        perror("ioctl(SIOCGIFADDR) ");
-		        return -1;
-	        }
-
-	        close(sock);
-
-	        return ((struct sockaddr_in *) (&ifr.ifr_addr))->sin_addr.s_addr;
-        }
-
         /* Get all names of the interfaces in the system. */
         void load_interfaces() {
 	        struct ifaddrs *ifaddr, *ifa;
@@ -272,9 +265,9 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 
 		        if (family == AF_PACKET && strcmp(ifa->ifa_name, "eth0") != 0 && strcmp(ifa->ifa_name, "lo") != 0) {
 			        if (0 == intfNum) {
-				        get_hwaddr_byname(ifa->ifa_name, gVmMAC);
+				        get_hwaddr_byname(ifa->ifa_name, hwaddress);
 			        } else {
-				        set_hwaddr_byname(ifa->ifa_name, gVmMAC, ifa->ifa_flags);
+				        set_hwaddr_byname(ifa->ifa_name, hwaddress, ifa->ifa_flags);
 				        syslog(LOG_INFO, "Setting MAC Addr (%s)", ifa->ifa_name);
 			        }
 			        string ifaceName = ifa->ifa_name;
@@ -285,7 +278,7 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 			        Interface interface;
 			        interface.port = port_id;
 			        interface.name = ifaceName;
-			        interface.hwaddress = MACAddress(gVmMAC);
+			        interface.hwaddress = MACAddress(hwaddress);
 			        interface.active = true;
 
 			        printf("Loaded interface %s\n", interface.name.c_str());
@@ -301,27 +294,14 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 
         void send_port_map(uint32_t port) {
             Interface i = this->interfaces[port];
-	        if (send_packet(i.name.c_str(), gVmMAC, i.port, this->id) == -1)
-	            syslog(LOG_INFO, "Failed to send mapping packet to port %d", i.port);
+	        if (send_packet(i.name.c_str(), this->id, i.port) == -1)
+                syslog(LOG_INFO, "Error sending mapping packet (vm_port=%d)",
+                       i.port);
 	        else
-	            syslog(LOG_INFO, "Sent mapping packet to port %d", i.port);
-	            
-            std::cout << "Sent mapping to port " << std::endl;
-        }
-        
-        int init_Interfaces() {
-            for (map<int, Interface>::iterator it = this->interfaces.begin() ; it != this->interfaces.end(); it++) {
-                Interface i = it->second;
-                ifacesMap[i.name] = i;
-                PortRegister msg(this->id, i.port);
-                this->ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-                syslog(LOG_INFO, "Port register message sent to RFServer for port=%d", i.port);
-            }
-	        return 0;
+                syslog(LOG_INFO, "Mapping packet was sent to RFVS (vm_port=%d)",
+                       i.port);
         }
 };
-
-// -----------------------------------------------------------------------------
 
 int main(int argc, char* argv[]) {
     char c;
@@ -363,7 +343,7 @@ int main(int argc, char* argv[]) {
                 abort();
         }
 
-    
+
     openlog("rfclient", LOG_NDELAY | LOG_NOWAIT | LOG_PID, SYSLOGFACILITY);
     RFClient s(get_interface_id(DEFAULT_RFCLIENT_INTERFACE), address);
 
