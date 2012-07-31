@@ -82,7 +82,25 @@ class Table {
                 
             return vs_to_dp[PORT(vs_id, vs_port)];
         }
+        
+        void delete_dp(uint64_t dp_id) {
+            map<PORT, PORT>::iterator it = dp_to_vs.begin();
+            while (it != dp_to_vs.end()) {
+                if ((*it).first.first == dp_id)
+                    dp_to_vs.erase(it++);
+                else
+                    ++it;
+            }
 
+            it = vs_to_dp.begin();
+            while (it != vs_to_dp.end()) {
+                if ((*it).second.first == dp_id)
+                    vs_to_dp.erase(it++);
+                else
+                    ++it;
+            }
+        }
+        
     private:
         map<PORT, PORT> dp_to_vs;
         map<PORT, PORT> vs_to_dp;

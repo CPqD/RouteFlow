@@ -41,6 +41,16 @@ class Table:
         except KeyError:
             return None
 
+    def delete_dp(self, dp_id):
+        for (id_, port) in self.dp_to_vs.keys():
+            if id_ == dp_id:
+                del self.dp_to_vs[(id_, port)]
+
+        for key in self.vs_to_dp.keys():
+            id_, port = self.vs_to_dp[key]
+            if id_ == dp_id:
+                del self.vs_to_dp[key]
+                    
     # We're not considering the case of this table becoming invalid when a
     # datapath goes down. When the datapath comes back, the server recreates
     # the association, forcing new map messages to be generated, overriding the
@@ -144,8 +154,11 @@ def on_datapath_up(event):
                       
 def on_datapath_down(event):
     dp_id = event.dpid
-        
+    
     log.info("Datapath is down (dp_id=%s)", format_id(dp_id))
+    
+    table.delete_dp(dp_id)
+    
     msg = DatapathDown(dp_id=dp_id)
     ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
 

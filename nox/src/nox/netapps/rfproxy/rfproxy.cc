@@ -141,11 +141,17 @@ Disposition rfproxy::on_datapath_up(const Event& e) {
 
 Disposition rfproxy::on_datapath_down(const Event& e) {
     const Datapath_leave_event& dl = assert_cast<const Datapath_leave_event&> (e);
+    uint64_t dp_id = dl.datapath_id.as_host();
+    
     VLOG_INFO(lg,
         "Datapath is down (dp_id=0x%llx)",
-        dl.datapath_id.as_host());
-
-    DatapathDown dd(dl.datapath_id.as_host());
+        dp_id);
+    
+    // Delete internal entry
+    table.delete_dp(dp_id);
+    
+    // Notify RFServer
+    DatapathDown dd(dp_id);
     ipc->send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, dd);
     return CONTINUE;
 }
