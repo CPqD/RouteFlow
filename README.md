@@ -191,14 +191,39 @@ $ make nox
 # Running
 The folder rftest contains all that is needed to create and run two test cases.
 
+## Virtual environment
 First, create the LXC containers that will run as virtual machines:
 ```
 $ sudo ./create
 ```
-
 The containers will have a default root/root user/password combination. **You should change that if you plan to deploy RouteFlow**.
 
-In the tests below, you can choose to run with either NOX or POX by changing the command line arguments. You can stops the test at any time by pressing CTRL+C.
+By default, the tests below will use the LXC containers created  by the `create` script. You can use other virtualization technologies. If you have experience with or questions about setting up RouteFlow on a particular technology, contact us! See the "Support" section.
+
+## Configuration
+RouteFlow configuration files are comma-separated values (CSV) files. The format is exemplified below:
+```
+vm_id,vm_port,dp_id,dp_port
+2D0D0D0D0D0,1,8,1
+2A0A0A0A0A0,3,A,2
+```
+Lines:
+
+1. Contains default column names and should not be changed.
+
+2. Tells RouteFlow to match port `1` of VM with id=`2D0D0D0D0D0` to port `1` of datapath with id=`8`.
+
+3. Tells RouteFlow to match port `3` of VM with id=`2A0A0A0A0A0` to port `2` of datapath with id=`A`.
+
+ID column values are expressed by hexadecimal digits, while port column values use decimal digits.
+
+When RFServer is started, a configuration file should be provided as the first argument. The configuration will be copied to the main database. After RFServer is started, it will only associate ports in the way that is specified by the configuration.
+
+## Test cases
+
+In the tests below, you can choose to run with either NOX or POX by changing the command line arguments.
+Default configuration files are provided for these tests in the `rftest` directory (You don't need to change anything).
+You can stops them at any time by pressing CTRL+C.
 
 ### rftest1
 1. Run:
@@ -244,14 +269,14 @@ mininet> source ipconf
 Wait for the network to converge (it should take a few seconds), and try to ping:
 ```
 mininet> pingall
+...
+mininet> h2 ping h3
 ```
-
-By default, this test will use the virtual machines (LXC containers) created  by the `create` script mentioned above. You can use other virtualization technologies. If you have experience with or questions about setting up RouteFlow on a particular technology, contact us! See the Support section.
 
 For more details on this test, see its [explanation](http://sites.google.com/site/routeflow/documents/tutorial2-four-routers-with-ospf) (it's a bit dated).
 
 
-### Web interface
+## Web interface
 The rfweb module provides an web application to inspect the network, showing topology, status and statistics. The application is written in Python using the [WSGI specification](http://wsgi.readthedocs.org/en/latest/).
 
 The web interface only works when running under POX.
