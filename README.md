@@ -152,7 +152,7 @@ $ sudo apt-get install autoconf automake g++ libtool swig make git-core \
 ```
 $ sudo vi /usr/lib/python2.6/dist-packages/twisted/internet/base.py
 ```
-Insert the method `_handleSigchld` at the end of the file, at the same level as the `mainLoop` method, just before the last statement (the one that reads `__all__ = []`):
+Insert the method `_handleSigchld` at the end of the file, at the same level as the `mainLoop` method (be diligent, this is Python code), just before the last statement (the one that reads `__all__ = []`):
 ```python
         def _handleSigchld(self, signum, frame, _threadSupport=platform.supportsThreads()):
             from twisted.internet.process import reapAllProcesses
@@ -298,7 +298,12 @@ http://localhost:8080/index.html
 ```
 
 # Support
-RouteFlow has a [discussion list](https://groups.google.com/group/routeflow-discuss/topics). You are welcome send your questions, experiences, suggestions....
+If you want to know more or need to contact us regarding the project for anything (questions, suggestions, bug reports, discussions about RouteFlow and SDN in general) you can use the following resources:
+* RouteFlow repository [wiki](https://github.com/CPqD/RouteFlow/wiki) and [issues](https://github.com/CPqD/RouteFlow/issues) at GitHub
+
+* Google Groups [mailing list](http://groups.google.com/group/routeflow-discuss?hl=en_US)
+
+* OpenFlowHub [forum](http://forums.openflowhub.org/forum.php)
 
 
 # Known Bugs
