@@ -75,10 +75,6 @@ $ sudo cp datapath/linux/*.ko /lib/modules/`uname -r`/kernel/net/ovs/
 $ sudo depmod -a
 $ sudo modprobe openvswitch_mod
 ```
-Optionally, you may choose to skip the steps above and load the module manually every time:
-```
-$ sudo insmod datapath/linux/openvswitch_mod.ko
-```
 
 5. Edit /etc/modules to configure the automatic loading of the openvswitch_mod module:
 ```
