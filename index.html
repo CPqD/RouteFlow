@@ -39,9 +39,7 @@
 <p>The routing engines generate the forwarding information base (FIB) into the Linux routing tables according to the configured routing protocols (e.g., OSPF, BGP). In turn, the Linux IP and ARP tables are collected by RouteFlow client (RFClient) processes and then translated into OpenFlow tuples that are finally installed in the associated OpenFlow-enabled devices in the forwarding plane. The diagram below illustrates this scenario:</p>
 
 <p><img src="images/rfscenario.png" alt="RouteFlow">
-You can also checkout RouteFlow's <a href="https://sites.google.com/site/routeflow/">website</a> and <a href="http://www.youtube.com/watch?v=YduxuBTyjEw">video presentation</a> for more details.</p>
-
-<p>RouteFlow is the evolution of our early work on QuagFlow -- Partnering Quagga with OpenFlow and works transparent to the specific routing engine (e.g., Quagga, XORP, BIRD) as long as it is based on the Linux networking stack.</p>
+You can also check out RouteFlow's <a href="https://sites.google.com/site/routeflow/">website</a> and <a href="http://www.youtube.com/watch?v=YduxuBTyjEw">video presentation</a> for more details.</p>
 
 <p>RouteFlow relies on technologies such as:</p>
 
@@ -59,9 +57,9 @@ You can also checkout RouteFlow's <a href="https://sites.google.com/site/routefl
 <a href="http://lxc.sourceforge.net/">LXC</a> containers as virtual machines for running the RFClient and Quagga</li>
 </ul><h1>How do I get started?</h1>
 
-<p>You can download the RouteFlow distribution from our GitHub <a href="https://github.com/CPqD/RouteFlow">repository</a>. Further instructions for installing and running RouteFlow are provided in the <a href="https://github.com/CPqD/RouteFlow/blob/master/README.md">README</a> file.</p>
+<p>You can download the RouteFlow distribution from our <a href="https://github.com/CPqD/RouteFlow">GitHub repository</a>. Further instructions for installing and running RouteFlow are provided in the <a href="https://github.com/CPqD/RouteFlow/blob/master/README.md">README</a> file.</p>
 
-<p>You can also download a <a href="ftp://ftp.cpqd.com.br/pub/routeflow/RouteFlow.zip">pre-configured VM</a> containing everything that is needed to test RouteFlow (Open vSwitch, MongoDB, RouteFlow and pre-configured LXC containers). Inside the VM package you will find a README file with instructions on running this environment.</p>
+<p>You can also download a <a href="ftp://ftp.cpqd.com.br/pub/routeflow/RouteFlow.zip">pre-configured VM</a> containing everything that is needed to test RouteFlow (Open vSwitch, MongoDB, RouteFlow and pre-configured LXC containers). Inside the VM package you will find another <a href="http://ftp.cpqd.com.br/pub/routeflow/README">README</a> file with instructions on running this environment.</p>
 
 <h1>Why should I use it?</h1>
 
