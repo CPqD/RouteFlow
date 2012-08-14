@@ -134,7 +134,7 @@ $ sudo scons --full install --prefix=/usr --sharedclient
 $ sudo pip install pymongo
 ```
 
-## NOX install instructions
+## NOX
 These instructions are only necessary if you want to run RouteFlow using NOX. The version of the NOX controller we are using does not compile under newer versions of Ubuntu (11.10, 12.04). You can use POX, which doesn't require compiling.
 
 1. Install the dependencies:
@@ -182,7 +182,7 @@ $ make rfclient
 $ make nox
 ```
 
-4. That's it, everything is compiled! After the build, you can run tests 1 and 2. The setup to run them is described in the section "Running".
+4. That's it, everything is compiled! After the build, you can run tests 1 and 2. The setup to run them is described in the "Running" section.
 
 # Running
 The folder rftest contains all that is needed to create and run two test cases.
@@ -196,29 +196,10 @@ The containers will have a default root/root user/password combination. **You sh
 
 By default, the tests below will use the LXC containers created  by the `create` script. You can use other virtualization technologies. If you have experience with or questions about setting up RouteFlow on a particular technology, contact us! See the "Support" section.
 
-## Configuration
-RouteFlow configuration files are comma-separated values (CSV) files. The format is exemplified below:
-```
-vm_id,vm_port,dp_id,dp_port
-2D0D0D0D0D0,1,8,1
-2A0A0A0A0A0,3,A,2
-```
-Lines:
-
-1. Contains default column names and should not be changed.
-
-2. Tells RouteFlow to match port `1` of VM with id=`2D0D0D0D0D0` to port `1` of datapath with id=`8`.
-
-3. Tells RouteFlow to match port `3` of VM with id=`2A0A0A0A0A0` to port `2` of datapath with id=`A`.
-
-ID column values are expressed by hexadecimal digits, while port column values use decimal digits.
-
-When RFServer is started, a configuration file should be provided as the first argument. The configuration will be copied to the main database. After RFServer is started, it will only associate ports in the way that is specified by the configuration.
-
 ## Test cases
 
 In the tests below, you can choose to run with either NOX or POX by changing the command line arguments.
-Default configuration files are provided for these tests in the `rftest` directory (You don't need to change anything).
+Default configuration files are provided for these tests in the `rftest` directory (you don't need to change anything).
 You can stops them at any time by pressing CTRL+C.
 
 ### rftest1
@@ -286,12 +267,35 @@ We've also tested the application with [gunicorn](http://gunicorn.org/). You can
 ```
 $ gunicorn -w 4 -b 0.0.0.0:8080 rfweb:application
 ```
-This command rRuns four workers, listening on all interfaces on port 8080.
+This command runs four workers, listening on all interfaces on port 8080.
 
 Then to access the main page of the web interface (adapt the address to your setup), go to:
 ```
 http://localhost:8080/index.html
 ```
+
+## Configuration
+You can skip this section if you intend to run the default tests mentioned above. Default configuration files are provided in this case. 
+
+**You should read this section if you plan to create a setup for your network.**
+
+RouteFlow configuration files are comma-separated values (CSV) files. The format is exemplified below:
+```
+vm_id,vm_port,dp_id,dp_port
+2D0D0D0D0D0,1,8,1
+2A0A0A0A0A0,3,A,2
+```
+Lines:
+
+1. Contains default column names and should not be changed.
+
+2. Tells RouteFlow to match port `1` of VM with id=`2D0D0D0D0D0` to port `1` of datapath with id=`8`.
+
+3. Tells RouteFlow to match port `3` of VM with id=`2A0A0A0A0A0` to port `2` of datapath with id=`A`.
+
+ID column values are expressed by hexadecimal digits, while port column values use decimal digits.
+
+When RFServer is started, a configuration file should be provided as the first argument. The configuration will be copied to the main database. After RFServer is started, it will only associate ports in the way that is specified by the configuration.
 
 # Support
 If you want to know more or need to contact us regarding the project for anything (questions, suggestions, bug reports, discussions about RouteFlow and SDN in general) you can use the following resources:
