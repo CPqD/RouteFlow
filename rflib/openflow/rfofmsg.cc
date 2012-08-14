@@ -154,10 +154,14 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
 	} else if (operation == DC_ICMP) {
 		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
 		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x01, 0, 0, 0);
-	} else if (operation == DC_BGP) {
+	} else if (operation == DC_BGP_INBOUND) {
 		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
 		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
 		ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x00B3);
+	} else if (operation == DC_BGP_OUTBOUND) {
+		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+		ofm_match_tp(ofm, OFPFW_TP_SRC, 0, 0x00B3);
 	} else if (operation == DC_VM_INFO) {
 		ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO, 0, 0);
 	} else if (operation == DC_DROP_ALL) {

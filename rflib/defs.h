@@ -27,7 +27,8 @@ typedef enum dp_config {
 	DC_VM_INFO,			    /* Flow to communicate two linked VM's */
 	DC_RIPV2,				/* RIPv2 protocol */
 	DC_OSPF,				/* OSPF protocol */
-	DC_BGP,				    /* BGP protocol */
+	DC_BGP_INBOUND,		    /* BGP protocol */
+	DC_BGP_OUTBOUND,		/* BGP protocol */
 	DC_ARP,				    /* ARP protocol */
 	DC_ICMP,				/* ICMP protocol */
 	DC_ALL					/* Send all traffic to the controller */
