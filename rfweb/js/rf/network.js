@@ -76,83 +76,87 @@ $jit.RGraph.Plot.NodeTypes.implement({
 });
 
 function show_info(node, data) {
-    // We only support showing switch info for now
-    if (node.data.$type != "switch")
-        return;
-
-	// Build the right column statistics
-	var html = "<div class='section'><div class='section_title'>" + node.id + "</div>";
-	var list = [];
+	var info = "<div class='section'><div class='section_title'>" + node.name + "</div>";
+	var table = "";
 	
-	// TODO: use a loop to automate this task
-	// ofp_desc_stats
-	list = [];
-	if (data.desc != undefined) {
-		html += "<div class='subsection'><div class='subsection_title'>Description</div><ul class=\"switchdesc\"><li>";
-		list.push("Manufacturer: " + data.desc.mfr_desc);
-		list.push("Hardware descrpition: " + data.desc.hw_desc);
-		list.push("Software description: " + data.desc.sw_desc);
-		list.push("Serial number: " + data.desc.serial_num);
-		list.push("Datapath description: " + data.desc.dp_desc);
-		html = html + list.join("</li><li>") + "</li></ul></div>";
-	}
-		
-	// ofp_aggregate_stats
-	list = [];
-	if (data.aggregate != undefined) {
-		html = html + "<div class='subsection'><div class='subsection_title'>Aggregated statistics</div><ul class=\"switchdesc\"><li>";
-		list.push("Packet count: " + data.aggregate.packet_count);
-		list.push("Byte count: " + data.aggregate.byte_count);
-		list.push("Flow count: " + data.aggregate.flow_count);
-		html = html + list.join("</li><li>") + "</li></ul></div>";
-	}
-	
-    //	//ofp_table_stats
-    //  list = [];
-    //	switchData = sw["data"]['$ofp_table_stats'];
-    //	html = html + "<div class='subsection'><div class='subsection_title'>Table statistics</div><ul class=\"switchdesc\"><li>", list = [];
-    //	if(switchData) {
-    //		list.push("Table ID: " + switchData[0][0]);
-    //		list.push("Name: " + switchData[0][1]);
-    //		list.push("Active count: " + switchData[0][2]);
-    //		list.push("Lookup count: " + switchData[0][3]);
-    //		html = html + list.join("</li><li>") + "</li></ul></div>";
-    //	}
-
-	html += "</div>"
-	// display information
-	$('#switchinfo').html(html);
-
-	// Build the bottom flow table		
-	html = "<table>" +
-	    "<tr class='header'>" +
-		    "<td>#</td>" +
-		    "<td>Match</td>" +
-		    "<td>Actions</td>" +
-		    "<td>Packets</td>" +
-		    "<td>Bytes</td>" +
-	    "</tr>";
-    var rowtemplate = "<tr class=\"bg\{style}\">"
-    rowtemplate += "<td>{flow}</td>"
-    rowtemplate += "<td>{match}</td>"
-    rowtemplate += "<td>{actions}</td>"
-    rowtemplate += "<td>{packet_count}</td>"
-    rowtemplate += "<td>{byte_count}</td>"
-    rowtemplate += "</tr>"
-    for (var i in data.flows) {
-        flow = data.flows[i];
-        var values = {
-            "flow": i,
-            "match": prettify_match(flow.match),
-            "actions": prettify_actions(flow.actions),
-            "packet_count": flow.packet_count,
-            "byte_count": flow.byte_count,
-            "style": i % 2,
-        }
-        html += apply_template(rowtemplate, values);
+    // RFServer        
+    if (node.data.$type == "rfserver") {
+        info = info + "<div class=\"tips\"><p>The RouteFlow server manages all the associations between the virtual and physical environments.</p><p>It has full control over the FIB and RIB, and services can be built on top of it.</p></div>";
+        table = "";
     }
-	html += "</table>";
-	$('#flows').html(html);
+    // RFProxy
+    else if (node.data.$type == "rfproxy") {
+        info = info + "<div class=\"tips\"><p>The RouteFlow proxy is the controller application that configures basic flows in the switches and redirects routing traffic to the RouteFlow clients.</p><p>It also provides an interface so that the RouteFlow server can manage the flows.</p></div></div>";
+        table = "";
+    }
+    // Switches
+    else if (node.data.$type == "switch") {
+        // RFVS
+        if (node.id == RFVS_DPID)
+            info = info + "<div class=\"tips\"><p>A RouteFlow virtual switch (RFVS) connects RouteFlow clients.</p></div>";
+            
+    	var list = [];
+        	
+	    // TODO: use a loop to automate this task
+	    // ofp_desc_stats
+	    list = [];
+	    if (data.desc != undefined) {
+		    info = info + "<div class='subsection'><div class='subsection_title'>Description</div><ul class=\"switchdesc\"><li>";
+		    list.push("Manufacturer: " + data.desc.mfr_desc);
+		    list.push("Hardware descrpition: " + data.desc.hw_desc);
+		    list.push("Software description: " + data.desc.sw_desc);
+		    list.push("Serial number: " + data.desc.serial_num);
+		    list.push("Datapath description: " + data.desc.dp_desc);
+		    info = info + list.join("</li><li>") + "</li></ul></div>";
+	    }
+		
+	    // ofp_aggregate_stats
+	    list = [];
+	    if (data.aggregate != undefined) {
+		    info = info + "<div class='subsection'><div class='subsection_title'>Aggregated statistics</div><ul class=\"switchdesc\"><li>";
+		    list.push("Packet count: " + data.aggregate.packet_count);
+		    list.push("Byte count: " + data.aggregate.byte_count);
+		    list.push("Flow count: " + data.aggregate.flow_count);
+		    info = info + list.join("</li><li>") + "</li></ul></div>";
+	    }
+	
+        // TODO?: ofp_table_stats
+
+	    // Build the bottom flow table		
+	    table = "<table>" +
+	        "<tr class='header'>" +
+		        "<td>#</td>" +
+		        "<td>Match</td>" +
+		        "<td>Actions</td>" +
+		        "<td>Packets</td>" +
+		        "<td>Bytes</td>" +
+	        "</tr>";
+        var rowtemplate = "<tr class=\"bg\{style}\">"
+        rowtemplate += "<td>{flow}</td>"
+        rowtemplate += "<td>{match}</td>"
+        rowtemplate += "<td>{actions}</td>"
+        rowtemplate += "<td>{packet_count}</td>"
+        rowtemplate += "<td>{byte_count}</td>"
+        rowtemplate += "</tr>"
+        for (var i in data.flows) {
+            flow = data.flows[i];
+            var values = {
+                "flow": i,
+                "match": prettify_match(flow.match),
+                "actions": prettify_actions(flow.actions),
+                "packet_count": flow.packet_count,
+                "byte_count": flow.byte_count,
+                "style": i % 2,
+            }
+            table += apply_template(rowtemplate, values);
+        }
+	    table += "</table>";
+    }
+    
+    // Close everything and display data
+    info += "</div>"
+    $('#switchinfo').html(info);    
+	$('#flows').html(table);
 }
 
 function prettify_match(match) {
@@ -293,8 +297,6 @@ function build() {
             
             onClick: function(node, eventInfo, e) {
                 if (node) {
-                    if (node.data.$type != "switch")
-                        return;
                     selected_node = node.id;
                     node_update(node.id);
                 }
@@ -351,6 +353,8 @@ function network_update() {
                 // Mark rfproxy as the central node (used when creating the graph)
                 if (node["name"] == "rfproxy")
                     center = i;
+                if (node["name"] == RFVS_DPID)
+                    node["name"] = "RouteFlow virtual switch";
                 node["data"] = {};
                 if (node["type"] == "switch")
                     node["data"]["$height"] = ICON_SIZE/5 + SPACING + LABEL_SIZE;

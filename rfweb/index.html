@@ -44,11 +44,10 @@
 		func();
 	});
 	
-	$("#about").dialog({ autoOpen: false });
-	$("#support").dialog({ autoOpen: false });
-	
+	$("#about").dialog({ autoOpen: false, width: 480, height: 480 });
 	    
     });
+    
     </script>
 </head>
 
@@ -64,8 +63,7 @@
     </div>
     
     <div id="links">
-        <a href="#" onclick="$('#about').dialog('open')">About</a> | 
-        <a href="#" onclick="$('#support').dialog('open')">Support</a> 
+        <a href="#" onclick="$('#about').dialog('open')">About</a>
     </div>
 </div>
 
@@ -78,15 +76,8 @@
 </div>
 
 <div id="about" title="About RouteFlow">
-	<p><b>RouteFlow</b> is an architecture following the SDN paradigm based on a programmatic approach to logically centralize the network control. It is composed by <b>OpenFlow</b> Controller application and an independent <b>RouteFlow</b> server that manages a virtual network environment to interconnect virtualized IP routing engines.</p>
-        <p><b>RouteFlow</b> is about combining the line-rate performance of OpenFlow-enabled networking gear with the flexibility of open-source routing stacks in order to deliver novel models of virtual routers and IP Networks-as-a-Service in the open networking era. </p>
-	<p>The focus of this demonstration is showcasing the <b>RouteFlow</b> architecture in the provision of traditional IP routing (e.g., OSPF, BGP) on top of an <b>OpenFlow</b>-enabled infrastructure. By understanding how the <b>RouteFlow</b> platform orchestrates and dynamically links (remote) virtualized routing protocol stacks (e.g., Quagga, XORP), demo visitors will be able to devise how an open software-defined networking approach allows for innovation in the delivery of virtual IP routing and forwarding services.</p>
+<iframe frameborder="0" marginheight="0" marginwidth="0" style="width: 100%; height: 420px" id="rfpage" src="http://cpqd.github.com/RouteFlow/"></iframe>
 </div>
-
-<div id="support" title="Support">
-See <a href="https://groups.google.com/group/routeflow-discuss/topics">RouteFlow Discuss</a>.
-</div>
-
 
 </body>
 

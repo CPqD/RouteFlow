@@ -1,3 +1,5 @@
+RFVS_DPID = "0x7266767372667673";
+
 function toHex(n, len) {
     if (isNaN(n))
         return "";

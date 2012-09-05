@@ -112,10 +112,22 @@ body {
     box-shadow: 1px 1px 2px 1px #ccc;
 }
 
+/* Tips */
 .tips {
-    padding: 10px;
+    padding: 0px 1.0em 0px 1.0em;
     box-shadow: 1px 1px 5px 1px #ccc;
     margin: 6px;
+    text-align: justify;
+    text-justify: auto;
+    line-height: 130%;
+}
+
+.tips ul {
+    padding-left: 2.0em;
+}
+
+.tips ul li {
+    margin: 1.3em 1.0em 1.3em 0.0em;
 }
 
 /* Section */
