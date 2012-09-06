@@ -40,24 +40,24 @@ $jit.RGraph.Plot.NodeTypes.implement({
     'switch': {
         'render': function(node, canvas) {
             var pos = node.pos.getc(true);
-            canvas.getCtx().drawImage(SWITCH_ICON, 
+            canvas.getCtx().drawImage(SWITCH_ICON,
                                       0, ICON_SIZE/2.5,             // sx, sy
                                       ICON_SIZE, ICON_SIZE/5,       // sWidth, sHeight
                                       pos.x - ICON_SIZE/2, pos.y - (ICON_SIZE/5)/2, // dx, dy
                                       ICON_SIZE, ICON_SIZE/5);      // dWidth, dHeight
         },
-        
+
         'contains': function (node, pos) {
             return this.nodeHelper.rectangle.contains(node.pos.getc(true), pos, ICON_SIZE, ICON_SIZE);
         },
     },
-    
+
     'rfserver': {
         'render': function(node, canvas) {
             var pos = node.pos.getc(true);
             canvas.getCtx().drawImage(RFSERVER_ICON, pos.x - ICON_SIZE/2, pos.y - ICON_SIZE/2, ICON_SIZE, ICON_SIZE);
         },
-        
+
         'contains': function (node, pos) {
             return this.nodeHelper.rectangle.contains(node.pos.getc(true), pos, ICON_SIZE, ICON_SIZE);
         }
@@ -68,7 +68,7 @@ $jit.RGraph.Plot.NodeTypes.implement({
             var pos = node.pos.getc(true);
             canvas.getCtx().drawImage(RFCONTROLLER_ICON, pos.x - ICON_SIZE/2, pos.y - ICON_SIZE/2, ICON_SIZE, ICON_SIZE);
         },
-        
+
         'contains': function (node, pos) {
             return this.nodeHelper.rectangle.contains(node.pos.getc(true), pos, ICON_SIZE, ICON_SIZE);
         }
@@ -76,27 +76,26 @@ $jit.RGraph.Plot.NodeTypes.implement({
 });
 
 function show_info(node, data) {
-	var info = "<div class='section'><div class='section_title'>" + node.name + "</div>";
+	var info = "";
 	var table = "";
-	
-    // RFServer        
+
+    // RFServer
     if (node.data.$type == "rfserver") {
-        info = info + "<div class=\"tips\"><p>The RouteFlow server manages all the associations between the virtual and physical environments.</p><p>It has full control over the FIB and RIB, and services can be built on top of it.</p></div>";
+        info = "<div class=\"tips\"><p>The RouteFlow server manages all the associations between the virtual and physical environments.</p><p>It has full control over the FIB and RIB, and services can be built on top of it.</p></div>";
         table = "";
     }
     // RFProxy
     else if (node.data.$type == "rfproxy") {
-        info = info + "<div class=\"tips\"><p>The RouteFlow proxy is the controller application that configures basic flows in the switches and redirects routing traffic to the RouteFlow clients.</p><p>It also provides an interface so that the RouteFlow server can manage the flows.</p></div></div>";
+        info = "<div class=\"tips\"><p>The RouteFlow proxy is the controller application that configures basic flows in the switches and redirects routing traffic to the RouteFlow clients.</p><p>It also provides an interface so that the RouteFlow server can manage the flows.</p></div></div>";
         table = "";
     }
     // Switches
     else if (node.data.$type == "switch") {
         // RFVS
         if (node.id == RFVS_DPID)
-            info = info + "<div class=\"tips\"><p>A RouteFlow virtual switch (RFVS) connects RouteFlow clients.</p></div>";
-            
+            info = "<div class=\"tips\"><p>A RouteFlow virtual switch (RFVS) connects RouteFlow clients.</p></div>";
     	var list = [];
-        	
+
 	    // TODO: use a loop to automate this task
 	    // ofp_desc_stats
 	    list = [];
@@ -109,7 +108,7 @@ function show_info(node, data) {
 		    list.push("Datapath description: " + data.desc.dp_desc);
 		    info = info + list.join("</li><li>") + "</li></ul></div>";
 	    }
-		
+
 	    // ofp_aggregate_stats
 	    list = [];
 	    if (data.aggregate != undefined) {
@@ -119,10 +118,10 @@ function show_info(node, data) {
 		    list.push("Flow count: " + data.aggregate.flow_count);
 		    info = info + list.join("</li><li>") + "</li></ul></div>";
 	    }
-	
+
         // TODO?: ofp_table_stats
 
-	    // Build the bottom flow table		
+	    // Build the bottom flow table
 	    table = "<table>" +
 	        "<tr class='header'>" +
 		        "<td>#</td>" +
@@ -152,10 +151,10 @@ function show_info(node, data) {
         }
 	    table += "</table>";
     }
-    
+
     // Close everything and display data
-    info += "</div>"
-    $('#switchinfo').html(info);    
+    info = "<div class='section'><div class='section_title'>" + node.name + "</div>" + info + "</div>"
+    $('#switchinfo').html(info);
 	$('#flows').html(table);
 }
 
@@ -174,9 +173,9 @@ function prettify_actions(actions) {
         var elements = params.split(", ");
         for (var i in elements)
             params_list.push(elements[i].split(": "));
-        return params_list;        
+        return params_list;
     }
-    
+
     var string = "";
     var re = /(\w*)\[([^\]]*)\]/;
     for (var i in actions) {
@@ -185,10 +184,10 @@ function prettify_actions(actions) {
             string += actions[i] + ", ";
             continue;
         }
-        
+
         var action = result[1];
         var params = result[2];
-        
+
         // ofp_action_output
         if (action == "ofp_action_output") {
             action = "OUTPUT";
@@ -205,10 +204,10 @@ function prettify_actions(actions) {
                 }
             }
         }
-        
+
         // ofp_action_dl_addr
         else if (action == "ofp_action_dl_addr") {
-        
+
             action = "";
             var params_list = get_params_list(params);
             params = ""
@@ -229,7 +228,7 @@ function prettify_actions(actions) {
                 }
             }
         }
-        
+
         // append action
         string += action + "(" + rstrip(params, ", ") + ")" + ", ";
     }
@@ -264,14 +263,14 @@ function build() {
         },
 
         // If you change style here, change .label in network.css too.
-        Label: {  
-            overridable: false,  
+        Label: {
+            overridable: false,
             type: labelType,
             style: "bold",
             size: 12,
-            family: 'sans-serif',  
-            textAlign: 'center',  
-            color: '#000'  
+            family: 'sans-serif',
+            textAlign: 'center',
+            color: '#000'
         },
 
         interpolation: 'polar',
@@ -279,7 +278,7 @@ function build() {
         duration: 250,
         fps: 30,
         levelDistance: 250,
-        
+
         Events: {
             enable: true,
             type: 'Native',
@@ -294,7 +293,7 @@ function build() {
             onDragEnd: function(node, eventInfo, e) {
                 network_start_updating();
             },
-            
+
             onClick: function(node, eventInfo, e) {
                 if (node) {
                     selected_node = node.id;
@@ -353,8 +352,14 @@ function network_update() {
                 // Mark rfproxy as the central node (used when creating the graph)
                 if (node["name"] == "rfproxy")
                     center = i;
-                if (node["name"] == RFVS_DPID)
-                    node["name"] = "RouteFlow virtual switch";
+
+                if (node["type"] == "rfserver")
+                    node.name = "RFServer"
+                else if (node["type"] == "rfproxy")
+                    node.name = "RFProxy"
+                else if (node.id == RFVS_DPID)
+                    node.name = "RouteFlow virtual switch"
+
                 node["data"] = {};
                 if (node["type"] == "switch")
                     node["data"]["$height"] = ICON_SIZE/5 + SPACING + LABEL_SIZE;
@@ -364,11 +369,12 @@ function network_update() {
                 delete node["links"];
                 nodes.push(node);
             }
-            
+
             // If the graph hasn't been built yet, build it
             if (rgraph == undefined) {
                 build();
                 rgraph.loadJSON(nodes, center);
+                rgraph.plot();
                 rgraph.refresh();
                 rgraph.canvas.scale(0.7, 0.7);
                 return;
@@ -378,11 +384,11 @@ function network_update() {
             rgraph.graph.eachNode(function(node) {
                 previous_pos[node.id] = node.getPos();
             });
-            
+
             // Update
             rgraph.loadJSON(nodes);
             rgraph.refresh();
-            
+
             // Restore old positions
             rgraph.graph.eachNode(function(node) {
                 if (node.id in previous_pos) {
@@ -390,7 +396,7 @@ function network_update() {
                 }
             });
             rgraph.plot();
-            
+
             if (selected_node != undefined) {
                 node_update(selected_node);
             }

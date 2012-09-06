@@ -188,7 +188,7 @@ $ make nox
 The folder rftest contains all that is needed to create and run two test cases.
 
 ## Virtual environment
-First, create the LXC containers that will run as virtual machines:
+First, create the default LXC containers that will run as virtual machines:
 ```
 $ sudo ./create
 ```
@@ -297,6 +297,29 @@ ID column values are expressed by hexadecimal digits, while port column values u
 
 When RFServer is started, a configuration file should be provided as the first argument. The configuration will be copied to the main database. After RFServer is started, it will only associate ports in the way that is specified by the configuration.
 
+## Build new VMs
+You can skip this section if you intend to run the default tests mentioned above. Default VMs are provided in this case. 
+
+**You should read this section if you plan to create a setup for your network.**
+
+We recommend using LXC for the virtual machines (or containers in this case) that will run the RFClient instances. However, you can use any other virtualization technology.
+
+The `create` script in `rftest` reads the `config` subdirectory and builds containers based on these files. These files and folders are:
+* `config`: default LXC configuration file. Change the container name and interfaces in this file.
+* `fstab`: fstab file. Adapt the mount points to the location of your container (`/var/lib/lxc/CONTAINER_NAME`)
+* `rootfs`: represents a subset of the container file system. It will be copied into the generated container, so this is the place to adapt it to your needs: network addresses, Quagga setup and everything else.
+
+Once you are done creating your setup, run:
+```
+$ sudo ./create
+```
+This will create the containers where RouteFlow looks for them (`/var/lib/lxc/`).
+
+If you need to install custom software in your container, modify the `create` script where indicated in it.
+
+The containers will have a default root/root user/password combination. **You should change that if you plan to deploy RouteFlow**.
+
+
 # Support
 If you want to know more or need to contact us regarding the project for anything (questions, suggestions, bug reports, discussions about RouteFlow and SDN in general) you can use the following resources:
 * RouteFlow repository [wiki](https://github.com/CPqD/RouteFlow/wiki) and [issues](https://github.com/CPqD/RouteFlow/issues) at GitHub
@@ -311,6 +334,8 @@ If you want to know more or need to contact us regarding the project for anythin
 
 * RouteFlow: when all datapaths go down and come back after a short while, 
   bogus routes are installed on them caused by delayed updates from RFClients.
+
+* rfweb: an update cycle is needed to show the images in the network view in some browsers
 
 * See also: [Issues](https://github.com/CPqD/RouteFlow/issues) in Github and [RouteFlow bugs](http://bugs.openflowhub.org/browse/ROUTEFLOW) in OpenFlowHub
 
