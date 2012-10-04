@@ -1,4 +1,7 @@
-RFVS_DPID = "0x7266767372667673";
+RFVS_PREFIX = "0x72667673";
+function is_rfvs(dp_id) {
+    return dp_id.substr(0, RFVS_PREFIX.length) == RFVS_PREFIX;
+}
 
 function toHex(n, len) {
     if (isNaN(n))

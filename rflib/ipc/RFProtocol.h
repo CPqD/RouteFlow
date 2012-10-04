@@ -69,7 +69,10 @@ class PortConfig : public IPCMessage {
 class DatapathConfig : public IPCMessage {
     public:
         DatapathConfig();
-        DatapathConfig(uint64_t dp_id, uint32_t operation_id);
+        DatapathConfig(uint64_t ct_id, uint64_t dp_id, uint32_t operation_id);
+
+        uint64_t get_ct_id();
+        void set_ct_id(uint64_t ct_id);
 
         uint64_t get_dp_id();
         void set_dp_id(uint64_t dp_id);
@@ -83,6 +86,7 @@ class DatapathConfig : public IPCMessage {
         virtual string str();
 
     private:
+        uint64_t ct_id;
         uint64_t dp_id;
         uint32_t operation_id;
 };
@@ -135,7 +139,10 @@ class RouteInfo : public IPCMessage {
 class FlowMod : public IPCMessage {
     public:
         FlowMod();
-        FlowMod(uint64_t dp_id, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal);
+        FlowMod(uint64_t ct_id, uint64_t dp_id, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal);
+
+        uint64_t get_ct_id();
+        void set_ct_id(uint64_t ct_id);
 
         uint64_t get_dp_id();
         void set_dp_id(uint64_t dp_id);
@@ -164,6 +171,7 @@ class FlowMod : public IPCMessage {
         virtual string str();
 
     private:
+        uint64_t ct_id;
         uint64_t dp_id;
         IPAddress address;
         IPAddress netmask;
@@ -176,7 +184,10 @@ class FlowMod : public IPCMessage {
 class DatapathPortRegister : public IPCMessage {
     public:
         DatapathPortRegister();
-        DatapathPortRegister(uint64_t dp_id, uint32_t dp_port);
+        DatapathPortRegister(uint64_t ct_id, uint64_t dp_id, uint32_t dp_port);
+
+        uint64_t get_ct_id();
+        void set_ct_id(uint64_t ct_id);
 
         uint64_t get_dp_id();
         void set_dp_id(uint64_t dp_id);
@@ -190,6 +201,7 @@ class DatapathPortRegister : public IPCMessage {
         virtual string str();
 
     private:
+        uint64_t ct_id;
         uint64_t dp_id;
         uint32_t dp_port;
 };
@@ -197,7 +209,10 @@ class DatapathPortRegister : public IPCMessage {
 class DatapathDown : public IPCMessage {
     public:
         DatapathDown();
-        DatapathDown(uint64_t dp_id);
+        DatapathDown(uint64_t ct_id, uint64_t dp_id);
+
+        uint64_t get_ct_id();
+        void set_ct_id(uint64_t ct_id);
 
         uint64_t get_dp_id();
         void set_dp_id(uint64_t dp_id);
@@ -208,6 +223,7 @@ class DatapathDown : public IPCMessage {
         virtual string str();
 
     private:
+        uint64_t ct_id;
         uint64_t dp_id;
 };
 
@@ -243,7 +259,10 @@ class VirtualPlaneMap : public IPCMessage {
 class DataPlaneMap : public IPCMessage {
     public:
         DataPlaneMap();
-        DataPlaneMap(uint64_t dp_id, uint32_t dp_port, uint64_t vs_id, uint32_t vs_port);
+        DataPlaneMap(uint64_t ct_id, uint64_t dp_id, uint32_t dp_port, uint64_t vs_id, uint32_t vs_port);
+
+        uint64_t get_ct_id();
+        void set_ct_id(uint64_t ct_id);
 
         uint64_t get_dp_id();
         void set_dp_id(uint64_t dp_id);
@@ -263,6 +282,7 @@ class DataPlaneMap : public IPCMessage {
         virtual string str();
 
     private:
+        uint64_t ct_id;
         uint64_t dp_id;
         uint32_t dp_port;
         uint64_t vs_id;

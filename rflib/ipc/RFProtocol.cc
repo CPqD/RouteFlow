@@ -124,17 +124,27 @@ string PortConfig::str() {
 }
 
 DatapathConfig::DatapathConfig() {
+    set_ct_id(0);
     set_dp_id(0);
     set_operation_id(0);
 }
 
-DatapathConfig::DatapathConfig(uint64_t dp_id, uint32_t operation_id) {
+DatapathConfig::DatapathConfig(uint64_t ct_id, uint64_t dp_id, uint32_t operation_id) {
+    set_ct_id(ct_id);
     set_dp_id(dp_id);
     set_operation_id(operation_id);
 }
 
 int DatapathConfig::get_type() {
     return DATAPATH_CONFIG;
+}
+
+uint64_t DatapathConfig::get_ct_id() {
+    return this->ct_id;
+}
+
+void DatapathConfig::set_ct_id(uint64_t ct_id) {
+    this->ct_id = ct_id;
 }
 
 uint64_t DatapathConfig::get_dp_id() {
@@ -155,12 +165,14 @@ void DatapathConfig::set_operation_id(uint32_t operation_id) {
 
 void DatapathConfig::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
+    set_ct_id(string_to<uint64_t>(obj["ct_id"].String()));
     set_dp_id(string_to<uint64_t>(obj["dp_id"].String()));
     set_operation_id(string_to<uint32_t>(obj["operation_id"].String()));
 }
 
 const char* DatapathConfig::to_BSON() {
     mongo::BSONObjBuilder _b;
+    _b.append("ct_id", to_string<uint64_t>(get_ct_id()));
     _b.append("dp_id", to_string<uint64_t>(get_dp_id()));
     _b.append("operation_id", to_string<uint32_t>(get_operation_id()));
     mongo::BSONObj o = _b.obj();
@@ -172,6 +184,7 @@ const char* DatapathConfig::to_BSON() {
 string DatapathConfig::str() {
     stringstream ss;
     ss << "DatapathConfig" << endl;
+    ss << "  ct_id: " << to_string<uint64_t>(get_ct_id()) << endl;
     ss << "  dp_id: " << to_string<uint64_t>(get_dp_id()) << endl;
     ss << "  operation_id: " << to_string<uint32_t>(get_operation_id()) << endl;
     return ss.str();
@@ -310,6 +323,7 @@ string RouteInfo::str() {
 }
 
 FlowMod::FlowMod() {
+    set_ct_id(0);
     set_dp_id(0);
     set_address(IPAddress(IPV4));
     set_netmask(IPAddress(IPV4));
@@ -319,7 +333,8 @@ FlowMod::FlowMod() {
     set_is_removal(false);
 }
 
-FlowMod::FlowMod(uint64_t dp_id, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal) {
+FlowMod::FlowMod(uint64_t ct_id, uint64_t dp_id, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal) {
+    set_ct_id(ct_id);
     set_dp_id(dp_id);
     set_address(address);
     set_netmask(netmask);
@@ -331,6 +346,14 @@ FlowMod::FlowMod(uint64_t dp_id, IPAddress address, IPAddress netmask, uint32_t 
 
 int FlowMod::get_type() {
     return FLOW_MOD;
+}
+
+uint64_t FlowMod::get_ct_id() {
+    return this->ct_id;
+}
+
+void FlowMod::set_ct_id(uint64_t ct_id) {
+    this->ct_id = ct_id;
 }
 
 uint64_t FlowMod::get_dp_id() {
@@ -391,6 +414,7 @@ void FlowMod::set_is_removal(bool is_removal) {
 
 void FlowMod::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
+    set_ct_id(string_to<uint64_t>(obj["ct_id"].String()));
     set_dp_id(string_to<uint64_t>(obj["dp_id"].String()));
     set_address(IPAddress(IPV4, obj["address"].String()));
     set_netmask(IPAddress(IPV4, obj["netmask"].String()));
@@ -402,6 +426,7 @@ void FlowMod::from_BSON(const char* data) {
 
 const char* FlowMod::to_BSON() {
     mongo::BSONObjBuilder _b;
+    _b.append("ct_id", to_string<uint64_t>(get_ct_id()));
     _b.append("dp_id", to_string<uint64_t>(get_dp_id()));
     _b.append("address", get_address().toString());
     _b.append("netmask", get_netmask().toString());
@@ -418,6 +443,7 @@ const char* FlowMod::to_BSON() {
 string FlowMod::str() {
     stringstream ss;
     ss << "FlowMod" << endl;
+    ss << "  ct_id: " << to_string<uint64_t>(get_ct_id()) << endl;
     ss << "  dp_id: " << to_string<uint64_t>(get_dp_id()) << endl;
     ss << "  address: " << get_address().toString() << endl;
     ss << "  netmask: " << get_netmask().toString() << endl;
@@ -429,17 +455,27 @@ string FlowMod::str() {
 }
 
 DatapathPortRegister::DatapathPortRegister() {
+    set_ct_id(0);
     set_dp_id(0);
     set_dp_port(0);
 }
 
-DatapathPortRegister::DatapathPortRegister(uint64_t dp_id, uint32_t dp_port) {
+DatapathPortRegister::DatapathPortRegister(uint64_t ct_id, uint64_t dp_id, uint32_t dp_port) {
+    set_ct_id(ct_id);
     set_dp_id(dp_id);
     set_dp_port(dp_port);
 }
 
 int DatapathPortRegister::get_type() {
     return DATAPATH_PORT_REGISTER;
+}
+
+uint64_t DatapathPortRegister::get_ct_id() {
+    return this->ct_id;
+}
+
+void DatapathPortRegister::set_ct_id(uint64_t ct_id) {
+    this->ct_id = ct_id;
 }
 
 uint64_t DatapathPortRegister::get_dp_id() {
@@ -460,12 +496,14 @@ void DatapathPortRegister::set_dp_port(uint32_t dp_port) {
 
 void DatapathPortRegister::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
+    set_ct_id(string_to<uint64_t>(obj["ct_id"].String()));
     set_dp_id(string_to<uint64_t>(obj["dp_id"].String()));
     set_dp_port(string_to<uint32_t>(obj["dp_port"].String()));
 }
 
 const char* DatapathPortRegister::to_BSON() {
     mongo::BSONObjBuilder _b;
+    _b.append("ct_id", to_string<uint64_t>(get_ct_id()));
     _b.append("dp_id", to_string<uint64_t>(get_dp_id()));
     _b.append("dp_port", to_string<uint32_t>(get_dp_port()));
     mongo::BSONObj o = _b.obj();
@@ -477,21 +515,32 @@ const char* DatapathPortRegister::to_BSON() {
 string DatapathPortRegister::str() {
     stringstream ss;
     ss << "DatapathPortRegister" << endl;
+    ss << "  ct_id: " << to_string<uint64_t>(get_ct_id()) << endl;
     ss << "  dp_id: " << to_string<uint64_t>(get_dp_id()) << endl;
     ss << "  dp_port: " << to_string<uint32_t>(get_dp_port()) << endl;
     return ss.str();
 }
 
 DatapathDown::DatapathDown() {
+    set_ct_id(0);
     set_dp_id(0);
 }
 
-DatapathDown::DatapathDown(uint64_t dp_id) {
+DatapathDown::DatapathDown(uint64_t ct_id, uint64_t dp_id) {
+    set_ct_id(ct_id);
     set_dp_id(dp_id);
 }
 
 int DatapathDown::get_type() {
     return DATAPATH_DOWN;
+}
+
+uint64_t DatapathDown::get_ct_id() {
+    return this->ct_id;
+}
+
+void DatapathDown::set_ct_id(uint64_t ct_id) {
+    this->ct_id = ct_id;
 }
 
 uint64_t DatapathDown::get_dp_id() {
@@ -504,11 +553,13 @@ void DatapathDown::set_dp_id(uint64_t dp_id) {
 
 void DatapathDown::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
+    set_ct_id(string_to<uint64_t>(obj["ct_id"].String()));
     set_dp_id(string_to<uint64_t>(obj["dp_id"].String()));
 }
 
 const char* DatapathDown::to_BSON() {
     mongo::BSONObjBuilder _b;
+    _b.append("ct_id", to_string<uint64_t>(get_ct_id()));
     _b.append("dp_id", to_string<uint64_t>(get_dp_id()));
     mongo::BSONObj o = _b.obj();
     char* data = new char[o.objsize()];
@@ -519,6 +570,7 @@ const char* DatapathDown::to_BSON() {
 string DatapathDown::str() {
     stringstream ss;
     ss << "DatapathDown" << endl;
+    ss << "  ct_id: " << to_string<uint64_t>(get_ct_id()) << endl;
     ss << "  dp_id: " << to_string<uint64_t>(get_dp_id()) << endl;
     return ss.str();
 }
@@ -604,13 +656,15 @@ string VirtualPlaneMap::str() {
 }
 
 DataPlaneMap::DataPlaneMap() {
+    set_ct_id(0);
     set_dp_id(0);
     set_dp_port(0);
     set_vs_id(0);
     set_vs_port(0);
 }
 
-DataPlaneMap::DataPlaneMap(uint64_t dp_id, uint32_t dp_port, uint64_t vs_id, uint32_t vs_port) {
+DataPlaneMap::DataPlaneMap(uint64_t ct_id, uint64_t dp_id, uint32_t dp_port, uint64_t vs_id, uint32_t vs_port) {
+    set_ct_id(ct_id);
     set_dp_id(dp_id);
     set_dp_port(dp_port);
     set_vs_id(vs_id);
@@ -619,6 +673,14 @@ DataPlaneMap::DataPlaneMap(uint64_t dp_id, uint32_t dp_port, uint64_t vs_id, uin
 
 int DataPlaneMap::get_type() {
     return DATA_PLANE_MAP;
+}
+
+uint64_t DataPlaneMap::get_ct_id() {
+    return this->ct_id;
+}
+
+void DataPlaneMap::set_ct_id(uint64_t ct_id) {
+    this->ct_id = ct_id;
 }
 
 uint64_t DataPlaneMap::get_dp_id() {
@@ -655,6 +717,7 @@ void DataPlaneMap::set_vs_port(uint32_t vs_port) {
 
 void DataPlaneMap::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
+    set_ct_id(string_to<uint64_t>(obj["ct_id"].String()));
     set_dp_id(string_to<uint64_t>(obj["dp_id"].String()));
     set_dp_port(string_to<uint32_t>(obj["dp_port"].String()));
     set_vs_id(string_to<uint64_t>(obj["vs_id"].String()));
@@ -663,6 +726,7 @@ void DataPlaneMap::from_BSON(const char* data) {
 
 const char* DataPlaneMap::to_BSON() {
     mongo::BSONObjBuilder _b;
+    _b.append("ct_id", to_string<uint64_t>(get_ct_id()));
     _b.append("dp_id", to_string<uint64_t>(get_dp_id()));
     _b.append("dp_port", to_string<uint32_t>(get_dp_port()));
     _b.append("vs_id", to_string<uint64_t>(get_vs_id()));
@@ -676,6 +740,7 @@ const char* DataPlaneMap::to_BSON() {
 string DataPlaneMap::str() {
     stringstream ss;
     ss << "DataPlaneMap" << endl;
+    ss << "  ct_id: " << to_string<uint64_t>(get_ct_id()) << endl;
     ss << "  dp_id: " << to_string<uint64_t>(get_dp_id()) << endl;
     ss << "  dp_port: " << to_string<uint32_t>(get_dp_port()) << endl;
     ss << "  vs_id: " << to_string<uint64_t>(get_vs_id()) << endl;

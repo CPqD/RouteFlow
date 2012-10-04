@@ -59,7 +59,10 @@ class Table:
     # to the wrong places. We have to fix this.
 
 netmask_prefix = lambda a: sum([bin(int(x)).count("1") for x in a.split(".", 4)])
-ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, RFPROXY_ID)
+
+# TODO: proper support for ID
+ID = 140
+ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, str(ID))
 table = Table()
 
 # Logging
@@ -146,7 +149,7 @@ def on_datapath_up(event):
     ports = topology.getEntityByID(dp_id).ports
     for port in ports:
         if port <= OFPP_MAX:
-            msg = DatapathPortRegister(dp_id=dp_id, dp_port=port)
+            msg = DatapathPortRegister(ct_id=ID, dp_id=dp_id, dp_port=port)
             ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
             
             log.info("Registering datapath port (dp_id=%s, dp_port=%d)",
@@ -159,7 +162,7 @@ def on_datapath_down(event):
     
     table.delete_dp(dp_id)
     
-    msg = DatapathDown(dp_id=dp_id)
+    msg = DatapathDown(ct_id=ID, dp_id=dp_id)
     ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
 
 def on_packet_in(event):
@@ -184,7 +187,7 @@ def on_packet_in(event):
         return
 
     # If the packet came from RFVS, redirect it to the right switch port
-    if event.dpid == RFVS_DPID:
+    if is_rfvs(event.dpid):
         dp_port = table.vs_port_to_dp_port(dp_id, in_port)
         if dp_port is not None:
             dp_id, dp_port = dp_port

@@ -65,8 +65,9 @@ class RFTable(MongoTable):
             return None
         return result[0]
 
-    def get_entry_by_dp_port(self, dp_id, dp_port):
-        result = self.get_entries(dp_id=dp_id,
+    def get_entry_by_dp_port(self, ct_id, dp_id, dp_port):
+        result = self.get_entries(ct_id=ct_id,
+                                  dp_id=dp_id,
                                   dp_port=dp_port)
         if not result:
             return None
@@ -79,11 +80,11 @@ class RFTable(MongoTable):
             return None
         return result[0]
 
-    def get_dp_entries(self, dp_id):
-        return self.get_entries(dp_id=dp_id)
+    def get_dp_entries(self, ct_id, dp_id):
+        return self.get_entries(ct_id=ct_id, dp_id=dp_id)
 
-    def is_dp_registered(self, dp_id):
-        return bool(self.get_dp_entries(dp_id))
+    def is_dp_registered(self, ct_id, dp_id):
+        return bool(self.get_dp_entries(ct_id, dp_id))
 
 
 class RFConfig(MongoTable):
@@ -92,9 +93,10 @@ class RFConfig(MongoTable):
         # TODO: perform validation of config
         configfile = file(ifile)
         entries = [line.strip("\n").split(",") for line in configfile.readlines()[1:]]
-        for (a, b, c, d) in entries:
+        for (a, b, c, d, e) in entries:
             self.set_entry(RFConfigEntry(int(a, 16), int(b),
-                                         int(c, 16), int(d)))
+                                         int(c),
+                                         int(d, 16), int(e)))
 
     def get_config_for_vm_port(self, vm_id, vm_port):
         result = self.get_entries(vm_id=vm_id,
@@ -103,8 +105,9 @@ class RFConfig(MongoTable):
             return None
         return result[0]
 
-    def get_config_for_dp_port(self, dp_id, dp_port):
-        result = self.get_entries(dp_id=dp_id,
+    def get_config_for_dp_port(self, ct_id, dp_id, dp_port):
+        result = self.get_entries(ct_id=ct_id,
+                                  dp_id=dp_id,
                                   dp_port=dp_port)
         if not result:
             return None
@@ -121,10 +124,11 @@ def pack_into_dict(dest, obj, attr):
 
 
 class RFEntry:
-    def __init__(self, vm_id=None, vm_port=None, dp_id=None, dp_port=None, vs_id=None, vs_port=None):
+    def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None, dp_port=None, vs_id=None, vs_port=None):
         self.id = None
         self.vm_id = vm_id
         self.vm_port = vm_port
+        self.ct_id = ct_id
         self.dp_id = dp_id
         self.dp_port = dp_port
         self.vs_id = vs_id
@@ -133,6 +137,7 @@ class RFEntry:
     def _is_idle_vm_port(self):
         return (self.vm_id is not None and
                 self.vm_port is not None and
+                self.ct_id is None and
                 self.dp_id is None and
                 self.dp_port is None and
                 self.vs_id is None and
@@ -141,6 +146,7 @@ class RFEntry:
     def _is_idle_dp_port(self):
         return (self.vm_id is None and
                 self.vm_port is None and
+                self.ct_id is not None and
                 self.dp_id is not None and
                 self.dp_port is not None and
                 self.vs_id is None and
@@ -148,6 +154,7 @@ class RFEntry:
 
     def make_idle(self, type_):
         if type_ == RFENTRY_IDLE_VM_PORT:
+            self.ct_id = None
             self.dp_id = None
             self.dp_port = None
             self.vs_id = None
@@ -158,8 +165,9 @@ class RFEntry:
             self.vs_id = None
             self.vs_port = None
 
-    def associate(self, id_, port):
+    def associate(self, id_, port, ct_id=None):
         if self._is_idle_vm_port():
+            self.ct_id = ct_id
             self.dp_id = id_
             self.dp_port = port
         elif self._is_idle_dp_port():
@@ -186,13 +194,14 @@ class RFEntry:
         return "vm_id: %s\nvm_port: %s\n"\
                "dp_id: %s\ndp_port: %s\n"\
                "vs_id: %s\nvs_port: %s\n"\
-               "status:%s" % (str(self.vm_id),
-                              str(self.vm_port),
-                              str(self.dp_id),
-                              str(self.dp_port),
-                              str(self.vs_id),
-                              str(self.vs_port),
-                              str(self.get_status()))
+               "ct_id: %s\nstatus:%s" % (str(self.vm_id),
+                                         str(self.vm_port),
+                                         str(self.dp_id),
+                                         str(self.dp_port),
+                                         str(self.vs_id),
+                                         str(self.vs_port),
+                                         str(self.ct_id),
+                                         str(self.get_status()))
 
     def from_dict(self, data):
         for k, v in data.items():
@@ -200,10 +209,10 @@ class RFEntry:
                 data[k] = None
             elif k != "_id": # All our data is int
                 data[k] = int(v)
-
         self.id = data["_id"]
         load_from_dict(data, self, "vm_id")
         load_from_dict(data, self, "vm_port")
+        load_from_dict(data, self, "ct_id")
         load_from_dict(data, self, "dp_id")
         load_from_dict(data, self, "dp_port")
         load_from_dict(data, self, "vs_id")
@@ -215,6 +224,7 @@ class RFEntry:
             data["_id"] = self.id
         pack_into_dict(data, self, "vm_id")
         pack_into_dict(data, self, "vm_port")
+        pack_into_dict(data, self, "ct_id")
         pack_into_dict(data, self, "dp_id")
         pack_into_dict(data, self, "dp_port")
         pack_into_dict(data, self, "vs_id")
@@ -223,19 +233,23 @@ class RFEntry:
         
         
 class RFConfigEntry:
-    def __init__(self, vm_id=None, vm_port=None, dp_id=None, dp_port=None):
+    def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None, dp_port=None):
         self.id = None
         self.vm_id = vm_id
         self.vm_port = vm_port
+        self.ct_id = ct_id
         self.dp_id = dp_id
         self.dp_port = dp_port
-
+        
     def __str__(self):
         return "vm_id: %s vm_port: %s "\
-               "dp_id: %s dp_port: %s" % (str(self.vm_id),
-                                             str(self.vm_port),
-                                             str(self.dp_id),
-                                             str(self.dp_port))
+               "dp_id: %s dp_port: %s "\
+               "ct_id: %s " % (str(self.vm_id),
+                               str(self.vm_port),
+                               str(self.dp_id),
+                               str(self.dp_port),
+                               str(self.ct_id))
+                                
     def from_dict(self, data):
         for k, v in data.items():
             if str(v) is "":
@@ -243,8 +257,10 @@ class RFConfigEntry:
         self.id = data["_id"]
         load_from_dict(data, self, "vm_id")
         load_from_dict(data, self, "vm_port")
+        load_from_dict(data, self, "ct_id")
         load_from_dict(data, self, "dp_id")
         load_from_dict(data, self, "dp_port")
+
 
     def to_dict(self):
         data = {}
@@ -252,6 +268,7 @@ class RFConfigEntry:
             data["_id"] = self.id
         pack_into_dict(data, self, "vm_id")
         pack_into_dict(data, self, "vm_port")
+        pack_into_dict(data, self, "ct_id")
         pack_into_dict(data, self, "dp_id")
         pack_into_dict(data, self, "dp_port")
         return data        

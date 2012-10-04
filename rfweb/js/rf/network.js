@@ -92,7 +92,7 @@ function show_info(node, data) {
     // Switches
     else if (node.data.$type == "switch") {
         // RFVS
-        if (node.id == RFVS_DPID)
+        if (is_rfvs(node.id))
             info = "<div class=\"tips\"><p>A RouteFlow virtual switch (RFVS) connects RouteFlow clients.</p></div>";
     	var list = [];
 
@@ -357,7 +357,7 @@ function network_update() {
                     node.name = "RFServer"
                 else if (node["type"] == "rfproxy")
                     node.name = "RFProxy"
-                else if (node.id == RFVS_DPID)
+                else if (is_rfvs(node.id))
                     node.name = "RouteFlow virtual switch"
 
                 node["data"] = {};
