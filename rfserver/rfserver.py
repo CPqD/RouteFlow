@@ -100,6 +100,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.vm_port = vm_port
             self.address = address
             self.netmask = netmask
+            # TODO: get rid of dst_port. It's the same as vm_port.
             self.dst_port = dst_port
             self.src_hwaddress = src_hwaddress
             self.dst_hwaddress = dst_hwaddress
@@ -124,7 +125,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         msg = FlowMod(dp_id=entry.dp_id,
             address=ri.address,
             netmask=ri.netmask,
-            dst_port=ri.dst_port,
+            dst_port=entry.dp_port,
             src_hwaddress=ri.src_hwaddress,
             dst_hwaddress=ri.dst_hwaddress,
             is_removal=ri.is_removal)

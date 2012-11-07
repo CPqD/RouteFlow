@@ -119,7 +119,9 @@ if [ "$ACTION" != "RESET" ]; then
     cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvm1/rootfs/usr/lib
     cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvm1/rootfs/usr/lib
 
+    # We sleep for a few seconds to wait for the interfaces to go up
     echo "#!/bin/sh" > /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
+    echo "sleep 5" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh    
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
     chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh

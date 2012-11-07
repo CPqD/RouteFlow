@@ -136,25 +136,24 @@ if [ "$ACTION" != "RESET" ]; then
     cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmD/rootfs/usr/lib
     cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmD/rootfs/usr/lib
 
-    # We need to start the VMs with different sleep times to guarantee their order.
-    # This is a known Routeflow limitation, and we plan to eliminate it in the future.
+    # We sleep for a few seconds to wait for the interfaces to go up
     echo "#!/bin/sh" > /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
     echo "sleep 5" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
 
     echo "#!/bin/sh" > /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
-    echo "sleep 10" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
+    echo "sleep 5" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
 
     echo "#!/bin/sh" > /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
-    echo "sleep 15" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
+    echo "sleep 5" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
 
     echo "#!/bin/sh" > /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
-    echo "sleep 20" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
+    echo "sleep 5" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
 
