@@ -33,13 +33,14 @@ void msg_delete(MSG msg) {
 }
 
 void ofm_init(ofp_flow_mod* ofm, size_t size) {
+	std::memset(ofm, 0, size);
+
 	/* Open Flow Header. */
 	ofm->header.version = OFP_VERSION;
 	ofm->header.type = OFPT_FLOW_MOD;
 	ofm->header.length = htons(size);
 	ofm->header.xid = 0;
 
-	std::memset(&(ofm->match), 0, sizeof(struct ofp_match));
 	ofm->match.wildcards = htonl(OFPFW_ALL);
 
 	ofm->cookie = htonl(0);
@@ -129,59 +130,73 @@ void ofm_set_command(ofp_flow_mod* ofm, uint16_t cmd, uint32_t id, uint16_t idle
 }
 
 MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
-	ofp_flow_mod* ofm;
-	size_t size = sizeof *ofm;
+    ofp_flow_mod* ofm;
+    size_t size;
 
-	if (operation != DC_CLEAR_FLOW_TABLE && operation != DC_DROP_ALL) {
-		size = sizeof *ofm + sizeof(ofp_action_output);
-	}
+    if (operation == DC_CLEAR_FLOW_TABLE || operation == DC_DROP_ALL) {
+        size = sizeof *ofm;
+    } else {
+        size = sizeof *ofm + sizeof(ofp_action_output);
+    }
 
-	boost::shared_array<char> raw_of(new char[size]);
-	ofm = (ofp_flow_mod*) raw_of.get();
+    boost::shared_array<char> raw_of(new char[size]);
+    ofm = (ofp_flow_mod*) raw_of.get();
+    ofm_init(ofm, size);
 
-	ofm_init(ofm, size);
+    if (operation == DC_CLEAR_FLOW_TABLE) {
+        ofm_set_command(ofm, OFPFC_DELETE, 0, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm->priority = htons(0);
+    } else if (operation == DC_DROP_ALL) {
+        ofm_set_command(ofm, OFPFC_ADD, 0, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm->priority = htons(1);
+    } else {
+        switch (operation) {
+            case DC_RIPV2:
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+                ofm_match_nw(ofm, (OFPFW_NW_PROTO | OFPFW_NW_DST_MASK), 0x11, 0, 0, inet_addr("224.0.0.9"));
+                break;
+            case DC_OSPF:
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x59, 0, 0, 0);
+                break;
+            case DC_ARP:
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0806, 0, 0);
+                break;
+            case DC_ICMP:
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x01, 0, 0, 0);
+                break;
+            case DC_BGP_PASSIVE:
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+                ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x00B3);
+                break;
+            case DC_BGP_ACTIVE:
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+                ofm_match_tp(ofm, OFPFW_TP_SRC, 0x00B3, 0);
+                break;
+            case DC_LDP_PASSIVE:
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+                ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x286);
+                break;
+            case DC_LDP_ACTIVE:
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+                ofm_match_tp(ofm, OFPFW_TP_SRC, 0x286, 0);
+                break;
+            case DC_VM_INFO:
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO, 0, 0);
+                break;
+            default:
+                break;
+        }
 
-	if (operation == DC_RIPV2) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-		ofm_match_nw(ofm, (OFPFW_NW_PROTO | OFPFW_NW_DST_MASK), 0x11, 0, 0, inet_addr("224.0.0.9"));
-	} else if (operation == DC_OSPF) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x59, 0, 0, 0);
-	} else if (operation == DC_ARP) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0806, 0, 0);
-	} else if (operation == DC_ICMP) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x01, 0, 0, 0);
-	} else if (operation == DC_BGP_PASSIVE) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
-		ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x00B3);
-	} else if (operation == DC_BGP_ACTIVE) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
-		ofm_match_tp(ofm, OFPFW_TP_SRC, 0x00B3, 0);
-	} else if (operation == DC_LDP_PASSIVE) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
-		ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x286);
-	} else if (operation == DC_LDP_ACTIVE) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
-		ofm_match_tp(ofm, OFPFW_TP_SRC, 0x286, 0);
-	} else if (operation == DC_VM_INFO) {
-		ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO, 0, 0);
-	} else if (operation == DC_DROP_ALL) {
-		ofm->priority = htons(1);
-	}
+        ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), OFPP_CONTROLLER, RF_MAX_PACKET_SIZE, 0);
+    }
 
-	if (operation == DC_CLEAR_FLOW_TABLE) {
-		ofm_set_command(ofm, OFPFC_DELETE, 0, 0, 0, OFPP_NONE);
-		ofm->priority = htons(0);
-	} else {
-		ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
-		ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), OFPP_CONTROLLER, RF_MAX_PACKET_SIZE, 0);
-	}
-    
     return msg_new((uint8_t*) &ofm->header, size);
 }
 
