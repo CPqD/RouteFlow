@@ -48,13 +48,11 @@ void ofm_init(ofp_flow_mod* ofm, size_t size) {
 }
 
 void ofm_match_in(ofp_flow_mod* ofm, uint16_t in) {
-
 	ofm->match.wildcards &= htonl(~OFPFW_IN_PORT);
 	ofm->match.in_port = htons(in);
 }
 
 void ofm_match_dl(ofp_flow_mod* ofm, uint32_t match, uint16_t type, const uint8_t src[], const uint8_t dst[]) {
-
     ofm->match.wildcards &= htonl(~match);
 
     if (match & OFPFW_DL_TYPE) { /* Ethernet frame type. */
@@ -196,15 +194,15 @@ MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[], uint8_
 
     ofm_init(ofm, size);
 
-    ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800, 0, 0);
+    ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
     if (MATCH_L2)
-	    ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
+        ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
 
     if (mask == 32) {
-	    ofm->idle_timeout = htons(300);
+        ofm->idle_timeout = htons(300);
     }
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
@@ -227,7 +225,7 @@ MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[], uint8_
 
 MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ip = htonl(ip);
-    
+
     ofp_flow_mod* ofm;
     size_t size = sizeof *ofm;
     boost::shared_array<char> raw_of(new char[size]);
@@ -237,7 +235,7 @@ MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
 
     ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800, 0, 0);
     if (MATCH_L2)
-	    ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
+        ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
 
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
@@ -249,7 +247,7 @@ MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
 
 MSG create_temporary_flow_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ip = htonl(ip);
-    
+
     ofp_flow_mod* ofm;
     size_t size = sizeof *ofm + sizeof(ofp_action_output);
     boost::shared_array<char> raw_of(new char[size]);
@@ -259,7 +257,7 @@ MSG create_temporary_flow_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
 
     ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800, 0, 0);
     if (MATCH_L2)
-	    ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
+        ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
 
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
@@ -275,10 +273,10 @@ int main() {
     // Garbage just to look pretty in the tests
     uint8_t a[6];
     uint8_t b[6];
-    
+
     MSG msg = create_flow_install_msg(0xEEAABBCC, 24, a, b, 123);
     msg_save(msg, "install");
-    
+
     msg = create_config_msg(DC_RIPV2);
     msg_save(msg, "config");
 }

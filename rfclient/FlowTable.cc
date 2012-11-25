@@ -53,7 +53,7 @@ void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces, IPCMess
 	FlowTable::interfaces = interfaces;
 	FlowTable::ipc = ipc;
     FlowTable::down_ports = down_ports;
-    
+
 	rtnl_open(&rth, RTMGRP_IPV4_MROUTE | RTMGRP_IPV4_ROUTE | RTMGRP_IPV6_MROUTE | RTMGRP_IPV6_ROUTE);
 	rtnl_open(&rthNeigh, RTMGRP_NEIGH);
 
@@ -319,7 +319,7 @@ bool FlowTable::is_port_down(uint32_t port) {
 void FlowTable::addFlowToHw(const RouteEntry& rentry) {
     if (is_port_down(rentry.interface.port))
         return;
-        
+
 	list<HostEntry>::iterator iter;
 	MACAddress dstMac;
 
@@ -367,7 +367,7 @@ void FlowTable::addFlowToHw(const RouteEntry& rentry) {
 void FlowTable::addFlowToHw(const HostEntry& hentry) {
     if (is_port_down(hentry.interface.port))
         return;
-        
+
     RouteInfo msg;
     msg.set_is_removal(false);
     msg.set_vm_id(FlowTable::vm_id);
@@ -389,7 +389,7 @@ void FlowTable::delFlowFromHw(const RouteEntry& rentry) {
 	// The MAC address of the next-hop is useless when deleting flows.
     if (is_port_down(rentry.interface.port))
         return;
-        
+
     RouteInfo msg;
     msg.set_is_removal(true);
     msg.set_vm_id(FlowTable::vm_id);
@@ -409,7 +409,7 @@ void FlowTable::delFlowFromHw(const RouteEntry& rentry) {
 void FlowTable::delFlowFromHw(const HostEntry& hentry) {
     if (is_port_down(hentry.interface.port))
         return;
-        
+
     RouteInfo msg;
     msg.set_is_removal(true);
     msg.set_vm_id(FlowTable::vm_id);

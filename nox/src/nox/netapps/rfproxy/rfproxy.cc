@@ -40,7 +40,7 @@ bool rfproxy::send_of_msg(uint64_t dp_id, uint8_t* msg) {
 
 bool rfproxy::send_packet_out(uint64_t dp_id, uint32_t port, Buffer& data) {
 
-    if (send_openflow_packet(datapathid::from_host(dp_id), data, port, 
+    if (send_openflow_packet(datapathid::from_host(dp_id), data, port,
                              OFPP_NONE, true))
         return FAILURE;
     else
@@ -72,7 +72,7 @@ void rfproxy::flow_add(uint64_t dp_id,
     src_hwaddress.toArray(src_hwaddress_);
     uint8_t dst_hwaddress_[IFHWADDRLEN];
     dst_hwaddress.toArray(dst_hwaddress_);
-                               
+
     MSG ofmsg = create_flow_install_msg(address_, netmask_,
                                         src_hwaddress_, dst_hwaddress_,
                                         dst_port);
@@ -95,7 +95,7 @@ void rfproxy::flow_delete(uint64_t dp_id,
     uint32_t netmask_ = netmask.toCIDRMask();
     uint8_t src_hwaddress_[IFHWADDRLEN];
     src_hwaddress.toArray(src_hwaddress_);
-                              
+
     MSG ofmsg1 = create_flow_remove_msg(address_, netmask_, src_hwaddress_);
     if (send_of_msg(dp_id, ofmsg1) == SUCCESS)
 	    VLOG_INFO(lg,
@@ -142,14 +142,14 @@ Disposition rfproxy::on_datapath_up(const Event& e) {
 Disposition rfproxy::on_datapath_down(const Event& e) {
     const Datapath_leave_event& dl = assert_cast<const Datapath_leave_event&> (e);
     uint64_t dp_id = dl.datapath_id.as_host();
-    
+
     VLOG_INFO(lg,
         "Datapath is down (dp_id=0x%llx)",
         dp_id);
-    
+
     // Delete internal entry
     table.delete_dp(dp_id);
-    
+
     // Notify RFServer
     DatapathDown dd(dp_id);
     ipc->send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, dd);

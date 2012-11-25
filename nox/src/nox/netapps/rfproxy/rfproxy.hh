@@ -48,11 +48,11 @@ struct eth_data {
 
 // Association table
 typedef pair<uint64_t, uint32_t> PORT;
-// We can do this because there can't be a 0xff... datapath ID or port 
+// We can do this because there can't be a 0xff... datapath ID or port
 PORT NONE = PORT(-1, -1);
 class Table {
     public:
-        void update_dp_port(uint64_t dp_id, uint32_t dp_port, 
+        void update_dp_port(uint64_t dp_id, uint32_t dp_port,
                             uint64_t vs_id, uint32_t vs_port) {
             map<PORT, PORT>::iterator it;
             it = dp_to_vs.find(PORT(dp_id, dp_port));
@@ -60,29 +60,29 @@ class Table {
                 PORT old_vs_port = dp_to_vs[PORT(dp_id, dp_port)];
                 vs_to_dp.erase(old_vs_port);
             }
-            
+
             dp_to_vs[PORT(dp_id, dp_port)] = PORT(vs_id, vs_port);
             vs_to_dp[PORT(vs_id, vs_port)] = PORT(dp_id, dp_port);
         }
-        
+
         PORT dp_port_to_vs_port(uint64_t dp_id, uint32_t dp_port) {
             map<PORT, PORT>::iterator it;
             it = dp_to_vs.find(PORT(dp_id, dp_port));
             if (it == dp_to_vs.end())
                 return NONE;
-                
+
             return dp_to_vs[PORT(dp_id, dp_port)];
         }
-        
+
         PORT vs_port_to_dp_port(uint64_t vs_id, uint32_t vs_port) {
             map<PORT, PORT>::iterator it;
             it = vs_to_dp.find(PORT(vs_id, vs_port));
             if (it == vs_to_dp.end())
                 return NONE;
-                
+
             return vs_to_dp[PORT(vs_id, vs_port)];
         }
-        
+
         void delete_dp(uint64_t dp_id) {
             map<PORT, PORT>::iterator it = dp_to_vs.begin();
             while (it != dp_to_vs.end()) {
@@ -100,24 +100,24 @@ class Table {
                     ++it;
             }
         }
-        
+
     private:
         map<PORT, PORT> dp_to_vs;
         map<PORT, PORT> vs_to_dp;
 };
 
-class rfproxy : public Component, private IPCMessageProcessor 
+class rfproxy : public Component, private IPCMessageProcessor
 {
     private:
         IPCMessageService* ipc;
         IPCMessageProcessor *processor;
         RFProtocolFactory *factory;
         Table table;
-        
+
         // Base methods
         bool send_of_msg(uint64_t dp_id, uint8_t* msg);
         bool send_packet_out(uint64_t dp_id, uint32_t port, Buffer& data);
-                                      
+
         // Flow installation methods
         void flow_config(uint64_t dp_id, uint32_t operation_id);
         void flow_add(uint64_t dp_id, 
@@ -132,17 +132,17 @@ class rfproxy : public Component, private IPCMessageProcessor
         Disposition on_datapath_up(const Event& e);
         Disposition on_datapath_down(const Event& e);
         Disposition on_packet_in(const Event& e);
-        
+
         // IPC message processing
         bool process(const string &from, const string &to, const string &channel, IPCMessage& msg);
-        
+
     public:
         // Initialization
         rfproxy(const Context* c, const json_object* node) : Component(c) {}
         void configure(const Configuration* c);
         void install();
         static void getInstance(const container::Context* c, rfproxy*& component);
-                
+
 };
 }
 #endif
