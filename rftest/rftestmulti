@@ -1,33 +1,15 @@
 #!/bin/bash
 
 MONGODB_PORT=27017
-CONTROLLER_PORT=6633
+CONTROLLER1_PORT=6633
+CONTROLLER2_PORT=6644
 
 if [ "$EUID" != "0" ]; then
   echo "You must be root to run this script."
   exit 1
 fi
 
-ACTION=""
-case "$1" in
---pox)
-    ACTION="POX"
-    ;;
---nox)
-    ACTION="NOX"
-    ;;
---reset)
-    ACTION="RESET"
-    ;;
-*)
-    echo "Invalid argument: $1"
-    echo "Options: "
-    echo "    --pox: run using POX"
-    echo "    --nox: run using NOX"
-    echo "    --reset: stop running and clear data from previous executions"
-    exit
-    ;;
-esac
+CONFIG=$1
 
 LXCDIR=/var/lib/lxc
 RF_HOME=..
@@ -51,14 +33,14 @@ echo_bold() {
 kill_process_tree() {
     top=$1
     pid=$2
-    
+
     children=`ps -o pid --no-headers --ppid ${pid}`
-    
+
     for child in $children
     do
         kill_process_tree 0 $child
     done
-    
+
     if [ $top -eq 0 ]; then
         kill -9 $pid &> /dev/null
     fi
@@ -84,22 +66,31 @@ reset() {
     sudo ovs-vsctl del-br sw0 &> /dev/null;
     sudo ovs-vsctl del-br br0 &> /dev/null;
     sudo ovs-vsctl del-br dp0 &> /dev/null;
+    sudo ovs-vsctl del-br dp1 &> /dev/null;
     sudo ovs-vsctl del-br switch1 &> /dev/null;
     sudo ovs-vsctl emer-reset &> /dev/null;
-    
+
     echo_bold "-> Stopping and resetting LXC VMs...";
+    lxc-stop -n rfvm1;
+    lxc-stop -n b1;
+    lxc-stop -n b2;
     lxc-stop -n rfvmA;
     lxc-stop -n rfvmB;
     lxc-stop -n rfvmC;
     lxc-stop -n rfvmD;
-        
+
+    rm -rf $LXCDIR/rfvm1/rootfs/var/run/network/ifstate;
+    rm -rf $LXCDIR/b1/rootfs/var/run/network/ifstate;
+    rm -rf $LXCDIR/b2/rootfs/var/run/network/ifstate;
+
     rm -rf $LXCDIR/rfvmA/rootfs/var/run/network/ifstate;
     rm -rf $LXCDIR/rfvmB/rootfs/var/run/network/ifstate;
     rm -rf $LXCDIR/rfvmC/rootfs/var/run/network/ifstate;
     rm -rf $LXCDIR/rfvmD/rootfs/var/run/network/ifstate;
-        
+
     echo_bold "-> Deleting data from previous runs...";
     rm -rf $HOME/db;
+    rm -rf /var/lib/lxc/rfvm1/rootfs/opt/rfclient;
     rm -rf /var/lib/lxc/rfvmA/rootfs/opt/rfclient;
     rm -rf /var/lib/lxc/rfvmB/rootfs/opt/rfclient;
     rm -rf /var/lib/lxc/rfvmC/rootfs/opt/rfclient;
@@ -116,17 +107,21 @@ if [ "$ACTION" != "RESET" ]; then
 
     echo_bold "-> Starting the virtual machines..."
     # Create the rfclient dir
+    mkdir /var/lib/lxc/rfvm1/rootfs/opt/rfclient
     mkdir /var/lib/lxc/rfvmA/rootfs/opt/rfclient
     mkdir /var/lib/lxc/rfvmB/rootfs/opt/rfclient
     mkdir /var/lib/lxc/rfvmC/rootfs/opt/rfclient
     mkdir /var/lib/lxc/rfvmD/rootfs/opt/rfclient
 
     # Copy the rfclient executable
+    cp build/rfclient /var/lib/lxc/rfvm1/rootfs/opt/rfclient/rfclient
     cp build/rfclient /var/lib/lxc/rfvmA/rootfs/opt/rfclient/rfclient
     cp build/rfclient /var/lib/lxc/rfvmB/rootfs/opt/rfclient/rfclient
     cp build/rfclient /var/lib/lxc/rfvmC/rootfs/opt/rfclient/rfclient
     cp build/rfclient /var/lib/lxc/rfvmD/rootfs/opt/rfclient/rfclient
 
+    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvm1/rootfs/usr/lib
+    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvm1/rootfs/usr/lib
     cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmA/rootfs/usr/lib
     cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmA/rootfs/usr/lib
     cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmB/rootfs/usr/lib
@@ -136,7 +131,11 @@ if [ "$ACTION" != "RESET" ]; then
     cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmD/rootfs/usr/lib
     cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmD/rootfs/usr/lib
 
-    # We sleep for a few seconds to wait for the interfaces to go up
+    # We need to start the VMs with different sleep times to guarantee their order.
+    # This is a known Routeflow limitation, and we plan to eliminate it in the future.
+    echo "#!/bin/sh" > /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
+    echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
+
     echo "#!/bin/sh" > /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
     echo "sleep 5" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
@@ -157,44 +156,45 @@ if [ "$ACTION" != "RESET" ]; then
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
 
+    chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
     chmod +x /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
     chmod +x /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
     chmod +x /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
     chmod +x /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
 
+    lxc-start -n rfvm1 -d
     lxc-start -n rfvmA -d
     lxc-start -n rfvmB -d
     lxc-start -n rfvmC -d
     lxc-start -n rfvmD -d
-    
+
     echo_bold "-> Starting the management network (br0)..."
 	ovs-vsctl add-br br0
-	ovs-vsctl add-port br0 rfvmA.0 
-	ovs-vsctl add-port br0 rfvmB.0 
-	ovs-vsctl add-port br0 rfvmC.0 
+	ovs-vsctl add-port br0 rfvm1.0
+	ovs-vsctl add-port br0 rfvmA.0
+	ovs-vsctl add-port br0 rfvmB.0
+	ovs-vsctl add-port br0 rfvmC.0
 	ovs-vsctl add-port br0 rfvmD.0
     ifconfig br0 up
     ifconfig br0 192.169.1.1
 
-    echo_bold "-> Starting the controller ($ACTION) and RFPRoxy..."
-    case "$ACTION" in
-    POX)
-        cd pox
-        ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
-        cd - &> /dev/null
-        ;;
-    NOX)
-        cd nox/build/src
-        ./nox_core -i ptcp:$CONTROLLER_PORT rfproxy --verbose="rfproxy:ANY:INFO" &
-        cd - &> /dev/null
-        ;;
-    esac
-    wait_port_listen $CONTROLLER_PORT
-        
-    echo_bold "-> Starting RFServer..."
-    ./rfserver/rfserver.py rftest/rftest2config.csv &
+    echo_bold "-> Starting the controllers and RFPRoxy..."
 
-    echo_bold "-> Starting the control plane network (dp0 VS)..."
+    cd pox
+    ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
+    cd - &> /dev/null
+
+    cd nox/build/src
+    ./nox_core -i ptcp:6644 rfproxy --verbose="rfproxy:ANY:INFO" &
+    cd - &> /dev/null
+
+    wait_port_listen $CONTROLLER1_PORT
+    wait_port_listen $CONTROLLER2_PORT
+
+    echo_bold "-> Starting RFServer..."
+    ./rfserver/rfserver.py rftest/$CONFIG &
+
+    echo_bold "-> Starting the control plane network (dp0 and dp1 VS)..."
 	ovs-vsctl add-br dp0
 	ovs-vsctl add-port dp0 rfvmA.1
     ovs-vsctl add-port dp0 rfvmA.2
@@ -208,15 +208,32 @@ if [ "$ACTION" != "RESET" ]; then
     ovs-vsctl add-port dp0 rfvmC.3
     ovs-vsctl add-port dp0 rfvmD.1
     ovs-vsctl add-port dp0 rfvmD.2
-    ovs-vsctl add-port dp0 rfvmD.3
+    ovs-vsctl add-port dp0 rfvmD.3  
     ovs-vsctl add-port dp0 rfvmD.4
-	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
-	ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
+	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767300000001
+	ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER1_PORT
     ifconfig dp0 up
+
+	ovs-vsctl add-br dp1
+	ovs-vsctl add-port dp1 rfvm1.1
+	ovs-vsctl add-port dp1 rfvm1.2
+	ovs-vsctl set Bridge dp1 other-config:datapath-id=7266767300000002
+	ovs-vsctl set-controller dp1 tcp:127.0.0.1:$CONTROLLER2_PORT
+    ifconfig dp1 up
+
+    echo_bold "-> Starting the second network..."
+    lxc-start -n b1 -d
+    lxc-start -n b2 -d
+	ovs-vsctl add-br switch1
+	ovs-vsctl add-port switch1 b1.0
+	ovs-vsctl add-port switch1 b2.0
+	ovs-vsctl set Bridge switch1 other-config:datapath-id=0000000000000099
+	ovs-vsctl set-controller switch1 tcp:127.0.0.1:$CONTROLLER2_PORT
+    ifconfig switch1 up
 
     echo_bold "---"
     echo_bold "This test is up and running."
-    echo_bold "Start Mininet:"
+    echo_bold "Start Mininet to start the first network:"
     echo_bold "  $ sudo mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo"
     echo_bold "    --controller=remote --ip=ADDRESS --port=$CONTROLLER_PORT"
     echo_bold "Replace ADDRESS with the address of this host's interface connected "

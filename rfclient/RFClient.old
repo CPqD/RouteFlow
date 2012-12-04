@@ -1,6 +1,3 @@
-// Version used for benchmarking. Simply send RouteInfo whenever an ARP packet
-// comes in
-
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <net/if_arp.h>
@@ -13,7 +10,6 @@
 #include <vector>
 #include <boost/thread.hpp>
 #include <iomanip>
-#include <linux/if_ether.h>
 
 #include "ipc/IPC.h"
 #include "ipc/MongoIPC.h"
@@ -94,48 +90,13 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
                 syslog(LOG_INFO, "Registering client port (vm_port=%d)", i.port);
             }
 
-            ipc->listen(RFCLIENT_RFSERVER_CHANNEL, this, this, false);
+            this->startFlowTable();
 
-            int s;
-            s = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ARP));
-            if (s == -1) {
-                perror("Error creating socket");
-                exit(1);
-            }
-
-            std::cout << "Waiting for ARP packets..." << std::endl;
-            void* buffer = (void*) malloc(ETH_FRAME_LEN);
-            int length = 0;
-            while (1) {
-                length = recvfrom(s, buffer, ETH_FRAME_LEN, 0, NULL, NULL);
-                if (length == -1) {
-                    printf("Error receiving data\n");
-                    exit(1);
-                }
-
-                uint8_t* b = static_cast<uint8_t*>(buffer);
-                // Only reply benchmarking pings
-                if ((b[38] != 0xac) || (b[39] != 0x1f) || (b[40] != 0x01) || (b[41] != 0xc8))
-                    continue;
-
-                RouteInfo msg;
-                msg.set_is_removal(false);
-                msg.set_vm_id(id);
-                msg.set_vm_port(1);
-                // Action
-                msg.set_dst_port(1);
-                msg.set_src_hwaddress(MACAddress("00:00:00:00:00:00"));
-                msg.set_dst_hwaddress(MACAddress("00:00:00:00:00:00"));
-                // Rule
-                msg.set_address(IPAddress(IPV4, "192.168.0.1"));
-                msg.set_netmask(IPAddress(IPV4, "255.255.255.0"));
-
-                // Send
-                this->ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-            }
+            ipc->listen(RFCLIENT_RFSERVER_CHANNEL, this, this, true);
         }
 
     private:
+        FlowTable* flowTable;
         IPCMessageService* ipc;
         uint64_t id;
 
@@ -145,6 +106,11 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
 
         uint8_t hwaddress[IFHWADDRLEN];
         int init_ports;
+
+        void startFlowTable() {
+            boost::thread t(&FlowTable::start, this->id, this->ifacesMap, this->ipc, &(this->down_ports));
+            t.detach();
+        }
 
         bool process(const string &from, const string &to, const string &channel, IPCMessage& msg) {
             int type = msg.get_type();
@@ -164,8 +130,8 @@ class RFClient : private RFProtocolFactory, private IPCMessageProcessor {
                     send_port_map(vm_port);
                 }
                 else if (operation_id == 1) {
-                    syslog(LOG_INFO,
-                           "Received port reset (vm_port=%d)",
+                    syslog(LOG_INFO, 
+                           "Received port reset (vm_port=%d)", 
                            vm_port);
                     down_ports.push_back(vm_port);
                 }

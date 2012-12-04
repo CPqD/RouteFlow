@@ -1,0 +1,81 @@
+#!/bin/sh
+
+DEST=/home/allanv/Desktop/50ms
+
+kill_process_tree() {
+    top=$1
+    pid=$2
+
+    children=`ps -o pid --no-headers --ppid ${pid}`
+
+    for child in $children
+    do
+        kill_process_tree 0 $child
+    done
+
+    if [ $top -eq 0 ]; then
+        kill -9 $pid &> /dev/null
+    fi
+}
+
+trap "kill_process_tree 1 $$; exit 0" INT
+
+# NOX
+
+# rfbench2, nox, latency
+./rfbench2 --nox rfbench2config_nox.csv &
+sleep 45 # more time to boot in the first run
+cbench -s 4 -D 1000 -l 100 > $DEST/rfbench2_nox_latency 2>&1
+kill_process_tree 1 $$
+sleep 5
+
+# rfbench2, nox, throughput
+./rfbench2 --nox rfbench2config_nox.csv &
+sleep 30
+cbench -s 4 -D 1000 -l 100 -t > $DEST/rfbench2_nox_throughput 2>&1
+kill_process_tree 1 $$
+sleep 5
+
+# rfbench1, nox, latency
+./rfbench1 --nox rfbench1config_nox.csv &
+sleep 30
+cbench -s 1 -D 1000 -l 100 > $DEST/rfbench1_nox_latency 2>&1
+kill_process_tree 1 $$
+sleep 5
+
+# rfbench1, nox, throughput
+./rfbench1 --nox rfbench1config_nox.csv &
+sleep 30
+cbench -s 1 -D 1000 -l 100 -t > $DEST/rfbench1_nox_throughput 2>&1
+kill_process_tree 1 $$
+sleep 5
+
+# POX
+
+# rfbench1, pox, latency
+./rfbench1 --pox rfbench1config_pox.csv &
+sleep 30
+cbench -s 1 -D 1000 -l 100 > $DEST/rfbench1_pox_latency 2>&1
+kill_process_tree 1 $$
+sleep 5
+
+# rfbench1, pox, throughput
+./rfbench1 --pox rfbench1config_pox.csv &
+sleep 30
+cbench -s 1 -D 1000 -l 100 -t > $DEST/rfbench1_pox_throughput 2>&1
+kill_process_tree 1 $$
+sleep 5
+
+# rfbench2, pox, latency
+./rfbench2 --pox rfbench2config_pox.csv &
+sleep 30
+cbench -s 4 -D 1000 -l 100 > $DEST/rfbench2_pox_latency 2>&1
+kill_process_tree 1 $$
+sleep 5
+
+# rfbench2, pox, throughput
+./rfbench2 --pox rfbench2config_pox.csv &
+sleep 30
+cbench -s 4 -D 1000 -l 100 -t > $DEST/rfbench2_pox_throughput 2>&1
+kill_process_tree 1 $$
+sleep 5
