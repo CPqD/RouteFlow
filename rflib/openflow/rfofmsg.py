@@ -58,6 +58,15 @@ def create_config_msg(operation):
         ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
         ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0)
         ofm_match_tp(ofm, OFPFW_TP_SRC, 0x00B3, 0)
+        ofm_match_tp(ofm, OFPFW_TP_SRC, 0, 0x00B3)
+    elif operation == DC_LDP_PASSIVE:
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800);
+        ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+        ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x286);
+    elif operation == DC_LDP_ACTIVE:
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800);
+        ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+        ofm_match_tp(ofm, OFPFW_TP_SRC, 0x286, 0);
     elif operation == DC_VM_INFO:
         ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO)
     elif operation == DC_DROP_ALL:

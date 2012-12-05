@@ -38,7 +38,10 @@ typedef enum dp_config {
     DC_BGP_ACTIVE,          /* BGP protocol */
     DC_ARP,                 /* ARP protocol */
     DC_ICMP,                /* ICMP protocol */
-    DC_ALL                  /* Send all traffic to the controller */
+    DC_LDP_PASSIVE,         /* LDP protocol */
+    DC_LDP_ACTIVE,          /* LDP protocol */
+    DC_ALL = 255            /* Send all traffic to the controller */
+
 } DATAPATH_CONFIG_OPERATION;
 
 #define PC_MAP 0

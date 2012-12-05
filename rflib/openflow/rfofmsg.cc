@@ -162,6 +162,14 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
 		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
 		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
 		ofm_match_tp(ofm, OFPFW_TP_SRC, 0x00B3, 0);
+	} else if (operation == DC_LDP_PASSIVE) {
+		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+		ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x286);
+	} else if (operation == DC_LDP_ACTIVE) {
+		ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
+		ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
+		ofm_match_tp(ofm, OFPFW_TP_SRC, 0x286, 0);
 	} else if (operation == DC_VM_INFO) {
 		ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO, 0, 0);
 	} else if (operation == DC_DROP_ALL) {

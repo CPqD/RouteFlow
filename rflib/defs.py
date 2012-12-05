@@ -34,7 +34,9 @@ DC_BGP_PASSIVE = 5		# BGP protocol
 DC_BGP_ACTIVE = 6		# BGP protocol
 DC_ARP = 7			# ARP protocol
 DC_ICMP = 8			# ICMP protocol
-DC_ALL = 9				# Send all traffic to the controller
+DC_LDP_PASSIVE = 9		# LDP protocol
+DC_LDP_ACTIVE = 10		# LDP protocol
+DC_ALL = 255			# Send all traffic to the controller
 
 PC_MAP = 0
 PC_RESET = 1
