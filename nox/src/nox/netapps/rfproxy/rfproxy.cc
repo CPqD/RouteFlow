@@ -52,11 +52,11 @@ void rfproxy::flow_config(uint64_t dp_id, uint32_t operation_id) {
     MSG ofmsg = create_config_msg((DATAPATH_CONFIG_OPERATION) operation_id);
     if (send_of_msg(dp_id, ofmsg) == SUCCESS)
 	    VLOG_INFO(lg,
-	        "ofp_flow_mod(config) was sent to datapath (dp_id=0x%llx)",
+	        "ofp_flow_mod(config) was sent to datapath (dp_id=%0#"PRIx64")",
 	        dp_id);
 	else
 	    VLOG_INFO(lg,
-	        "Error sending ofp_flow_mod(config) to datapath (dp_id=0x%llx)",
+	        "Error sending ofp_flow_mod(config) to datapath (dp_id=%0#"PRIx64")",
 	        dp_id);
 
     free(ofmsg);
@@ -78,11 +78,11 @@ void rfproxy::flow_add(uint64_t dp_id,
                                         dst_port);
     if (send_of_msg(dp_id, ofmsg) == SUCCESS)
 	    VLOG_INFO(lg,
-	        "ofp_flow_mod(add) was sent to datapath (dp_id=0x%llx)",
+	        "ofp_flow_mod(add) was sent to datapath (dp_id=%0#"PRIx64")",
 	        dp_id);
 	else
 	    VLOG_INFO(lg,
-	        "Error sending ofp_flow_mod(add) to datapath (dp_id=0x%llx)",
+	        "Error sending ofp_flow_mod(add) to datapath (dp_id=%0#"PRIx64")",
 	        dp_id);
 
     free(ofmsg);
@@ -99,22 +99,22 @@ void rfproxy::flow_delete(uint64_t dp_id,
     MSG ofmsg1 = create_flow_remove_msg(address_, netmask_, src_hwaddress_);
     if (send_of_msg(dp_id, ofmsg1) == SUCCESS)
 	    VLOG_INFO(lg,
-	        "ofp_flow_mod(delete) was sent to datapath (dp_id=0x%llx)",
+	        "ofp_flow_mod(delete) was sent to datapath (dp_id=%0#"PRIx64")",
 	        dp_id);
 	else
 	    VLOG_INFO(lg,
-	        "Error sending ofp_flow_mod(delete) to datapath (dp_id=0x%llx)",
+	        "Error sending ofp_flow_mod(delete) to datapath (dp_id=%0#"PRIx64")",
 	        dp_id);
     free(ofmsg1);
 
     MSG ofmsg2 = create_temporary_flow_msg(address_, netmask_, src_hwaddress_);
     if (send_of_msg(dp_id, ofmsg2) == SUCCESS)
 	    VLOG_INFO(lg,
-	        "ofp_flow_mod(temporary) was sent to datapath (dp_id=0x%llx)",
+	        "ofp_flow_mod(temporary) was sent to datapath (dp_id=%0#"PRIx64")",
 	        dp_id);
 	else
 	    VLOG_INFO(lg,
-	        "Error sending ofp_flow_mod(temporary) to datapath (dp_id=0x%llx)",
+	        "Error sending ofp_flow_mod(temporary) to datapath (dp_id=%0#"PRIx64")",
 	        dp_id);
     free(ofmsg2);
 }
@@ -130,7 +130,7 @@ Disposition rfproxy::on_datapath_up(const Event& e) {
             ipc->send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg);
 
             VLOG_INFO(lg,
-                      "Registering datapath port (dp_id=0x%llx, dp_port=%d)",
+                      "Registering datapath port (dp_id=%0#"PRIx64", dp_port=%d)",
                       dj.datapath_id.as_host(),
                       dj.ports[i].port_no);
         }
@@ -144,7 +144,7 @@ Disposition rfproxy::on_datapath_down(const Event& e) {
     uint64_t dp_id = dl.datapath_id.as_host();
 
     VLOG_INFO(lg,
-        "Datapath is down (dp_id=0x%llx)",
+        "Datapath is down (dp_id=%0#"PRIx64")",
         dp_id);
 
     // Delete internal entry
@@ -175,7 +175,7 @@ Disposition rfproxy::on_packet_in(const Event& e) {
 		uint64_t vs_id = pi.datapath_id.as_host();
 		uint32_t vs_port = pi.in_port;
         VLOG_INFO(lg,
-            "Received mapping packet (vm_id=0x%llx, vm_port=%d, vs_id=0x%llx, vs_port=%d)",
+            "Received mapping packet (vm_id=%0#"PRIx64", vm_port=%d, vs_id=%0#"PRIx64", vs_port=%d)",
             data->vm_id,
             data->vm_port,
             vs_id,
@@ -198,7 +198,7 @@ Disposition rfproxy::on_packet_in(const Event& e) {
         if (dp_port != NONE)
             send_packet_out(dp_port.first, dp_port.second, *(pi.get_buffer()));
         else
-            VLOG_DBG(lg, "Unmapped RFVS port (vs_id=0x%llx, vs_port=%d)",
+            VLOG_DBG(lg, "Unmapped RFVS port (vs_id=%0#"PRIx64", vs_port=%d)",
                      dp_id, in_port);
     }
     // If the packet came from a switch, redirect it to the right RFVS port
@@ -208,7 +208,7 @@ Disposition rfproxy::on_packet_in(const Event& e) {
         if (vs_port != NONE)
             send_packet_out(vs_port.first, vs_port.second, *(pi.get_buffer()));
         else
-            VLOG_DBG(lg, "Unmapped datapath port (vs_id=0x%llx, vs_port=%d)",
+            VLOG_DBG(lg, "Unmapped datapath port (vs_id=%0#"PRIx64", vs_port=%d)",
                      dp_id, in_port);
     }
 
