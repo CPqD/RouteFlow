@@ -345,8 +345,6 @@ If you want to know more or need to contact us regarding the project for anythin
 
 * Hooks into Quagga Zebra to reflect link up/down events and extract additional route / label information
 
-* Create headers for RFClient.cc
-
 * Let the RFServer order the RFClient to set the VM's non-administrative interfaces to the same MAC Address
 
 * Create a verbose mode for RFServer
