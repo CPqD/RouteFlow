@@ -29,16 +29,16 @@
 #define MATCH_L2 true
 
 typedef enum dp_config {
-	DC_DROP_ALL,			/* Drop all incoming packets */
-	DC_CLEAR_FLOW_TABLE,    /* Clear flow table */
-	DC_VM_INFO,			    /* Flow to communicate two linked VM's */
-	DC_RIPV2,				/* RIPv2 protocol */
-	DC_OSPF,				/* OSPF protocol */
-	DC_BGP_INBOUND,		    /* BGP protocol */
-	DC_BGP_OUTBOUND,		/* BGP protocol */
-	DC_ARP,				    /* ARP protocol */
-	DC_ICMP,				/* ICMP protocol */
-	DC_ALL					/* Send all traffic to the controller */
+    DC_DROP_ALL,            /* Drop all incoming packets */
+    DC_CLEAR_FLOW_TABLE,    /* Clear flow table */
+    DC_VM_INFO,             /* Flow to communicate two linked VM's */
+    DC_RIPV2,               /* RIPv2 protocol */
+    DC_OSPF,                /* OSPF protocol */
+    DC_BGP_PASSIVE,         /* BGP protocol */
+    DC_BGP_ACTIVE,          /* BGP protocol */
+    DC_ARP,                 /* ARP protocol */
+    DC_ICMP,                /* ICMP protocol */
+    DC_ALL                  /* Send all traffic to the controller */
 } DATAPATH_CONFIG_OPERATION;
 
 #define PC_MAP 0

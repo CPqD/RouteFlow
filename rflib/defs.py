@@ -27,13 +27,13 @@ MATCH_L2 = True
 
 DC_DROP_ALL = 0			# Drop all incoming packets
 DC_CLEAR_FLOW_TABLE = 1 # Clear flow table
-DC_VM_INFO = 2		    # Flow to communicate two linked VMs
+DC_VM_INFO = 2			# Flow to communicate two linked VMs
 DC_RIPV2 = 3			# RIPv2 protocol
-DC_OSPF = 4 			# OSPF protocol
-DC_BGP_INBOUND = 5	    # BGP protocol
-DC_BGP_OUTBOUND = 6		# BGP protocol
-DC_ARP = 7			    # ARP protocol
-DC_ICMP = 8 			# ICMP protocol
+DC_OSPF = 4			# OSPF protocol
+DC_BGP_PASSIVE = 5		# BGP protocol
+DC_BGP_ACTIVE = 6		# BGP protocol
+DC_ARP = 7			# ARP protocol
+DC_ICMP = 8			# ICMP protocol
 DC_ALL = 9				# Send all traffic to the controller
 
 PC_MAP = 0

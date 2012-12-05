@@ -181,8 +181,8 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.send_datapath_config_message(dp_id, DC_CLEAR_FLOW_TABLE);
             # TODO: enforce order: clear should always be executed first
             self.send_datapath_config_message(dp_id, DC_OSPF);
-            self.send_datapath_config_message(dp_id, DC_BGP_INBOUND);
-            self.send_datapath_config_message(dp_id, DC_BGP_OUTBOUND);
+            self.send_datapath_config_message(dp_id, DC_BGP_PASSIVE);
+            self.send_datapath_config_message(dp_id, DC_BGP_ACTIVE);
             self.send_datapath_config_message(dp_id, DC_RIPV2);
             self.send_datapath_config_message(dp_id, DC_ARP);
             self.send_datapath_config_message(dp_id, DC_ICMP);
