@@ -1,5 +1,7 @@
 #.SILENT:
 # Sufix and prefix
+ARCH := $(shell getconf LONG_BIT)
+
 LIBSUFFIX=a
 
 LIBPREFIX=lib
@@ -33,6 +35,9 @@ objs := $(foreach dir, $(MAKELIBS), $(wildcard $(BUILD_OBJ_DIR)/$(dir)/*.o))
 endif
 
 ifneq (,$(LIBDEP))
+ifeq ($(ARCH),64)
+CPPFLAGS += -fPIC
+endif
 lib_objs := $(patsubst %.$(SOURCE_SUFIX),%.o, \
 				$(addprefix $(BUILD_OBJ_DIR)/$(notdir $(CURDIR))/,$(SOURCE_FILES)))
 endif
