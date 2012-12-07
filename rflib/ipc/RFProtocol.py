@@ -12,6 +12,7 @@ DATAPATH_PORT_REGISTER = 5
 DATAPATH_DOWN = 6
 VIRTUAL_PLANE_MAP = 7
 DATA_PLANE_MAP = 8
+ROUTE_MOD = 9
 
 class PortRegister(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None):
@@ -750,4 +751,106 @@ class DataPlaneMap(MongoIPCMessage):
         s += "  dp_port: " + str(self.get_dp_port()) + "\n"
         s += "  vs_id: " + str(self.get_vs_id()) + "\n"
         s += "  vs_port: " + str(self.get_vs_port()) + "\n"
+        return s
+
+class RouteMod(MongoIPCMessage):
+    def __init__(self, mod=None, id=None, matches=None, actions=None, options=None):
+        self.set_mod(mod)
+        self.set_id(id)
+        self.set_matches(matches)
+        self.set_actions(actions)
+        self.set_options(options)
+
+    def get_type(self):
+        return ROUTE_MOD
+
+    def get_mod(self):
+        return self.mod
+
+    def set_mod(self, mod):
+        mod = 0 if mod is None else mod
+        try:
+            self.mod = int(mod)
+        except:
+            self.mod = 0
+
+    def get_id(self):
+        return self.id
+
+    def set_id(self, id):
+        id = 0 if id is None else id
+        try:
+            self.id = int(id)
+        except:
+            self.id = 0
+
+    def get_matches(self):
+        return self.matches
+
+    def set_matches(self, matches):
+        matches = list() if matches is None else matches
+        try:
+            self.matches = list(matches)
+        except:
+            self.matches = list()
+
+    def add_match(self, match):
+        self.matches.append(match.to_dict())
+
+    def get_actions(self):
+        return self.actions
+
+    def set_actions(self, actions):
+        actions = list() if actions is None else actions
+        try:
+            self.actions = list(actions)
+        except:
+            self.actions = list()
+
+    def add_action(self, action):
+        self.actions.append(action.to_dict())
+
+    def get_options(self):
+        return self.options
+
+    def set_options(self, options):
+        options = list() if options is None else options
+        try:
+            self.options = list(options)
+        except:
+            self.options = list()
+
+    def add_option(self, option):
+        self.options.append(option.to_dict())
+
+    def from_dict(self, data):
+        self.set_mod(data["mod"])
+        self.set_id(data["id"])
+        self.set_matches(data["matches"])
+        self.set_actions(data["actions"])
+        self.set_options(data["options"])
+
+    def to_dict(self):
+        data = {}
+        data["mod"] = self.get_mod()
+        data["id"] = str(self.get_id())
+        data["matches"] = self.get_matches()
+        data["actions"] = self.get_actions()
+        data["options"] = self.get_options()
+        return data
+
+    def from_bson(self, data):
+        data = bson.BSON.decode(data)
+        self.from_dict(data)
+
+    def to_bson(self):
+        return bson.BSON.encode(self.get_dict())
+
+    def __str__(self):
+        s = "RouteMod\n"
+        s += "  mod: " + str(self.get_mod()) + "\n"
+        s += "  id: " + str(self.get_id()) + "\n"
+        s += "  matches: " + str(self.get_matches()) + "\n"
+        s += "  actions: " + str(self.get_actions()) + "\n"
+        s += "  options: " + str(self.get_options()) + "\n"
         return s

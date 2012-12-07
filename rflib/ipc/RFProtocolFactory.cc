@@ -20,6 +20,8 @@ IPCMessage* RFProtocolFactory::buildForType(int type) {
             return new VirtualPlaneMap();
         case DATA_PLANE_MAP:
             return new DataPlaneMap();
+        case ROUTE_MOD:
+            return new RouteMod();
         default:
             return NULL;
     }

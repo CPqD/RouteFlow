@@ -747,3 +747,108 @@ string DataPlaneMap::str() {
     ss << "  vs_port: " << to_string<uint32_t>(get_vs_port()) << endl;
     return ss.str();
 }
+
+RouteMod::RouteMod() {
+    set_mod(0);
+    set_id(0);
+    set_matches(std::vector<Match>());
+    set_actions(std::vector<Action>());
+    set_options(std::vector<Option>());
+}
+
+RouteMod::RouteMod(uint8_t mod, uint64_t id, std::vector<Match> matches, std::vector<Action> actions, std::vector<Option> options) {
+    set_mod(mod);
+    set_id(id);
+    set_matches(matches);
+    set_actions(actions);
+    set_options(options);
+}
+
+int RouteMod::get_type() {
+    return ROUTE_MOD;
+}
+
+uint8_t RouteMod::get_mod() {
+    return this->mod;
+}
+
+void RouteMod::set_mod(uint8_t mod) {
+    this->mod = mod;
+}
+
+uint64_t RouteMod::get_id() {
+    return this->id;
+}
+
+void RouteMod::set_id(uint64_t id) {
+    this->id = id;
+}
+
+std::vector<Match> RouteMod::get_matches() {
+    return this->matches;
+}
+
+void RouteMod::set_matches(std::vector<Match> matches) {
+    this->matches = matches;
+}
+
+void RouteMod::add_match(const Match& match) {
+    this->matches.push_back(match);
+}
+
+std::vector<Action> RouteMod::get_actions() {
+    return this->actions;
+}
+
+void RouteMod::set_actions(std::vector<Action> actions) {
+    this->actions = actions;
+}
+
+void RouteMod::add_action(const Action& action) {
+    this->actions.push_back(action);
+}
+
+std::vector<Option> RouteMod::get_options() {
+    return this->options;
+}
+
+void RouteMod::set_options(std::vector<Option> options) {
+    this->options = options;
+}
+
+void RouteMod::add_option(const Option& option) {
+    this->options.push_back(option);
+}
+
+void RouteMod::from_BSON(const char* data) {
+    mongo::BSONObj obj(data);
+    set_mod(obj["mod"].Int());
+    set_id(string_to<uint64_t>(obj["id"].String()));
+    set_matches(MatchList::to_vector(obj["matches"].Array()));
+    set_actions(ActionList::to_vector(obj["actions"].Array()));
+    set_options(OptionList::to_vector(obj["options"].Array()));
+}
+
+const char* RouteMod::to_BSON() {
+    mongo::BSONObjBuilder _b;
+    _b.append("mod", get_mod());
+    _b.append("id", to_string<uint64_t>(get_id()));
+    _b.appendArray("matches", MatchList::to_BSON(get_matches()));
+    _b.appendArray("actions", ActionList::to_BSON(get_actions()));
+    _b.appendArray("options", OptionList::to_BSON(get_options()));
+    mongo::BSONObj o = _b.obj();
+    char* data = new char[o.objsize()];
+    memcpy(data, o.objdata(), o.objsize());
+    return data;
+}
+
+string RouteMod::str() {
+    stringstream ss;
+    ss << "RouteMod" << endl;
+    ss << "  mod: " << get_mod() << endl;
+    ss << "  id: " << to_string<uint64_t>(get_id()) << endl;
+    ss << "  matches: " << MatchList::to_BSON(get_matches()) << endl;
+    ss << "  actions: " << ActionList::to_BSON(get_actions()) << endl;
+    ss << "  options: " << OptionList::to_BSON(get_options()) << endl;
+    return ss.str();
+}

@@ -21,3 +21,5 @@ class RFProtocolFactory(IPC.IPCMessageFactory):
             return VirtualPlaneMap()
         if type_ == DATA_PLANE_MAP:
             return DataPlaneMap()
+        if type_ == ROUTE_MOD:
+            return RouteMod()

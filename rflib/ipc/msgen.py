@@ -4,67 +4,98 @@ messages = []
 
 # C++
 typesMap = {
+"i8": "uint8_t",
 "i32": "uint32_t",
 "i64": "uint64_t",
 "bool": "bool",
 "ip": "IPAddress",
 "mac": "MACAddress",
 "string": "string",
+"match": "Match&",
+"match[]": "std::vector<Match>",
+"action": "Action&",
+"action[]": "std::vector<Action>",
+"option": "Option&",
+"option[]": "std::vector<Option>",
 }
 
 defaultValues = {
+"i8": "0",
 "i32": "0",
 "i64": "0",
 "bool": "false",
 "ip": "IPAddress(IPV4)",
 "mac": "MACAddress()",
 "string": "\"\"",
+"match[]": "std::vector<Match>()",
+"action[]": "std::vector<Action>()",
+"option[]": "std::vector<Option>()",
 }
 
 exportType = {
+"i8": "{0}",
 "i32": "to_string<uint32_t>({0})",
 "i64": "to_string<uint64_t>({0})",
 "bool": "{0}",
 "ip": "{0}.toString()",
 "mac": "{0}.toString()",
 "string": "{0}",
+"match[]": "MatchList::to_BSON({0})",
+"action[]": "ActionList::to_BSON({0})",
+"option[]": "OptionList::to_BSON({0})",
 }
 
 importType = {
+"i8": "{0}.Int()",
 "i32": "string_to<uint32_t>({0}.String())",
 "i64": "string_to<uint64_t>({0}.String())",
 "bool": "{0}.Bool()",
 "ip": "IPAddress(IPV4, {0}.String())",
 "mac": "MACAddress({0}.String())",
 "string": "{0}.String()",
+"match[]": "MatchList::to_vector({0}.Array())",
+"action[]": "ActionList::to_vector({0}.Array())",
+"option[]": "OptionList::to_vector({0}.Array())",
 }
 
 # Python
 pyDefaultValues = {
+"i8": "0",
 "i32": "0",
 "i64": "0",
 "bool": "False",
 "ip": "\"\"",
 "mac": "\"\"",
 "string": "\"\"",
+"match[]": "list()",
+"action[]": "list()",
+"option[]": "list()",
 }
 
 pyExportType = {
+"i8": "{0}",
 "i32": "str({0})",
 "i64": "str({0})",
 "bool": "bool({0})",
 "ip": "str({0})",
 "mac": "str({0})",
 "string": "{0}",
+"match[]": "{0}",
+"action[]": "{0}",
+"option[]": "{0}",
 }
 
 pyImportType = {
+"i8": "int({0})",
 "i32": "int({0})",
 "i64": "int({0})",
 "bool": "bool({0})",
 "ip": "str({0})",
 "mac": "str({0})",
 "string": "str({0})",
+"match[]": "list({0})",
+"action[]": "list({0})",
+"option[]": "list({0})",
 }
 
 def convmsgtype(string):
@@ -120,6 +151,9 @@ def genH(messages, fname):
     g.addLine("#include \"IPAddress.h\"")
     g.addLine("#include \"MACAddress.h\"")
     g.addLine("#include \"converter.h\"")
+    g.addLine("#include \"Action.hh\"")
+    g.addLine("#include \"Match.hh\"")
+    g.addLine("#include \"Option.hh\"")
     g.blankLine();
     enum = "enum {\n\t"
     enum += ",\n\t".join([convmsgtype(name) for name, msg in messages]) 
@@ -136,10 +170,16 @@ def genH(messages, fname):
         # Constructor with parameters
         g.addLine("{0}({1});".format(name, ", ".join([typesMap[t] + " " + f for t, f in msg])))
         g.blankLine()
+
         for t, f in msg:
             g.addLine("{0} get_{1}();".format(typesMap[t], f))
             g.addLine("void set_{0}({1} {2});".format(f, typesMap[t], f))
+
+            if t[-2:] == "[]":
+                t2 = t[0:-2]
+                g.addLine("void add_{0}(const {1} {0});".format(t2, typesMap[t2]))
             g.blankLine()
+
         g.addLine("virtual int get_type();")
         g.addLine("virtual void from_BSON(const char* data);")
         g.addLine("virtual const char* to_BSON();")
@@ -203,6 +243,15 @@ def genCPP(messages, fname):
             g.decreaseIndent()
             g.addLine("}")
             g.blankLine();
+
+            if t[-2:] == "[]":
+                t2 = t[0:-2]
+                g.addLine("void {0}::add_{1}(const {2} {1}) {{".format(name, t2, typesMap[t2]))
+                g.increaseIndent()
+                g.addLine("this->{0}.push_back({1});".format(f, t2))
+                g.decreaseIndent()
+                g.addLine("}")
+                g.blankLine();
         
         g.addLine("void {0}::from_BSON(const char* data) {{".format(name))
         g.increaseIndent();
@@ -219,7 +268,10 @@ def genCPP(messages, fname):
         g.addLine("mongo::BSONObjBuilder _b;")
         for t, f in msg:
             value = "get_{0}()".format(f)
-            g.addLine("_b.append(\"{0}\", {1});".format(f, exportType[t].format(value)))
+            if t[-2:] == "[]":
+                g.addLine("_b.appendArray(\"{0}\", {1});".format(f, exportType[t].format(value)))
+            else:
+                g.addLine("_b.append(\"{0}\", {1});".format(f, exportType[t].format(value)))
         g.addLine("mongo::BSONObj o = _b.obj();")
         g.addLine("char* data = new char[o.objsize()];")
         g.addLine("memcpy(data, o.objdata(), o.objsize());")
@@ -346,6 +398,14 @@ def genPy(messages, fname):
             g.decreaseIndent()
             g.decreaseIndent()
             g.blankLine();
+
+            if t[-2:] == "[]":
+                t2 = t[0:-2]
+                g.addLine("def add_{0}(self, {0}):".format(t2))
+                g.increaseIndent()
+                g.addLine("self.{0}.append({1}.to_dict())".format(f, t2))
+                g.decreaseIndent()
+                g.blankLine();
 
         g.addLine("def from_dict(self, data):")
         g.increaseIndent();
