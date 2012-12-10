@@ -18,6 +18,12 @@
 
 #define RF_ETH_PROTO 0x0A0A /* RF ethernet protocol */
 
+#define VLAN_HEADER_LEN 4
+#define ETH_HEADER_LEN 14
+#define ETH_PAYLOAD_MAX 1500
+#define ETH_TOTAL_MAX (ETH_HEADER_LEN + ETH_PAYLOAD_MAX)
+#define ETH_VLAN_TOTAL_MAX (ETH_HEADER_LEN + VLAN_HEADER_LEN + ETH_PAYLOAD_MAX)
+
 // We must match_l2 in order for packets to go up
 #define MATCH_L2 true
 
