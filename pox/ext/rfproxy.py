@@ -9,7 +9,7 @@ import rflib.ipc.IPC as IPC
 import rflib.ipc.MongoIPC as MongoIPC
 from rflib.ipc.RFProtocol import *
 from rflib.openflow.rfofmsg import *
-from rflib.ipc.rfprotocolfactory import RFProtocolFactory
+from rflib.ipc.RFProtocolFactory import RFProtocolFactory
 from rflib.defs import *
 
 FAILURE = 0
