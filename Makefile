@@ -28,7 +28,7 @@ lib: build
 	@for dir in $(libdirs); do \
 		mkdir -p $(BUILD_OBJ_DIR)/$$dir; \
 		echo "Compiling Library Dependency ($$dir)..."; \
-		make -C $(LIB_DIR)/$$dir all; \
+		make -C $(LIB_DIR)/$$dir all || exit 1; \
 		echo "done."; \
 	done
 	@echo "Generating Library";
@@ -39,16 +39,16 @@ app: lib
 	@for dir in $(srcdirs); do \
 		mkdir -p $(BUILD_OBJ_DIR)/$$dir; \
 		echo "Compiling Application $$dir..."; \
-		make -C $(ROOT_DIR)/$$dir all; \
+		make -C $(ROOT_DIR)/$$dir all || exit 1; \
 		echo "done."; \
 	done
 
-rfclient: lib 
+rfclient: lib
 	@mkdir -p $(BUILD_OBJ_DIR);
 	@for dir in "rfclient" ; do \
 		mkdir -p $(BUILD_OBJ_DIR)/$$dir; \
 		echo "Compiling Application $$dir..."; \
-		make -C $(ROOT_DIR)/$$dir all; \
+		make -C $(ROOT_DIR)/$$dir all || exit 1; \
 		echo "done."; \
 	done
 	
