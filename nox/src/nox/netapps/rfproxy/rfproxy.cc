@@ -30,7 +30,6 @@
 #define ID 0
 
 namespace vigil {
-using namespace rfproxy;
 
 static Vlog_module lg("rfproxy");
 
@@ -239,6 +238,18 @@ bool rfproxy::process(const string &from, const string &to,
                      fmsg->get_address(), fmsg->get_netmask(),
                      fmsg->get_src_hwaddress(), fmsg->get_dst_hwaddress(),
                      fmsg->get_dst_port());
+    }
+    else if (type == ROUTE_MOD) {
+        RouteMod* rmmsg = static_cast<RouteMod*>(&msg);
+        boost::shared_array<uint8_t> ofmsg = create_flow_mod(rmmsg->get_mod(),
+                                    rmmsg->get_matches(),
+                                    rmmsg->get_actions(),
+                                    rmmsg->get_options());
+        if (ofmsg.get() == NULL) {
+            VLOG_DBG(lg, "Failed to create OpenFlow FlowMod");
+        } else {
+            send_of_msg(rmmsg->get_id(), ofmsg.get());
+        }
     }
     else if (type == DATA_PLANE_MAP) {
         DataPlaneMap* dpmmsg = dynamic_cast<DataPlaneMap*>(&msg);
