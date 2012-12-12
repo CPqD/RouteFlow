@@ -43,3 +43,12 @@ PC_RESET = 1
 
 # Format 12-digit hex ID
 format_id = lambda dp_id: hex(dp_id).rstrip("L")
+
+ETHERTYPE_IP = 0x0800
+ETHERTYPE_ARP = 0x0806
+IPPROTO_ICMP = 0x01
+IPPROTO_TCP = 0x06
+IPPROTO_UDP = 0x11
+IPPROTO_OSPF = 0x59
+TPORT_BGP = 0x00B3
+TPORT_LDP = 0x286
