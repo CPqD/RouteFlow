@@ -173,7 +173,7 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
 		ofm->priority = htons(0);
 	} else {
 		ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
-		ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), OFPP_CONTROLLER, ETH_VLAN_TOTAL_MAX, 0);
+		ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), OFPP_CONTROLLER, RF_MAX_PACKET_SIZE, 0);
 	}
     
     return msg_new((uint8_t*) &ofm->header, size);
