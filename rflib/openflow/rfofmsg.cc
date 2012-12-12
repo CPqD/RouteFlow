@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <arpa/inet.h>
+#include <net/ethernet.h>
 #include <iostream>
 #include <boost/shared_array.hpp>
 #include <cstring>
@@ -152,39 +153,40 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
     } else {
         switch (operation) {
             case DC_RIPV2:
-                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-                ofm_match_nw(ofm, (OFPFW_NW_PROTO | OFPFW_NW_DST_MASK), 0x11, 0, 0, inet_addr("224.0.0.9"));
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+                ofm_match_nw(ofm, (OFPFW_NW_PROTO | OFPFW_NW_DST_MASK),
+                             IPPROTO_UDP, 0, 0, IPADDR_RIPv2);
                 break;
             case DC_OSPF:
-                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x59, 0, 0, 0);
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_OSPF, 0, 0, 0);
                 break;
             case DC_ARP:
-                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0806, 0, 0);
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_ARP, 0, 0);
                 break;
             case DC_ICMP:
-                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x01, 0, 0, 0);
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_ICMP, 0, 0, 0);
                 break;
             case DC_BGP_PASSIVE:
-                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
-                ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x00B3);
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0);
+                ofm_match_tp(ofm, OFPFW_TP_DST, 0, TPORT_BGP);
                 break;
             case DC_BGP_ACTIVE:
-                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
-                ofm_match_tp(ofm, OFPFW_TP_SRC, 0x00B3, 0);
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0);
+                ofm_match_tp(ofm, OFPFW_TP_SRC, TPORT_BGP, 0);
                 break;
             case DC_LDP_PASSIVE:
-                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
-                ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x286);
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0);
+                ofm_match_tp(ofm, OFPFW_TP_DST, 0, TPORT_LDP);
                 break;
             case DC_LDP_ACTIVE:
-                ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-                ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0);
-                ofm_match_tp(ofm, OFPFW_TP_SRC, 0x286, 0);
+                ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+                ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0);
+                ofm_match_tp(ofm, OFPFW_TP_SRC, TPORT_LDP, 0);
                 break;
             case DC_VM_INFO:
                 ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO, 0, 0);
@@ -209,9 +211,10 @@ MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[], uint8_
 
     ofm_init(ofm, size);
 
-    ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800, 0, 0);
-    if (MATCH_L2)
+    ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+    if (MATCH_L2) {
         ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
+    }
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
@@ -248,9 +251,10 @@ MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
 
     ofm_init(ofm, size);
 
-    ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800, 0, 0);
-    if (MATCH_L2)
+    ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+    if (MATCH_L2) {
         ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
+    }
 
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
@@ -270,9 +274,10 @@ MSG create_temporary_flow_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
 
     ofm_init(ofm, size);
 
-    ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800, 0, 0);
-    if (MATCH_L2)
+    ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP, 0, 0);
+    if (MATCH_L2) {
         ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
+    }
 
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
