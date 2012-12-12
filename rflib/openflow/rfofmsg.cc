@@ -33,6 +33,12 @@ void msg_delete(MSG msg) {
     free(msg);
 }
 
+/**
+ * Initialise the FlowMod with default values
+ *
+ * ofm: FlowMod to initialise
+ * size: size of the FlowMod structure
+ */
 void ofm_init(ofp_flow_mod* ofm, size_t size) {
 	std::memset(ofm, 0, size);
 
@@ -42,6 +48,7 @@ void ofm_init(ofp_flow_mod* ofm, size_t size) {
 	ofm->header.length = htons(size);
 	ofm->header.xid = 0;
 
+    /* Match nothing by default. */
 	ofm->match.wildcards = htonl(OFPFW_ALL);
 
 	ofm->cookie = htonl(0);
@@ -49,12 +56,30 @@ void ofm_init(ofp_flow_mod* ofm, size_t size) {
 	ofm->flags = htons(0);
 }
 
+/**
+ * Match on physical input port
+ *
+ * ofm: FlowMod to add match to
+ * in: Physical in_port to match
+ */
 void ofm_match_in(ofp_flow_mod* ofm, uint16_t in) {
 	ofm->match.wildcards &= htonl(~OFPFW_IN_PORT);
 	ofm->match.in_port = htons(in);
 }
 
-void ofm_match_dl(ofp_flow_mod* ofm, uint32_t match, uint16_t type, const uint8_t src[], const uint8_t dst[]) {
+/**
+ * Match on ethernet attributes
+ *
+ * Applies a single OFPFW_DL_* match to the FlowMod.
+ *
+ * ofm: FlowMod to add match to
+ * match: Match type (OFPFW_DL_TYPE,OFPFW_DL_SRC,OFPFW_DL_DST)
+ * type: Ethertype to match
+ * src: 48-bit Ethernet source to match
+ * dst: 48-bit Ethernet destination to match
+ */
+void ofm_match_dl(ofp_flow_mod* ofm, uint32_t match, uint16_t type,
+                  const uint8_t src[], const uint8_t dst[]) {
     ofm->match.wildcards &= htonl(~match);
 
     if (match & OFPFW_DL_TYPE) { /* Ethernet frame type. */
@@ -68,7 +93,18 @@ void ofm_match_dl(ofp_flow_mod* ofm, uint32_t match, uint16_t type, const uint8_
     }
 }
 
-void ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t id, uint8_t priority) {
+/**
+ * Match on VLAN attributes
+ *
+ * Applies multiple OFPFW_DL_VLAN* matches to the FlowMod.
+ *
+ * ofm: FlowMod to add match to
+ * match: Match type (OFPFW_DL_VLAN, OFPFW_DL_VLAN_PCP)
+ * id: VLAN id to match
+ * priority: VLAN PCP to match
+ */
+void ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t id,
+                    uint8_t priority) {
     ofm->match.wildcards &= htonl(~match);
 
     if (match & OFPFW_DL_VLAN) { /* VLAN id. */
@@ -79,7 +115,20 @@ void ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t id, uint8_t prio
     }
 }
 
-void ofm_match_nw(ofp_flow_mod* ofm, uint32_t match, uint8_t proto, uint8_t tos, uint32_t src, uint32_t dst) {
+/**
+ * Match on IP attributes
+ *
+ * Applies multiple OFPFW_NW_* matches to the FlowMod.
+ *
+ * ofm: FlowMod to add match to
+ * match: Match type (OFPFW_NW_*)
+ * proto: IP protocol to match
+ * tos: DSCP bits to match
+ * src: IPv4 source address
+ * dst: IPv4 destination address
+ */
+void ofm_match_nw(ofp_flow_mod* ofm, uint32_t match, uint8_t proto,
+                  uint8_t tos, uint32_t src, uint32_t dst) {
     ofm->match.wildcards &= htonl(~match);
 
     if (match & OFPFW_NW_PROTO) { /* IP protocol. */
@@ -96,7 +145,18 @@ void ofm_match_nw(ofp_flow_mod* ofm, uint32_t match, uint8_t proto, uint8_t tos,
     }
 }
 
-void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match, uint16_t src, uint16_t dst) {
+/**
+ * Match on transport protocol attributes
+ *
+ * Applies multiple OFPFW_TP_* matches to the FlowMod.
+ *
+ * ofm: FlowMod to add match to
+ * match: Match type (OFPFW_TP_*)
+ * src: Transport source port
+ * dst: Transport destination port
+ */
+void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match, uint16_t src,
+                  uint16_t dst) {
     ofm->match.wildcards &= htonl(~match);
 
     if (match & OFPFW_TP_SRC) { /* TCP/UDP source port. */
@@ -107,7 +167,17 @@ void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match, uint16_t src, uint16_t dst)
     }
 }
 
-void ofm_set_action(ofp_action_header* hdr, uint16_t type, uint16_t len, uint16_t port, uint16_t max_len, const uint8_t addr[]) {
+/**
+ * Set action values for header
+ *
+ * hdr: Action header to initialise
+ * type: Action type (OFPAT_*)
+ * len: length of action
+ * max_len: Max packet size to send when output port is OFPP_CONTROLLER
+ * addr: Value to use if writing DL_SRC, DL_DST
+ */
+void ofm_set_action(ofp_action_header* hdr, uint16_t type, uint16_t len,
+                    uint16_t port, uint16_t max_len, const uint8_t addr[]) {
     std::memset((uint8_t *)hdr, 0, len);
     hdr->type = htons(type);
     hdr->len = htons(len);
@@ -122,7 +192,19 @@ void ofm_set_action(ofp_action_header* hdr, uint16_t type, uint16_t len, uint16_
     }
 }
 
-void ofm_set_command(ofp_flow_mod* ofm, uint16_t cmd, uint32_t id, uint16_t idle_to, uint16_t hard_to, uint16_t port) {
+/**
+ * Set FlowMod attributes
+ *
+ * ofm: FlowMod to modify
+ * cmd: Command - OFPFC_*
+ * id: buffer id of packet to apply (if buffered)
+ * idle_to: idle time before discarding
+ * hard_to: maximum time before discarding
+ * port: output port for OFPFC_DELETE* commands
+ */
+void ofm_set_command(ofp_flow_mod* ofm, enum ofp_flow_mod_command cmd,
+                     uint32_t id, uint16_t idle_to, uint16_t hard_to,
+                     uint16_t port) {
     ofm->command = htons(cmd);
     ofm->buffer_id = htonl(id);
     ofm->idle_timeout = htons(idle_to);
@@ -130,6 +212,11 @@ void ofm_set_command(ofp_flow_mod* ofm, uint16_t cmd, uint32_t id, uint16_t idle
     ofm->out_port = htons(port);
 }
 
+/**
+ * Create the OpenFlow configuration message that corresponds to the RouteFlow
+ * DATAPATH_CONFIG_OPERATION
+ *
+ */
 MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
     ofp_flow_mod* ofm;
     size_t size;
@@ -145,10 +232,13 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
     ofm_init(ofm, size);
 
     if (operation == DC_CLEAR_FLOW_TABLE) {
-        ofm_set_command(ofm, OFPFC_DELETE, 0, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm_set_command(ofm, OFPFC_DELETE, 0, OFP_FLOW_PERMANENT,
+                        OFP_FLOW_PERMANENT, OFPP_NONE);
         ofm->priority = htons(0);
     } else if (operation == DC_DROP_ALL) {
-        ofm_set_command(ofm, OFPFC_ADD, 0, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm_set_command(ofm, OFPFC_ADD, 0, OFP_FLOW_PERMANENT,
+                        OFP_FLOW_PERMANENT, OFPP_NONE);
+        /* No action implies discard. */
         ofm->priority = htons(1);
     } else {
         switch (operation) {
@@ -195,17 +285,31 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
                 break;
         }
 
-        ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
-        ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), OFPP_CONTROLLER, RF_MAX_PACKET_SIZE, 0);
+        ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT,
+                        OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output),
+                       OFPP_CONTROLLER, RF_MAX_PACKET_SIZE, 0);
     }
 
     return msg_new((uint8_t*) &ofm->header, size);
 }
 
-MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[], uint8_t dstMac[], uint32_t dstPort) {
+/**
+ * Create a FlowMod to match a destination, replace ethernet addresses, and
+ * forward out a port
+ *
+ * ip: IPv4 address to match (in host byte order)
+ * mask: CIDR mask to match
+ * srcMac: Ethernet address to overwrite source in packets
+ * dstMac: Ethernet address to overwrite destination in packets
+ * dstPort: Physical port to forward out
+ */
+MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[],
+                            uint8_t dstMac[], uint32_t dstPort) {
     ip = htonl(ip);
     ofp_flow_mod* ofm;
-    size_t size = sizeof *ofm + (2 * sizeof(ofp_action_dl_addr)) + sizeof(ofp_action_output);
+    size_t size = sizeof *ofm + (2 * sizeof(ofp_action_dl_addr)) +
+                  sizeof(ofp_action_output);
     boost::shared_array<char> raw_of(new char[size]);
     ofm = (ofp_flow_mod*) raw_of.get();
 
@@ -217,7 +321,8 @@ MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[], uint8_
     }
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
-    ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT, OFPP_NONE);
+    ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT,
+                    OFP_FLOW_PERMANENT, OFPP_NONE);
 
     if (mask == 32) {
         ofm->idle_timeout = htons(300);
@@ -228,19 +333,29 @@ MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[], uint8_
     uint8_t *pActions = (uint8_t *) ofm->actions;
 
     /*Action: change the dst MAC address.*/
-    ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_DST, sizeof(ofp_action_dl_addr), 0, 0, dstMac);
+    ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_DST,
+                   sizeof(ofp_action_dl_addr), 0, 0, dstMac);
     pActions += sizeof(ofp_action_dl_addr);
 
     /*Action: change the src MAC address.*/
-    ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_SRC, sizeof(ofp_action_dl_addr), 0, 0, srcMac);
+    ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_SRC,
+                   sizeof(ofp_action_dl_addr), 0, 0, srcMac);
     pActions += sizeof(ofp_action_dl_addr);
 
     /*Action: forward to port dstPort. */
-    ofm_set_action((ofp_action_header*) pActions, OFPAT_OUTPUT, sizeof(ofp_action_output), dstPort, 0, 0);
+    ofm_set_action((ofp_action_header*) pActions, OFPAT_OUTPUT,
+                   sizeof(ofp_action_output), dstPort, 0, 0);
 
     return msg_new((uint8_t*) &ofm->header, size);
 }
 
+/**
+ * Create a FlowMod to remove a flow
+ *
+ * ip: IPv4 address in flow to be removed (in host byte order)
+ * mask: CIDR mask of flow to be removed
+ * srcMac: Source ethernet address of flow to be removed
+ */
 MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ip = htonl(ip);
 
@@ -259,11 +374,21 @@ MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
-    ofm_set_command(ofm, OFPFC_DELETE_STRICT, UINT32_MAX, 0, OFP_FLOW_PERMANENT, OFPP_NONE);
+    ofm_set_command(ofm, OFPFC_DELETE_STRICT, UINT32_MAX, 0,
+                    OFP_FLOW_PERMANENT, OFPP_NONE);
 
     return msg_new((uint8_t*) &ofm->header, size);
 }
 
+/**
+ * Create a FlowMod that has a short idle timeout
+ *
+ * Always pushes packets out port 0.
+ *
+ * ip: IPv4 address to match (in host byte order)
+ * mask: CIDR mask to match
+ * srcMac: Ethernet destination address to match
+ */
 MSG create_temporary_flow_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ip = htonl(ip);
 
@@ -282,7 +407,8 @@ MSG create_temporary_flow_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
-    ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, 60, OFP_FLOW_PERMANENT, OFPP_NONE);
+    ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, 60, OFP_FLOW_PERMANENT,
+                    OFPP_NONE);
     ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), 0, 0, 0);
 
     return msg_new((uint8_t*) &ofm->header, size);
