@@ -71,7 +71,7 @@ def create_config_msg(operation):
         ofm.idle_timeout = OFP_FLOW_PERMANENT
         ofm.hard_timeout = OFP_FLOW_PERMANENT
         ofm.out_port = OFPP_NONE
-        ofm.actions.append(ofp_action_output(port = OFPP_CONTROLLER))
+        ofm.actions.append(ofp_action_output(port = OFPP_CONTROLLER, max_len = RF_MAX_PACKET_SIZE))
 
     return ofm
 
