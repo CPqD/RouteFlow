@@ -337,7 +337,7 @@ If you want to know more or need to contact us regarding the project for anythin
 
 * rfweb: an update cycle is needed to show the images in the network view in some browsers
 
-* See also: [Issues](https://github.com/CPqD/RouteFlow/issues) in Github and [RouteFlow bugs](http://bugs.openflowhub.org/browse/ROUTEFLOW) in OpenFlowHub
+* See also: [Issues](https://github.com/CPqD/RouteFlow/issues) in Github
 
 
 # TODO (and features expected in upcoming versions)
