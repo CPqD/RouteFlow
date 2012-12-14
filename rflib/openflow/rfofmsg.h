@@ -29,7 +29,7 @@ void ofm_match_dl(ofp_flow_mod* ofm, uint32_t match, uint16_t type, const uint8_
 void ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t id, uint8_t priority);
 void ofm_match_nw(ofp_flow_mod* ofm, uint32_t match, uint8_t proto, uint8_t tos, uint32_t src, uint32_t dst);
 void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match, uint16_t src, uint16_t dst);
-void ofm_set_action(ofp_action_header* hdr, uint16_t type, uint16_t len, uint16_t port, uint16_t max_len, const uint8_t addr[]);
+void ofm_set_action(ofp_action_header* hdr, uint16_t type, uint16_t port, const uint8_t addr[]);
 void ofm_set_command(ofp_flow_mod* ofm, uint16_t cmd, uint32_t id, uint16_t idle_to, uint16_t hard_to, uint16_t port);
 
 MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation);
