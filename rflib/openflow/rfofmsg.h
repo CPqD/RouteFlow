@@ -23,6 +23,9 @@ size_t msg_size(MSG msg);
 void msg_save(MSG msg, const char* fname);
 void msg_delete(MSG msg);
 
+uint32_t ofp_get_mask(struct in_addr, int shift);
+uint32_t ofp_get_mask(uint8_t, int shift);
+
 void ofm_init(ofp_flow_mod* ofm, size_t size);
 void ofm_match_in(ofp_flow_mod* ofm, uint16_t in);
 void ofm_match_dl(ofp_flow_mod* ofm, uint32_t match, uint16_t type, const uint8_t src[], const uint8_t dst[]);

@@ -224,6 +224,35 @@ void ofm_set_command(ofp_flow_mod* ofm, enum ofp_flow_mod_command cmd,
 }
 
 /**
+ * Convert the given CIDR mask to an OpenFlow 1.0 match bitmask
+ *
+ * mask: CIDR mask, eg 24
+ * shift: OpenFlow shift value (OFPFW_NW_*_SHIFT)
+ */
+uint32_t ofp_get_mask(uint8_t mask, int shift) {
+    return ((uint32_t) 31 + mask) << shift;
+}
+
+/**
+ * Convert the given full IPv4 mask to an OpenFlow 1.0 match bitmask
+ *
+ * ip_mask: Full IPv4 bitmask in network byte-order, eg 255.255.255.0
+ * shift: OpenFlow shift value (OFPFW_NW_*_SHIFT)
+ */
+uint32_t ofp_get_mask(struct in_addr ip, int shift) {
+    uint8_t cidr_mask = 0;
+    uint32_t ip_mask = ntohl(ip.s_addr);
+
+    /* Convert to CIDR mask */
+    while (ip_mask & (1<<31)) {
+        cidr_mask++;
+        ip_mask <<= 1;
+    }
+
+    return ofp_get_mask(cidr_mask, shift);
+}
+
+/**
  * Create the OpenFlow configuration message that corresponds to the RouteFlow
  * DATAPATH_CONFIG_OPERATION
  *
@@ -329,7 +358,7 @@ MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[],
     if (MATCH_L2) {
         ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
     }
-    ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
+    ofm_match_nw(ofm, ofp_get_mask(mask, OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT,
                     OFP_FLOW_PERMANENT, OFPP_NONE);
@@ -378,7 +407,7 @@ MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
         ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
     }
 
-    ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
+    ofm_match_nw(ofm, ofp_get_mask(mask, OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
     ofm_set_command(ofm, OFPFC_DELETE_STRICT, UINT32_MAX, 0,
@@ -411,7 +440,7 @@ MSG create_temporary_flow_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
         ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
     }
 
-    ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
+    ofm_match_nw(ofm, ofp_get_mask(mask, OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
     ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, 60, OFP_FLOW_PERMANENT,
