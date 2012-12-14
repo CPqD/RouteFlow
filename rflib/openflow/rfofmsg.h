@@ -10,7 +10,7 @@
 #include "openflow.h"
 #include "defs.h"
 
-#define UINT32_MAX      (4294967295U)
+#define OFP_BUFFER_NONE (0xffffffff)
 
 #define IPPROTO_OSPF    0x59
 #define IPADDR_RIPv2    (inet_addr("224.0.0.9"))
@@ -33,6 +33,8 @@ void ofm_match_vlan(ofp_flow_mod* ofm, uint32_t match, uint16_t id, uint8_t prio
 void ofm_match_nw(ofp_flow_mod* ofm, uint32_t match, uint8_t proto, uint8_t tos, uint32_t src, uint32_t dst);
 void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match, uint16_t src, uint16_t dst);
 void ofm_set_action(ofp_action_header* hdr, uint16_t type, uint16_t port, const uint8_t addr[]);
+
+void ofm_set_command(ofp_flow_mod* ofm, enum ofp_flow_mod_command cmd);
 void ofm_set_command(ofp_flow_mod* ofm, uint16_t cmd, uint32_t id, uint16_t idle_to, uint16_t hard_to, uint16_t port);
 
 MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation);

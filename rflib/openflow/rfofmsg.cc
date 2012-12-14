@@ -224,6 +224,17 @@ void ofm_set_command(ofp_flow_mod* ofm, enum ofp_flow_mod_command cmd,
 }
 
 /**
+ * Set FlowMod attributes
+ *
+ * ofm: FlowMod to modify
+ * cmd: Command - OFPFC_*
+ */
+void ofm_set_command(ofp_flow_mod* ofm, enum ofp_flow_mod_command cmd) {
+    ofm_set_command(ofm, cmd, OFP_BUFFER_NONE, OFP_FLOW_PERMANENT,
+                    OFP_FLOW_PERMANENT, OFPP_NONE);
+}
+
+/**
  * Convert the given CIDR mask to an OpenFlow 1.0 match bitmask
  *
  * mask: CIDR mask, eg 24
@@ -272,12 +283,10 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
     ofm_init(ofm, size);
 
     if (operation == DC_CLEAR_FLOW_TABLE) {
-        ofm_set_command(ofm, OFPFC_DELETE, 0, OFP_FLOW_PERMANENT,
-                        OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm_set_command(ofm, OFPFC_DELETE);
         ofm->priority = htons(0);
     } else if (operation == DC_DROP_ALL) {
-        ofm_set_command(ofm, OFPFC_ADD, 0, OFP_FLOW_PERMANENT,
-                        OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm_set_command(ofm, OFPFC_ADD);
         /* No action implies discard. */
         ofm->priority = htons(1);
     } else {
@@ -325,8 +334,7 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
                 break;
         }
 
-        ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT,
-                        OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm_set_command(ofm, OFPFC_ADD);
         ofm_set_action(ofm->actions, OFPAT_OUTPUT, OFPP_CONTROLLER, 0);
     }
 
@@ -360,8 +368,7 @@ MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[],
     }
     ofm_match_nw(ofm, ofp_get_mask(mask, OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
-    ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT,
-                    OFP_FLOW_PERMANENT, OFPP_NONE);
+    ofm_set_command(ofm, OFPFC_ADD);
 
     if (mask == 32) {
         ofm->idle_timeout = htons(300);
@@ -410,8 +417,7 @@ MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ofm_match_nw(ofm, ofp_get_mask(mask, OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
-    ofm_set_command(ofm, OFPFC_DELETE_STRICT, UINT32_MAX, 0,
-                    OFP_FLOW_PERMANENT, OFPP_NONE);
+    ofm_set_command(ofm, OFPFC_DELETE_STRICT);
 
     return msg_new((uint8_t*) &ofm->header, size);
 }
@@ -443,7 +449,7 @@ MSG create_temporary_flow_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
     ofm_match_nw(ofm, ofp_get_mask(mask, OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
-    ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, 60, OFP_FLOW_PERMANENT,
+    ofm_set_command(ofm, OFPFC_ADD, OFP_BUFFER_NONE, 60, OFP_FLOW_PERMANENT,
                     OFPP_NONE);
     ofm_set_action(ofm->actions, OFPAT_OUTPUT, 0, 0);
 
