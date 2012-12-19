@@ -180,6 +180,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             # Configure a normal switch. Clear the tables and install default flows.
             self.send_datapath_config_message(dp_id, DC_CLEAR_FLOW_TABLE);
             # TODO: enforce order: clear should always be executed first
+            self.send_datapath_config_message(dp_id, DC_DROP_ALL);
             self.send_datapath_config_message(dp_id, DC_OSPF);
             self.send_datapath_config_message(dp_id, DC_BGP_PASSIVE);
             self.send_datapath_config_message(dp_id, DC_BGP_ACTIVE);
