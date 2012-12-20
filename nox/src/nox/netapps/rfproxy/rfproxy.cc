@@ -18,6 +18,7 @@
 #include "ipc/MongoIPC.h"
 #include "ipc/RFProtocol.h"
 #include "ipc/RFProtocolFactory.h"
+#include "OFInterface.hh"
 #include "openflow/rfofmsg.h"
 #include "converter.h"
 #include "defs.h"
@@ -29,6 +30,7 @@
 #define ID 0
 
 namespace vigil {
+using namespace rfproxy;
 
 static Vlog_module lg("rfproxy");
 

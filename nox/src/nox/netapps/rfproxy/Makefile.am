@@ -17,7 +17,7 @@ rfproxy_la_CPPFLAGS = $(AM_CPPFLAGS) -I $(top_srcdir)/src/nox -I $(top_srcdir)/s
                         -I$(top_srcdir)/../rflib/openflow \
                         -I$(top_srcdir)/../rflib/types
                         
-rfproxy_la_SOURCES = rfproxy.hh rfproxy.cc
+rfproxy_la_SOURCES = rfproxy.hh rfproxy.cc OFInterface.hh OFInterface.cc
 rfproxy_la_LIBADD = $(top_srcdir)/../build/lib/rflib.a
 rfproxy_la_LDFLAGS = -module -export-dynamic -lmongoclient
 
