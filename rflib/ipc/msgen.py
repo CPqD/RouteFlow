@@ -243,6 +243,59 @@ def genCPP(messages, fname):
         
     return str(g)
 
+def genHFactory(messages, fname):
+    g = CodeGenerator()
+
+    g.addLine("#ifndef __{0}FACTORY_H__".format(fname.upper()))
+    g.addLine("#define __{0}FACTORY_H__".format(fname.upper()))
+    g.blankLine()
+    g.addLine("#include \"IPC.h\"")
+    g.addLine("#include \"{0}.h\"".format(fname))
+    g.blankLine()
+
+    g.addLine("class {0}Factory : public IPCMessageFactory {1}".format(fname, "{"))
+    g.increaseIndent()
+    g.addLine("protected:")
+    g.increaseIndent()
+    g.addLine("IPCMessage* buildForType(int type);")
+    g.decreaseIndent()
+    g.decreaseIndent()
+    g.addLine("};");
+    g.blankLine()
+
+    g.addLine("#endif /* __{0}FACTORY_H__ */".format(fname.upper()))
+    g.blankLine()
+
+    return str(g)
+
+def genCPPFactory(messages, fname):
+    g = CodeGenerator()
+
+    g.addLine("#include \"{0}Factory.h\"".format(fname))
+    g.blankLine()
+    g.addLine("IPCMessage* {0}Factory::buildForType(int type) {1}".format(fname, "{"))
+    g.increaseIndent()
+    g.addLine("switch (type) {0}".format("{"))
+    g.increaseIndent()
+
+    for name, msg in messages:
+        g.addLine("case {0}:".format(convmsgtype(name)))
+        g.increaseIndent()
+        g.addLine("return new {0}();".format(name))
+        g.decreaseIndent()
+
+    g.addLine("default:")
+    g.increaseIndent()
+    g.addLine("return NULL;")
+    g.decreaseIndent()
+    g.decreaseIndent()
+    g.addLine("}")
+    g.decreaseIndent()
+    g.addLine("}")
+    g.blankLine()
+
+    return str(g)
+
 def genPy(messages, fname):
     g = CodeGenerator()
 
@@ -334,9 +387,32 @@ def genPy(messages, fname):
         g.decreaseIndent()
         g.decreaseIndent()
         g.blankLine();
-        
+
     return str(g)
-    
+
+def genPyFactory(messages, fname):
+    g = CodeGenerator()
+
+    g.addLine("import rflib.ipc.IPC as IPC")
+    g.addLine("from rflib.ipc.{0} import *".format(fname))
+    g.blankLine()
+    g.addLine("class {0}Factory(IPC.IPCMessageFactory):".format(fname))
+    g.increaseIndent()
+    g.addLine("def build_for_type(self, type_):")
+    g.increaseIndent()
+
+    for name, msg in messages:
+        g.addLine("if type_ == {0}:".format(convmsgtype(name)))
+        g.increaseIndent()
+        g.addLine("return {0}()".format(name))
+        g.decreaseIndent()
+
+    g.decreaseIndent()
+    g.decreaseIndent()
+    g.blankLine()
+
+    return str(g)
+
 # Text processing
 fname = sys.argv[1]
 f = open(fname, "r")
@@ -366,6 +442,18 @@ f = open(fname + ".cc", "w")
 f.write(genCPP(messages, fname))
 f.close()
 
+f = open(fname + "Factory.h", "w")
+f.write(genHFactory(messages, fname))
+f.close()
+
+f = open(fname + "Factory.cc", "w")
+f.write(genCPPFactory(messages, fname))
+f.close()
+
 f = open(fname + ".py", "w")
 f.write(genPy(messages, fname))
+f.close()
+
+f = open(fname + "Factory.py", "w")
+f.write(genPyFactory(messages, fname))
 f.close()

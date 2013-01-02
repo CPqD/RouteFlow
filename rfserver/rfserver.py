@@ -7,7 +7,7 @@ import logging
 import rflib.ipc.IPC as IPC
 import rflib.ipc.MongoIPC as MongoIPC
 from rflib.ipc.RFProtocol import *
-from rflib.ipc.rfprotocolfactory import RFProtocolFactory
+from rflib.ipc.RFProtocolFactory import RFProtocolFactory
 from rflib.defs import *
 
 from rftable import *
