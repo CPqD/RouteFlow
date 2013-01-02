@@ -28,7 +28,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         ch.setLevel(logging.INFO)
         ch.setFormatter(logging.Formatter(logging.BASIC_FORMAT))
         self.log.addHandler(ch)
-        
+
         self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, RFSERVER_ID)
         self.ipc.listen(RFCLIENT_RFSERVER_CHANNEL, self, self, False)
         self.ipc.listen(RFSERVER_RFPROXY_CHANNEL, self, self, True)
@@ -42,8 +42,8 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             ri.from_message(msg)
             self.register_route_information(ri)
         elif type_ == DATAPATH_PORT_REGISTER:
-            self.register_dp_port(msg.get_ct_id(), 
-                                  msg.get_dp_id(), 
+            self.register_dp_port(msg.get_ct_id(),
+                                  msg.get_dp_id(),
                                   msg.get_dp_port())
         elif type_ == DATAPATH_DOWN:
             self.set_dp_down(msg.get_ct_id(), msg.get_dp_id())
@@ -63,7 +63,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             action = REGISTER_IDLE
         else:
             entry = self.rftable.get_entry_by_dp_port(config_entry.ct_id,
-                                                      config_entry.dp_id, 
+                                                      config_entry.dp_id,
                                                       config_entry.dp_port)
             # If there's no entry, we have no DP, register VM as idle
             if entry is None:
@@ -169,12 +169,12 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.rftable.set_entry(entry)
             self.config_vm_port(entry.vm_id, entry.vm_port)
             self.log.info("Registering datapath port and associating to client port (dp_id=%s, dp_port=%i, vm_id=%s, vm_port=%s)" %
-                          (format_id(dp_id), dp_port, format(entry.vm_id), entry.vm_port))           
+                          (format_id(dp_id), dp_port, format(entry.vm_id), entry.vm_port))
 
     def send_datapath_config_message(self, ct_id, dp_id, operation_id):
         self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(ct_id),
-                      DatapathConfig(ct_id=ct_id, 
-                                     dp_id=dp_id, 
+                      DatapathConfig(ct_id=ct_id,
+                                     dp_id=dp_id,
                                      operation_id=operation_id))
 
     def config_dp(self, ct_id, dp_id):
@@ -188,15 +188,15 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             # Configure a normal switch. Clear the tables and install default flows.
             self.send_datapath_config_message(ct_id, dp_id, DC_CLEAR_FLOW_TABLE);
             # TODO: enforce order: clear should always be executed first
-            self.send_datapath_config_message(dp_id, DC_DROP_ALL);
-            self.send_datapath_config_message(dp_id, DC_OSPF);
-            self.send_datapath_config_message(dp_id, DC_BGP_PASSIVE);
-            self.send_datapath_config_message(dp_id, DC_BGP_ACTIVE);
-            self.send_datapath_config_message(dp_id, DC_RIPV2);
-            self.send_datapath_config_message(dp_id, DC_ARP);
-            self.send_datapath_config_message(dp_id, DC_ICMP);
-            self.send_datapath_config_message(dp_id, DC_LDP_PASSIVE);
-            self.send_datapath_config_message(dp_id, DC_LDP_ACTIVE);
+            self.send_datapath_config_message(ct_id, dp_id, DC_DROP_ALL);
+            self.send_datapath_config_message(ct_id, dp_id, DC_OSPF);
+            self.send_datapath_config_message(ct_id, dp_id, DC_BGP_PASSIVE);
+            self.send_datapath_config_message(ct_id, dp_id, DC_BGP_ACTIVE);
+            self.send_datapath_config_message(ct_id, dp_id, DC_RIPV2);
+            self.send_datapath_config_message(ct_id, dp_id, DC_ARP);
+            self.send_datapath_config_message(ct_id, dp_id, DC_ICMP);
+            self.send_datapath_config_message(ct_id, dp_id, DC_LDP_PASSIVE);
+            self.send_datapath_config_message(ct_id, dp_id, DC_LDP_ACTIVE);
             self.log.info("Configuring datapath (dp_id=%s)" % format_id(dp_id))
         return is_rfvs(dp_id)
 
@@ -232,7 +232,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             # If the association is valid, activate it
             entry.activate(vs_id, vs_port)
             self.rftable.set_entry(entry)
-            msg = DataPlaneMap(ct_id=entry.ct_id, 
+            msg = DataPlaneMap(ct_id=entry.ct_id,
                                dp_id=entry.dp_id, dp_port=entry.dp_port,
                                vs_id=vs_id, vs_port=vs_port)
             self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(entry.ct_id), msg)

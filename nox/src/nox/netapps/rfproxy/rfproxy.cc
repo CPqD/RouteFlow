@@ -26,7 +26,7 @@
 #define SUCCESS 1
 
 // TODO: proper support for ID
-#define ID 289
+#define ID 0
 
 namespace vigil {
 
@@ -68,7 +68,7 @@ void rfproxy::flow_config(uint64_t dp_id, uint32_t operation_id) {
 void rfproxy::flow_add(uint64_t dp_id,
                        IPAddress address, IPAddress netmask,
                        MACAddress src_hwaddress, MACAddress dst_hwaddress,
-                       uint32_t dst_port) {                       
+                       uint32_t dst_port) {
     uint32_t address_ = address.toUint32();
     uint32_t netmask_ = netmask.toCIDRMask();
     uint8_t src_hwaddress_[IFHWADDRLEN];
@@ -218,7 +218,7 @@ Disposition rfproxy::on_packet_in(const Event& e) {
 }
 
 // IPC message processing
-bool rfproxy::process(const string &from, const string &to, 
+bool rfproxy::process(const string &from, const string &to,
                       const string &channel, IPCMessage& msg) {
     int type = msg.get_type();
     if (type == DATAPATH_CONFIG) {
@@ -229,18 +229,18 @@ bool rfproxy::process(const string &from, const string &to,
     else if (type == FLOW_MOD) {
         FlowMod* fmsg = dynamic_cast<FlowMod*>(&msg);
         if (fmsg->get_is_removal())
-            flow_delete(fmsg->get_dp_id(), 
-                        fmsg->get_address(), fmsg->get_netmask(), 
+            flow_delete(fmsg->get_dp_id(),
+                        fmsg->get_address(), fmsg->get_netmask(),
                         fmsg->get_src_hwaddress());
         else
-            flow_add(fmsg->get_dp_id(), 
-                     fmsg->get_address(), fmsg->get_netmask(), 
+            flow_add(fmsg->get_dp_id(),
+                     fmsg->get_address(), fmsg->get_netmask(),
                      fmsg->get_src_hwaddress(), fmsg->get_dst_hwaddress(),
                      fmsg->get_dst_port());
     }
     else if (type == DATA_PLANE_MAP) {
         DataPlaneMap* dpmmsg = dynamic_cast<DataPlaneMap*>(&msg);
-        table.update_dp_port(dpmmsg->get_dp_id(), dpmmsg->get_dp_port(), 
+        table.update_dp_port(dpmmsg->get_dp_id(), dpmmsg->get_dp_port(),
                              dpmmsg->get_vs_id(), dpmmsg->get_vs_port());
     }
     return true;
