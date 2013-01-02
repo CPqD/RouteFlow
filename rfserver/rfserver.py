@@ -42,9 +42,11 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             ri.from_message(msg)
             self.register_route_information(ri)
         elif type_ == DATAPATH_PORT_REGISTER:
-            self.register_dp_port(msg.get_dp_id(), msg.get_dp_port());
+            self.register_dp_port(msg.get_ct_id(), 
+                                  msg.get_dp_id(), 
+                                  msg.get_dp_port())
         elif type_ == DATAPATH_DOWN:
-            self.set_dp_down(msg.get_dp_id())
+            self.set_dp_down(msg.get_ct_id(), msg.get_dp_id())
         elif type_ == VIRTUAL_PLANE_MAP:
             self.map_port(msg.get_vm_id(), msg.get_vm_port(),
                           msg.get_vs_id(), msg.get_vs_port())
@@ -60,7 +62,9 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             # Register idle VM awaiting for configuration
             action = REGISTER_IDLE
         else:
-            entry = self.rftable.get_entry_by_dp_port(config_entry.dp_id, config_entry.dp_port)
+            entry = self.rftable.get_entry_by_dp_port(config_entry.ct_id,
+                                                      config_entry.dp_id, 
+                                                      config_entry.dp_port)
             # If there's no entry, we have no DP, register VM as idle
             if entry is None:
                 action = REGISTER_IDLE
@@ -122,32 +126,33 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         if entry.get_status() != RFENTRY_ACTIVE:
             return
 
-        msg = FlowMod(dp_id=entry.dp_id,
+        msg = FlowMod(ct_id=entry.ct_id,
+            dp_id=entry.dp_id,
             address=ri.address,
             netmask=ri.netmask,
             dst_port=entry.dp_port,
             src_hwaddress=ri.src_hwaddress,
             dst_hwaddress=ri.dst_hwaddress,
             is_removal=ri.is_removal)
-        self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFPROXY_ID, msg);
+        self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(entry.ct_id), msg);
         self.log.debug("Sending client route information to datapath (vm_id=%s, vm_port=%i, dp_id=%s, dp_port=%i)" %
                        (format_id(entry.vm_id), entry.vm_port, format_id(entry.dp_id), entry.dp_port))
 
     # DatapathPortRegister methods
-    def register_dp_port(self, dp_id, dp_port):
-        stop = self.config_dp(dp_id)
+    def register_dp_port(self, ct_id, dp_id, dp_port):
+        stop = self.config_dp(ct_id, dp_id)
         if stop:
             return
 
         # The logic down here is pretty much the same as register_vm_port
         action = None
-        config_entry = self.config.get_config_for_dp_port(dp_id, dp_port)
+        config_entry = self.config.get_config_for_dp_port(ct_id, dp_id, dp_port)
         if config_entry is None:
             # Register idle DP awaiting for configuration
             action = REGISTER_IDLE
         else:
             entry = self.rftable.get_entry_by_vm_port(config_entry.vm_id, config_entry.vm_port)
-            # If there's no entry, we have no DP, register VM as idle
+            # If there's no entry, we have no VM, register DP as idle
             if entry is None:
                 action = REGISTER_IDLE
             # If there's an idle VM entry matching configuration, associate
@@ -156,29 +161,32 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
 
         # Apply action
         if action == REGISTER_IDLE:
-            self.rftable.set_entry(RFEntry(dp_id=dp_id, dp_port=dp_port))
+            self.rftable.set_entry(RFEntry(ct_id=ct_id, dp_id=dp_id, dp_port=dp_port))
             self.log.info("Registering datapath port as idle (dp_id=%s, dp_port=%i)" %
-                          (format_id(dp_id), dp_port))            
+                          (format_id(dp_id), dp_port))
         elif action == REGISTER_ASSOCIATED:
-            entry.associate(dp_id, dp_port)
+            entry.associate(dp_id, dp_port, ct_id)
             self.rftable.set_entry(entry)
             self.config_vm_port(entry.vm_id, entry.vm_port)
             self.log.info("Registering datapath port and associating to client port (dp_id=%s, dp_port=%i, vm_id=%s, vm_port=%s)" %
-                          (format_id(dp_id), dp_port, format(entry.vm_id), entry.vm_port))            
+                          (format_id(dp_id), dp_port, format(entry.vm_id), entry.vm_port))           
 
-    def send_datapath_config_message(self, dp_id, operation_id):
-        self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFPROXY_ID,
-                      DatapathConfig(dp_id=dp_id, operation_id=operation_id))
+    def send_datapath_config_message(self, ct_id, dp_id, operation_id):
+        self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(ct_id),
+                      DatapathConfig(ct_id=ct_id, 
+                                     dp_id=dp_id, 
+                                     operation_id=operation_id))
 
-    def config_dp(self, dp_id):
-        if dp_id == RFVS_DPID and not self.configured_rfvs:
+    def config_dp(self, ct_id, dp_id):
+        if is_rfvs(dp_id) and not self.configured_rfvs:
             # If rfvs is coming up and we haven't configured it yet, do it
+            # TODO: support more than one OVS
             self.configured_rfvs = True
-            self.send_datapath_config_message(dp_id, DC_ALL)
+            self.send_datapath_config_message(ct_id, dp_id, DC_ALL)
             self.log.info("Configuring RFVS (dp_id=%s)" % format_id(dp_id))
-        elif self.rftable.is_dp_registered(dp_id):
+        elif self.rftable.is_dp_registered(ct_id, dp_id):
             # Configure a normal switch. Clear the tables and install default flows.
-            self.send_datapath_config_message(dp_id, DC_CLEAR_FLOW_TABLE);
+            self.send_datapath_config_message(ct_id, dp_id, DC_CLEAR_FLOW_TABLE);
             # TODO: enforce order: clear should always be executed first
             self.send_datapath_config_message(dp_id, DC_DROP_ALL);
             self.send_datapath_config_message(dp_id, DC_OSPF);
@@ -190,17 +198,17 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.send_datapath_config_message(dp_id, DC_LDP_PASSIVE);
             self.send_datapath_config_message(dp_id, DC_LDP_ACTIVE);
             self.log.info("Configuring datapath (dp_id=%s)" % format_id(dp_id))
-        return dp_id == RFVS_DPID
+        return is_rfvs(dp_id)
 
     # DatapathDown methods
-    def set_dp_down(self, dp_id):
-        for entry in self.rftable.get_dp_entries(dp_id):
+    def set_dp_down(self, ct_id, dp_id):
+        for entry in self.rftable.get_dp_entries(ct_id, dp_id):
             # For every port registered in that datapath, put it down
-            self.set_dp_port_down(entry.dp_id, entry.dp_port)
+            self.set_dp_port_down(entry.ct_id, entry.dp_id, entry.dp_port)
         self.log.info("Datapath down (dp_id=%s)" % format_id(dp_id))
 
-    def set_dp_port_down(self, dp_id, dp_port):
-        entry = self.rftable.get_entry_by_dp_port(dp_id, dp_port)
+    def set_dp_port_down(self, ct_id, dp_id, dp_port):
+        entry = self.rftable.get_entry_by_dp_port(ct_id, dp_id, dp_port)
         if entry is not None:
             # If the DP port is registered, delete it and leave only the
             # associated VM port. Reset this VM port so it can be reused.
@@ -224,9 +232,10 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             # If the association is valid, activate it
             entry.activate(vs_id, vs_port)
             self.rftable.set_entry(entry)
-            msg = DataPlaneMap(dp_id=entry.dp_id, dp_port=entry.dp_port,
+            msg = DataPlaneMap(ct_id=entry.ct_id, 
+                               dp_id=entry.dp_id, dp_port=entry.dp_port,
                                vs_id=vs_id, vs_port=vs_port)
-            self.ipc.send(RFSERVER_RFPROXY_CHANNEL, RFPROXY_ID, msg)
+            self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(entry.ct_id), msg)
             self.log.info("Mapping client-datapath association (vm_id=%s, vm_port=%i, dp_id=%s, dp_port=%i, vs_id=%s, vs_port=%i)" %
                           (format_id(entry.vm_id), entry.vm_port, format_id(entry.dp_id), entry.dp_port, format_id(entry.vs_id), entry.vs_port))
 

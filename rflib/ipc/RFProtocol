@@ -8,6 +8,7 @@ PortConfig
     i32 operation_id
 
 DatapathConfig
+    i64 ct_id
     i64 dp_id
     i32 operation_id
     
@@ -22,6 +23,7 @@ RouteInfo
     bool is_removal
 
 FlowMod
+    i64 ct_id
     i64 dp_id
     ip address
     ip netmask
@@ -31,10 +33,12 @@ FlowMod
     bool is_removal
       
 DatapathPortRegister
+    i64 ct_id
     i64 dp_id
     i32 dp_port
     
 DatapathDown
+    i64 ct_id
     i64 dp_id
 
 VirtualPlaneMap
@@ -44,6 +48,7 @@ VirtualPlaneMap
     i32 vs_port
     
 DataPlaneMap
+    i64 ct_id
     i64 dp_id
     i32 dp_port
     i64 vs_id

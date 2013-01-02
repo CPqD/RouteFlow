@@ -12,7 +12,8 @@ RFPROXY_ID = "rfproxy"
 
 DEFAULT_RFCLIENT_INTERFACE = "eth0"
 
-RFVS_DPID = 0x7266767372667673
+RFVS_PREFIX = 0x72667673
+is_rfvs = lambda dp_id: not ((dp_id >> 32) ^ RFVS_PREFIX)
 
 RF_ETH_PROTO = 0x0A0A # RF ethernet protocol
 

@@ -25,6 +25,9 @@
 #define FAILURE 0
 #define SUCCESS 1
 
+// TODO: proper support for ID
+#define ID 289
+
 namespace vigil {
 
 static Vlog_module lg("rfproxy");
@@ -126,7 +129,7 @@ Disposition rfproxy::on_datapath_up(const Event& e) {
 
     for (int i = 0; i < dj.ports.size(); i++) {
         if (dj.ports[i].port_no <= OFPP_MAX) {
-            DatapathPortRegister msg(dj.datapath_id.as_host(), dj.ports[i].port_no);
+            DatapathPortRegister msg(ID, dj.datapath_id.as_host(), dj.ports[i].port_no);
             ipc->send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg);
 
             VLOG_INFO(lg,
@@ -151,7 +154,7 @@ Disposition rfproxy::on_datapath_down(const Event& e) {
     table.delete_dp(dp_id);
 
     // Notify RFServer
-    DatapathDown dd(dp_id);
+    DatapathDown dd(ID, dp_id);
     ipc->send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, dd);
     return CONTINUE;
 }
@@ -193,7 +196,7 @@ Disposition rfproxy::on_packet_in(const Event& e) {
 	}
 
     // If the packet came from RFVS, redirect it to the right switch port
-    if (dp_id == RFVS_DPID) {
+    if (IS_RFVS(dp_id)) {
         PORT dp_port = table.vs_port_to_dp_port(dp_id, in_port);
         if (dp_port != NONE)
             send_packet_out(dp_port.first, dp_port.second, *(pi.get_buffer()));
@@ -203,7 +206,6 @@ Disposition rfproxy::on_packet_in(const Event& e) {
     }
     // If the packet came from a switch, redirect it to the right RFVS port
     else {
-
         PORT vs_port = table.dp_port_to_vs_port(dp_id, in_port);
         if (vs_port != NONE)
             send_packet_out(vs_port.first, vs_port.second, *(pi.get_buffer()));
@@ -250,7 +252,7 @@ void rfproxy::configure(const Configuration* c) {
 }
 
 void rfproxy::install() {
-    ipc = new MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, RFPROXY_ID);
+    ipc = new MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, to_string<uint64_t>(ID));
     factory = new RFProtocolFactory();
     ipc->listen(RFSERVER_RFPROXY_CHANNEL, factory, this, false);
 

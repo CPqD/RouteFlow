@@ -130,12 +130,23 @@ class PortConfig(MongoIPCMessage):
         return s
 
 class DatapathConfig(MongoIPCMessage):
-    def __init__(self, dp_id=None, operation_id=None):
+    def __init__(self, ct_id=None, dp_id=None, operation_id=None):
+        self.set_ct_id(ct_id)
         self.set_dp_id(dp_id)
         self.set_operation_id(operation_id)
 
     def get_type(self):
         return DATAPATH_CONFIG
+
+    def get_ct_id(self):
+        return self.ct_id
+
+    def set_ct_id(self, ct_id):
+        ct_id = 0 if ct_id is None else ct_id
+        try:
+            self.ct_id = int(ct_id)
+        except:
+            self.ct_id = 0
 
     def get_dp_id(self):
         return self.dp_id
@@ -158,11 +169,13 @@ class DatapathConfig(MongoIPCMessage):
             self.operation_id = 0
 
     def from_dict(self, data):
+        self.set_ct_id(data["ct_id"])
         self.set_dp_id(data["dp_id"])
         self.set_operation_id(data["operation_id"])
 
     def to_dict(self):
         data = {}
+        data["ct_id"] = str(self.get_ct_id())
         data["dp_id"] = str(self.get_dp_id())
         data["operation_id"] = str(self.get_operation_id())
         return data
@@ -176,6 +189,7 @@ class DatapathConfig(MongoIPCMessage):
 
     def __str__(self):
         s = "DatapathConfig\n"
+        s += "  ct_id: " + str(self.get_ct_id()) + "\n"
         s += "  dp_id: " + str(self.get_dp_id()) + "\n"
         s += "  operation_id: " + str(self.get_operation_id()) + "\n"
         return s
@@ -316,7 +330,8 @@ class RouteInfo(MongoIPCMessage):
         return s
 
 class FlowMod(MongoIPCMessage):
-    def __init__(self, dp_id=None, address=None, netmask=None, dst_port=None, src_hwaddress=None, dst_hwaddress=None, is_removal=None):
+    def __init__(self, ct_id=None, dp_id=None, address=None, netmask=None, dst_port=None, src_hwaddress=None, dst_hwaddress=None, is_removal=None):
+        self.set_ct_id(ct_id)
         self.set_dp_id(dp_id)
         self.set_address(address)
         self.set_netmask(netmask)
@@ -327,6 +342,16 @@ class FlowMod(MongoIPCMessage):
 
     def get_type(self):
         return FLOW_MOD
+
+    def get_ct_id(self):
+        return self.ct_id
+
+    def set_ct_id(self, ct_id):
+        ct_id = 0 if ct_id is None else ct_id
+        try:
+            self.ct_id = int(ct_id)
+        except:
+            self.ct_id = 0
 
     def get_dp_id(self):
         return self.dp_id
@@ -399,6 +424,7 @@ class FlowMod(MongoIPCMessage):
             self.is_removal = False
 
     def from_dict(self, data):
+        self.set_ct_id(data["ct_id"])
         self.set_dp_id(data["dp_id"])
         self.set_address(data["address"])
         self.set_netmask(data["netmask"])
@@ -409,6 +435,7 @@ class FlowMod(MongoIPCMessage):
 
     def to_dict(self):
         data = {}
+        data["ct_id"] = str(self.get_ct_id())
         data["dp_id"] = str(self.get_dp_id())
         data["address"] = str(self.get_address())
         data["netmask"] = str(self.get_netmask())
@@ -427,6 +454,7 @@ class FlowMod(MongoIPCMessage):
 
     def __str__(self):
         s = "FlowMod\n"
+        s += "  ct_id: " + str(self.get_ct_id()) + "\n"
         s += "  dp_id: " + str(self.get_dp_id()) + "\n"
         s += "  address: " + str(self.get_address()) + "\n"
         s += "  netmask: " + str(self.get_netmask()) + "\n"
@@ -437,12 +465,23 @@ class FlowMod(MongoIPCMessage):
         return s
 
 class DatapathPortRegister(MongoIPCMessage):
-    def __init__(self, dp_id=None, dp_port=None):
+    def __init__(self, ct_id=None, dp_id=None, dp_port=None):
+        self.set_ct_id(ct_id)
         self.set_dp_id(dp_id)
         self.set_dp_port(dp_port)
 
     def get_type(self):
         return DATAPATH_PORT_REGISTER
+
+    def get_ct_id(self):
+        return self.ct_id
+
+    def set_ct_id(self, ct_id):
+        ct_id = 0 if ct_id is None else ct_id
+        try:
+            self.ct_id = int(ct_id)
+        except:
+            self.ct_id = 0
 
     def get_dp_id(self):
         return self.dp_id
@@ -465,11 +504,13 @@ class DatapathPortRegister(MongoIPCMessage):
             self.dp_port = 0
 
     def from_dict(self, data):
+        self.set_ct_id(data["ct_id"])
         self.set_dp_id(data["dp_id"])
         self.set_dp_port(data["dp_port"])
 
     def to_dict(self):
         data = {}
+        data["ct_id"] = str(self.get_ct_id())
         data["dp_id"] = str(self.get_dp_id())
         data["dp_port"] = str(self.get_dp_port())
         return data
@@ -483,16 +524,28 @@ class DatapathPortRegister(MongoIPCMessage):
 
     def __str__(self):
         s = "DatapathPortRegister\n"
+        s += "  ct_id: " + str(self.get_ct_id()) + "\n"
         s += "  dp_id: " + str(self.get_dp_id()) + "\n"
         s += "  dp_port: " + str(self.get_dp_port()) + "\n"
         return s
 
 class DatapathDown(MongoIPCMessage):
-    def __init__(self, dp_id=None):
+    def __init__(self, ct_id=None, dp_id=None):
+        self.set_ct_id(ct_id)
         self.set_dp_id(dp_id)
 
     def get_type(self):
         return DATAPATH_DOWN
+
+    def get_ct_id(self):
+        return self.ct_id
+
+    def set_ct_id(self, ct_id):
+        ct_id = 0 if ct_id is None else ct_id
+        try:
+            self.ct_id = int(ct_id)
+        except:
+            self.ct_id = 0
 
     def get_dp_id(self):
         return self.dp_id
@@ -505,10 +558,12 @@ class DatapathDown(MongoIPCMessage):
             self.dp_id = 0
 
     def from_dict(self, data):
+        self.set_ct_id(data["ct_id"])
         self.set_dp_id(data["dp_id"])
 
     def to_dict(self):
         data = {}
+        data["ct_id"] = str(self.get_ct_id())
         data["dp_id"] = str(self.get_dp_id())
         return data
 
@@ -521,6 +576,7 @@ class DatapathDown(MongoIPCMessage):
 
     def __str__(self):
         s = "DatapathDown\n"
+        s += "  ct_id: " + str(self.get_ct_id()) + "\n"
         s += "  dp_id: " + str(self.get_dp_id()) + "\n"
         return s
 
@@ -604,7 +660,8 @@ class VirtualPlaneMap(MongoIPCMessage):
         return s
 
 class DataPlaneMap(MongoIPCMessage):
-    def __init__(self, dp_id=None, dp_port=None, vs_id=None, vs_port=None):
+    def __init__(self, ct_id=None, dp_id=None, dp_port=None, vs_id=None, vs_port=None):
+        self.set_ct_id(ct_id)
         self.set_dp_id(dp_id)
         self.set_dp_port(dp_port)
         self.set_vs_id(vs_id)
@@ -612,6 +669,16 @@ class DataPlaneMap(MongoIPCMessage):
 
     def get_type(self):
         return DATA_PLANE_MAP
+
+    def get_ct_id(self):
+        return self.ct_id
+
+    def set_ct_id(self, ct_id):
+        ct_id = 0 if ct_id is None else ct_id
+        try:
+            self.ct_id = int(ct_id)
+        except:
+            self.ct_id = 0
 
     def get_dp_id(self):
         return self.dp_id
@@ -654,6 +721,7 @@ class DataPlaneMap(MongoIPCMessage):
             self.vs_port = 0
 
     def from_dict(self, data):
+        self.set_ct_id(data["ct_id"])
         self.set_dp_id(data["dp_id"])
         self.set_dp_port(data["dp_port"])
         self.set_vs_id(data["vs_id"])
@@ -661,6 +729,7 @@ class DataPlaneMap(MongoIPCMessage):
 
     def to_dict(self):
         data = {}
+        data["ct_id"] = str(self.get_ct_id())
         data["dp_id"] = str(self.get_dp_id())
         data["dp_port"] = str(self.get_dp_port())
         data["vs_id"] = str(self.get_vs_id())
@@ -676,6 +745,7 @@ class DataPlaneMap(MongoIPCMessage):
 
     def __str__(self):
         s = "DataPlaneMap\n"
+        s += "  ct_id: " + str(self.get_ct_id()) + "\n"
         s += "  dp_id: " + str(self.get_dp_id()) + "\n"
         s += "  dp_port: " + str(self.get_dp_port()) + "\n"
         s += "  vs_id: " + str(self.get_vs_id()) + "\n"
