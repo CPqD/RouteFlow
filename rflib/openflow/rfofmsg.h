@@ -10,7 +10,12 @@
 #include "openflow.h"
 #include "defs.h"
 
-# define UINT32_MAX		(4294967295U)
+#define UINT32_MAX      (4294967295U)
+
+#define IPPROTO_OSPF    0x59
+#define IPADDR_RIPv2    (inet_addr("224.0.0.9"))
+#define TPORT_BGP       0x00B3
+#define TPORT_LDP       0x286
 
 typedef uint8_t* MSG;
 MSG msg_new(uint8_t* src, size_t size);

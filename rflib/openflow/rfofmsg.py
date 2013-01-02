@@ -40,24 +40,32 @@ def create_config_msg(operation):
     ofm = ofp_flow_mod()
 
     if operation == DC_RIPV2:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
-        ofm_match_nw(ofm, (OFPFW_NW_PROTO | OFPFW_NW_DST_MASK), 0x11, 0, 0, IPAddr("224.0.0.9"))
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
+        ofm_match_nw(ofm, (OFPFW_NW_PROTO | OFPFW_NW_DST_MASK), IPPROTO_UDP, 0, 0, IPAddr("224.0.0.9"))
     elif operation == DC_OSPF:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x59, 0, 0, 0)
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
+        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_OSPF, 0, 0, 0)
     elif operation == DC_ARP:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0806)
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_ARP)
     elif operation == DC_ICMP:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x01, 0, 0, 0)
-    elif operation == DC_BGP_INBOUND:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0)
-        ofm_match_tp(ofm, OFPFW_TP_DST, 0, 0x00B3)
-    elif operation == DC_BGP_OUTBOUND:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, 0x06, 0, 0, 0)
-        ofm_match_tp(ofm, OFPFW_TP_SRC, 0, 0x00B3)
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
+        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_ICMP, 0, 0, 0)
+    elif operation == DC_BGP_PASSIVE:
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
+        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0)
+        ofm_match_tp(ofm, OFPFW_TP_DST, 0, TPORT_BGP)
+    elif operation == DC_BGP_ACTIVE:
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
+        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0)
+        ofm_match_tp(ofm, OFPFW_TP_SRC, TPORT_BGP, 0)
+    elif operation == DC_LDP_PASSIVE:
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP);
+        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0);
+        ofm_match_tp(ofm, OFPFW_TP_DST, 0, TPORT_LDP);
+    elif operation == DC_LDP_ACTIVE:
+        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP);
+        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0);
+        ofm_match_tp(ofm, OFPFW_TP_SRC, TPORT_LDP, 0);
     elif operation == DC_VM_INFO:
         ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO)
     elif operation == DC_DROP_ALL:
@@ -71,14 +79,14 @@ def create_config_msg(operation):
         ofm.idle_timeout = OFP_FLOW_PERMANENT
         ofm.hard_timeout = OFP_FLOW_PERMANENT
         ofm.out_port = OFPP_NONE
-        ofm.actions.append(ofp_action_output(port = OFPP_CONTROLLER))
+        ofm.actions.append(ofp_action_output(port = OFPP_CONTROLLER, max_len = RF_MAX_PACKET_SIZE))
 
     return ofm
 
 def create_flow_install_msg(ip, mask, srcMac, dstMac, dstPort):
     ofm = ofp_flow_mod()
 
-    ofm_match_dl(ofm, OFPFW_DL_TYPE, 0x0800)
+    ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
     if (MATCH_L2):
 	    ofm_match_dl(ofm, OFPFW_DL_DST, srcMac)
 
@@ -102,7 +110,7 @@ def create_flow_install_msg(ip, mask, srcMac, dstMac, dstPort):
 def create_flow_remove_msg(ip, mask, srcMac):
     ofm = ofp_flow_mod()
 
-    ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800)
+    ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
     if (MATCH_L2):
 	    ofm_match_dl(ofm, OFPFW_DL_DST, srcMac)
 
@@ -116,7 +124,7 @@ def create_flow_remove_msg(ip, mask, srcMac):
 def create_temporary_flow_msg(ip, mask, srcMac):
     ofm = ofp_flow_mod()
 
-    ofm_match_dl(ofm, OFPFW_DL_TYPE , 0x0800)
+    ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
     if (MATCH_L2):
 	    ofm_match_dl(ofm, OFPFW_DL_DST, srcMac)
 

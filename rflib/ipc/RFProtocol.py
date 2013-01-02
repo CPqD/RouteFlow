@@ -312,7 +312,7 @@ class RouteInfo(MongoIPCMessage):
         s += "  dst_port: " + str(self.get_dst_port()) + "\n"
         s += "  src_hwaddress: " + str(self.get_src_hwaddress()) + "\n"
         s += "  dst_hwaddress: " + str(self.get_dst_hwaddress()) + "\n"
-        s += "  is_removal: " + bool(self.get_is_removal()) + "\n"
+        s += "  is_removal: " + str(self.get_is_removal()) + "\n"
         return s
 
 class FlowMod(MongoIPCMessage):
@@ -433,7 +433,7 @@ class FlowMod(MongoIPCMessage):
         s += "  dst_port: " + str(self.get_dst_port()) + "\n"
         s += "  src_hwaddress: " + str(self.get_src_hwaddress()) + "\n"
         s += "  dst_hwaddress: " + str(self.get_dst_hwaddress()) + "\n"
-        s += "  is_removal: " + bool(self.get_is_removal()) + "\n"
+        s += "  is_removal: " + str(self.get_is_removal()) + "\n"
         return s
 
 class DatapathPortRegister(MongoIPCMessage):

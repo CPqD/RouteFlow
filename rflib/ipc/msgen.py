@@ -329,7 +329,7 @@ def genPy(messages, fname):
         g.addLine("s = \"{0}\\n\"".format(name))
         for t, f in msg:
             value = "self.get_{0}()".format(f)
-            g.addLine("s += \"  {0}: \" + {1} + \"\\n\"".format(f, pyExportType[t].format(value)))
+            g.addLine("s += \"  {0}: \" + str({1}) + \"\\n\"".format(f, value))
         g.addLine("return s")
         g.decreaseIndent()
         g.decreaseIndent()

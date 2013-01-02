@@ -27,7 +27,7 @@ fi
 # !!!
 # ADD THE PACKETS YOU NEED TO INSTALL HERE
 # !!!
-sudo chroot $LXCDIR/base/rootfs apt-get -y --force-yes install quagga libboost-thread1.42.0 libboost-system1.42.0 libboost-filesystem1.42.0 libboost-program-options1.42.0 rsyslog
+sudo chroot $LXCDIR/base/rootfs apt-get -y --force-yes install quagga libboost-thread1.42.0 libboost-system1.42.0 libboost-filesystem1.42.0 libboost-program-options1.42.0 rsyslog vlan tcpdump
 # !!!
 
 # Clone the base container to make other containers based on config
