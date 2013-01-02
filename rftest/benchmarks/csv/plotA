@@ -1,0 +1,12 @@
+set datafile separator ','
+set terminal postscript eps enhanced font "Helvetica,26"
+set output '| epstopdf --filter --outfile=plotA.pdf'
+set border linewidth 2
+set title "a) Latency for 1 switch" font "Helvetica,32"
+set xlabel "Latency (ms)" font "Helvetica,24"
+set ylabel "Cumulative Fraction" font "Helvetica,24"
+set pointsize 3
+#set key box linestyle -1
+set key right bottom
+set yrange [0:1]
+plot "data_rfbench1_nox_latency.csv" using 1:2 title "NOX" with linespoints lt 1 lw 3 pt 13 lc rgb "red", "data_rfbench1_pox_latency.csv" using 1:2 title "POX" with linespoints lt 2  lw 3 pt 9 lc rgb "green "
