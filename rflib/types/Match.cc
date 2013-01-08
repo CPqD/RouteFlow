@@ -10,6 +10,12 @@ Match::Match(MatchType type, boost::shared_array<uint8_t> value)
 Match::Match(MatchType type, const uint8_t* value)
     : TLV(type, type_to_length(type), value) { }
 
+Match::Match(MatchType type, const uint8_t value)
+    : TLV(type, type_to_length(type), value) { }
+
+Match::Match(MatchType type, const uint16_t value)
+    : TLV(type, type_to_length(type), value) { }
+
 Match::Match(MatchType type, const uint32_t value)
     : TLV(type, type_to_length(type), value) { }
 
@@ -36,6 +42,10 @@ std::string Match::type_to_string() const {
         case RFMT_IPV6:         return "RFMT_IPV6";
         case RFMT_ETHERNET:     return "RFMT_ETHERNET";
         case RFMT_MPLS:         return "RFMT_MPLS";
+        case RFMT_ETHERTYPE:    return "RFMT_ETHERTYPE";
+        case RFMT_NW_PROTO:     return "RFMT_NW_PROTO";
+        case RFMT_TP_SRC:       return "RFMT_TP_SRC";
+        case RFMT_TP_DST:       return "RFMT_TP_DST";
         case RFMT_IN_PORT:      return "RFMT_IN_PORT";
         case RFMT_VLAN:         return "RFMT_VLAN";
         default:                return "UNKNOWN_MATCH";
@@ -44,10 +54,19 @@ std::string Match::type_to_string() const {
 
 size_t Match::type_to_length(uint8_t type) {
     switch (type) {
-        case RFMT_IPV4:         return sizeof(struct ip_match);
-        case RFMT_IPV6:         return sizeof(struct ip6_match);
-        case RFMT_ETHERNET:     return IFHWADDRLEN;
-        case RFMT_VLAN:         return sizeof(uint16_t);
+        case RFMT_IPV4:
+            return sizeof(struct ip_match);
+        case RFMT_IPV6:
+            return sizeof(struct ip6_match);
+        case RFMT_ETHERNET:
+            return IFHWADDRLEN;
+        case RFMT_NW_PROTO:
+            return sizeof(uint8_t);
+        case RFMT_ETHERTYPE:
+        case RFMT_TP_SRC:
+        case RFMT_TP_DST:
+        case RFMT_VLAN:
+            return sizeof(uint16_t);
         case RFMT_MPLS:
         case RFMT_IN_PORT:
             return sizeof(uint32_t);

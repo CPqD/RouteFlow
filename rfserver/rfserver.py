@@ -12,6 +12,7 @@ import rflib.ipc.MongoIPC as MongoIPC
 from rflib.ipc.RFProtocol import *
 from rflib.ipc.RFProtocolFactory import RFProtocolFactory
 from rflib.defs import *
+from rflib.types.Match import *
 from rflib.types.Action import *
 from rflib.types.Option import *
 

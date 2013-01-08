@@ -28,6 +28,10 @@ TLV::TLV(uint8_t type, size_t len, const uint8_t* value) {
     this->init(type, len, value);
 }
 
+TLV::TLV(uint8_t type, size_t len, uint8_t value) {
+    this->init(type, len, reinterpret_cast<uint8_t*>(&value));
+}
+
 TLV::TLV(uint8_t type, size_t len, uint16_t value) {
     this->init(type, len, reinterpret_cast<uint8_t*>(&value));
 }
@@ -83,6 +87,13 @@ bool TLV::operator==(const TLV& other) {
 
 uint8_t TLV::getType() const {
     return this->type;
+}
+
+uint8_t TLV::getUint8() const {
+    if (this->getLength() < sizeof(uint8_t)) {
+        return 0;
+    }
+    return *reinterpret_cast<const uint8_t*>(this->getValue());
 }
 
 uint16_t TLV::getUint16() const {

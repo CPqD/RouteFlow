@@ -1,3 +1,4 @@
+from rflib.defs import *
 from TLV import *
 from bson.binary import Binary
 
@@ -59,6 +60,10 @@ class Action(TLV):
     @classmethod
     def POP_SFLOW(cls):
         return cls(RFAT_POP_SFLOW, None)
+
+    @classmethod
+    def CONTROLLER(cls):
+        return cls(RFAT_OUTPUT, OFPP_CONTROLLER)
 
     @classmethod
     def from_dict(cls, dic):

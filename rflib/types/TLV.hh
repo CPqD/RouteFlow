@@ -32,6 +32,7 @@ class TLV {
         TLV(const TLV& other);
         TLV(uint8_t, size_t, boost::shared_array<uint8_t> value);
         TLV(uint8_t, size_t, const uint8_t* value);
+        TLV(uint8_t, size_t, uint8_t value);
         TLV(uint8_t, size_t, uint16_t value);
         TLV(uint8_t, size_t, uint32_t value);
         TLV(uint8_t, size_t, uint64_t value);
@@ -42,6 +43,7 @@ class TLV {
         bool operator==(const TLV& other);
         uint8_t getType() const;
         size_t getLength() const;
+        uint8_t getUint8() const;
         uint16_t getUint16() const;
         uint32_t getUint32() const;
         uint64_t getUint64() const;

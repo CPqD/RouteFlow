@@ -34,6 +34,18 @@ int add_match(ofp_flow_mod *ofm, const Match& match) {
         case RFMT_ETHERNET:
             ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, match.getValue());
             break;
+        case RFMT_ETHERTYPE:
+            ofm_match_dl(ofm, OFPFW_DL_TYPE, match.getUint16(), 0, 0);
+            break;
+        case RFMT_NW_PROTO:
+            ofm_match_nw(ofm, OFPFW_NW_PROTO, match.getUint8(), 0, 0, 0);
+            break;
+        case RFMT_TP_SRC:
+            ofm_match_tp(ofm, OFPFW_TP_SRC, match.getUint16(), 0);
+            break;
+        case RFMT_TP_DST:
+            ofm_match_tp(ofm, OFPFW_TP_DST, 0, match.getUint16());
+            break;
         case RFMT_IPV6:
         case RFMT_MPLS:
             /* Not implemented in OpenFlow 1.0. */
