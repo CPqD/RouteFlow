@@ -43,10 +43,6 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         type_ = msg.get_type()
         if type_ == PORT_REGISTER:
             self.register_vm_port(msg.get_vm_id(), msg.get_vm_port())
-        elif type_ == ROUTE_INFO:
-            ri = RFServer.RouteInformation()
-            ri.from_message(msg)
-            self.register_route_information(ri)
         elif type_ == ROUTE_MOD:
             self.register_route_mod(msg)
         elif type_ == DATAPATH_PORT_REGISTER:
@@ -97,54 +93,6 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                       PortConfig(vm_id=vm_id, vm_port=vm_port, operation_id=0))
         self.log.info("Asking client for mapping message for port (vm_id=%s, vm_port=%i)" %
                       (format_id(vm_id), vm_port))
-
-    # RouteInfo methods
-    class RouteInformation:
-        def __init__(self, vm_id=None,
-                           vm_port=None,
-                           address=None,
-                           netmask=None,
-                           dst_port=None,
-                           src_hwaddress=None,
-                           dst_hwaddress=None,
-                           is_removal=None):
-            self.vm_id = vm_id
-            self.vm_port = vm_port
-            self.address = address
-            self.netmask = netmask
-            # TODO: get rid of dst_port. It's the same as vm_port.
-            self.dst_port = dst_port
-            self.src_hwaddress = src_hwaddress
-            self.dst_hwaddress = dst_hwaddress
-            self.is_removal = is_removal
-
-        def from_message(self, msg):
-            self.vm_id = msg.get_vm_id()
-            self.vm_port = msg.get_vm_port()
-            self.address = msg.get_address()
-            self.netmask = msg.get_netmask()
-            self.dst_port = msg.get_dst_port()
-            self.src_hwaddress = msg.get_src_hwaddress()
-            self.dst_hwaddress = msg.get_dst_hwaddress()
-            self.is_removal = msg.get_is_removal()
-
-    def register_route_information(self, ri):
-        entry = self.rftable.get_entry_by_vm_port(ri.vm_id, ri.vm_port)
-        # If the entry is not active, don't try to update
-        if entry.get_status() != RFENTRY_ACTIVE:
-            return
-
-        msg = FlowMod(ct_id=entry.ct_id,
-            dp_id=entry.dp_id,
-            address=ri.address,
-            netmask=ri.netmask,
-            dst_port=entry.dp_port,
-            src_hwaddress=ri.src_hwaddress,
-            dst_hwaddress=ri.dst_hwaddress,
-            is_removal=ri.is_removal)
-        self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(entry.ct_id), msg);
-        self.log.debug("Sending client route information to datapath (vm_id=%s, vm_port=%i, dp_id=%s, dp_port=%i)" %
-                       (format_id(entry.vm_id), entry.vm_port, format_id(entry.dp_id), entry.dp_port))
 
     # Handle RouteMod messages (type ROUTE_MOD)
     #
