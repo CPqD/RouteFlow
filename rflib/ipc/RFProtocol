@@ -11,27 +11,7 @@ DatapathConfig
     i64 ct_id
     i64 dp_id
     i32 operation_id
-    
-RouteInfo
-    i64 vm_id
-    i32 vm_port
-    ip address
-    ip netmask
-    i32 dst_port
-    mac src_hwaddress
-    mac dst_hwaddress
-    bool is_removal
 
-FlowMod
-    i64 ct_id
-    i64 dp_id
-    ip address
-    ip netmask
-    i32 dst_port
-    mac src_hwaddress
-    mac dst_hwaddress
-    bool is_removal
-      
 DatapathPortRegister
     i64 ct_id
     i64 dp_id
