@@ -97,16 +97,6 @@ def send_packet_out(dp_id, port, data):
     else:
         return FAILURE
 
-# Flow installation methods
-def flow_config(dp_id, operation_id):
-    ofmsg = create_config_msg(operation_id)
-    if send_of_msg(dp_id, ofmsg) == SUCCESS:
-        log.info("ofp_flow_mod(config) was sent to datapath (dp_id=%s)",
-                 format_id(dp_id))
-    else:
-        log.info("Error sending ofp_flow_mod(config) to datapath (dp_id=%s)",
-                 format_id(dp_id))
-
 # Event handlers
 def on_datapath_up(event):
     topology = core.components['topology']
@@ -176,9 +166,7 @@ class RFProcessor(IPC.IPCMessageProcessor):
     def process(self, from_, to, channel, msg):
         topology = core.components['topology']
         type_ = msg.get_type()
-        if type_ == DATAPATH_CONFIG:
-            flow_config(msg.get_dp_id(), msg.get_operation_id())
-        elif type_ == ROUTE_MOD:
+        if type_ == ROUTE_MOD:
             try:
                 ofmsg = create_flow_mod(msg)
             except Warning as e:

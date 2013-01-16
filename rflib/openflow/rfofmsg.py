@@ -46,53 +46,6 @@ def ofm_match_tp(ofm, match, src, dst):
     if match & OFPFW_TP_DST: # TCP/UDP destination port.
         ofm.match.tp_dst = dst
 
-def create_config_msg(operation):
-    ofm = ofp_flow_mod()
-
-    if operation == DC_RIPV2:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
-        ofm_match_nw(ofm, (OFPFW_NW_PROTO | OFPFW_NW_DST_MASK), IPPROTO_UDP, 0, 0, IPAddr("224.0.0.9"))
-    elif operation == DC_OSPF:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_OSPF, 0, 0, 0)
-    elif operation == DC_ARP:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_ARP)
-    elif operation == DC_ICMP:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_ICMP, 0, 0, 0)
-    elif operation == DC_BGP_PASSIVE:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0)
-        ofm_match_tp(ofm, OFPFW_TP_DST, 0, TPORT_BGP)
-    elif operation == DC_BGP_ACTIVE:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0)
-        ofm_match_tp(ofm, OFPFW_TP_SRC, TPORT_BGP, 0)
-    elif operation == DC_LDP_PASSIVE:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP);
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0);
-        ofm_match_tp(ofm, OFPFW_TP_DST, 0, TPORT_LDP);
-    elif operation == DC_LDP_ACTIVE:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP);
-        ofm_match_nw(ofm, OFPFW_NW_PROTO, IPPROTO_TCP, 0, 0, 0);
-        ofm_match_tp(ofm, OFPFW_TP_SRC, TPORT_LDP, 0);
-    elif operation == DC_VM_INFO:
-        ofm_match_dl(ofm, OFPFW_DL_TYPE, RF_ETH_PROTO)
-    elif operation == DC_DROP_ALL:
-        ofm.priority = 1;
-
-    if operation == DC_CLEAR_FLOW_TABLE:
-        ofm.command = OFPFC_DELETE
-        ofm.priority = 0
-    else:
-        ofm.command = OFPFC_ADD
-        ofm.idle_timeout = OFP_FLOW_PERMANENT
-        ofm.hard_timeout = OFP_FLOW_PERMANENT
-        ofm.out_port = OFPP_NONE
-        ofm.actions.append(ofp_action_output(port = OFPP_CONTROLLER, max_len = RF_MAX_PACKET_SIZE))
-
-    return ofm
-
 def create_flow_mod(routemod):
     ofm = ofp_flow_mod()
 
@@ -161,6 +114,5 @@ def create_flow_mod(routemod):
         else:
             log.warning("Failed to serialise Option (type: %s)" % option._type)
             return None
-
 
     return ofm
