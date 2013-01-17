@@ -29,7 +29,7 @@ class IPAddress {
         void toArray(uint8_t* array) const;
         uint32_t toUint32() const;
         string toString() const;
-        uint32_t toCIDRMask();
+        uint32_t toCIDRMask() const;
         int getVersion() const;
 
     private:

@@ -113,7 +113,7 @@ string IPAddress::toString() const {
     return result;
 }
 
-uint32_t IPAddress::toCIDRMask() {
+uint32_t IPAddress::toCIDRMask() const {
     uint32_t mask = this->toUint32();
 
 	uint8_t n = 0;
