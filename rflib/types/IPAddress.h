@@ -21,6 +21,8 @@ class IPAddress {
         IPAddress(const uint32_t data);
         IPAddress(const IPAddress &other);
         IPAddress(const int version, const uint8_t* data);
+        IPAddress(in_addr data);
+        IPAddress(in6_addr data);
         ~IPAddress();
 
         IPAddress& operator=(const IPAddress& other);

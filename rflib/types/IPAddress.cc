@@ -41,6 +41,16 @@ IPAddress::IPAddress(const int version, const uint8_t* data) {
     memcpy(this->data, data, this->length);
 }
 
+IPAddress::IPAddress(in_addr data) {
+    this->init(IPV4);
+    memcpy(this->data, &data, this->length);
+}
+
+IPAddress::IPAddress(in6_addr data) {
+    this->init(IPV6);
+    memcpy(this->data, &data, this->length);
+}
+
 IPAddress::~IPAddress() {
     delete this->data;
 }
