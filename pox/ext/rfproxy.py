@@ -107,40 +107,6 @@ def flow_config(dp_id, operation_id):
         log.info("Error sending ofp_flow_mod(config) to datapath (dp_id=%s)",
                  format_id(dp_id))
 
-def flow_add(dp_id, address, netmask, src_hwaddress, dst_hwaddress, dst_port):
-    netmask = netmask_prefix(netmask)
-    address = address + "/" + str(netmask)
-
-    ofmsg = create_flow_install_msg(address, netmask,
-                                    src_hwaddress, dst_hwaddress,
-                                    dst_port)
-    if send_of_msg(dp_id, ofmsg) == SUCCESS:
-        log.info("ofp_flow_mod(add) was sent to datapath (dp_id=%s)",
-                 format_id(dp_id))
-    else:
-        log.info("Error sending ofp_flow_mod(add) to datapath (dp_id=%s)",
-                 format_id(dp_id))
-
-def flow_delete(dp_id, address, netmask, src_hwaddress):
-    netmask = netmask_prefix(netmask)
-    address = address + "/" + str(netmask)
-
-    ofmsg1 = create_flow_remove_msg(address, netmask, src_hwaddress)
-    if send_of_msg(dp_id, ofmsg1) == SUCCESS:
-        log.info("ofp_flow_mod(delete) was sent to datapath (dp_id=%s)",
-                 format_id(dp_id))
-    else:
-        log.info("Error sending ofp_flow_mod(delete) to datapath (dp_id=%s)",
-                 format_id(dp_id))
-
-    ofmsg2 = create_temporary_flow_msg(address, netmask, src_hwaddress)
-    if send_of_msg(dp_id, ofmsg2) == SUCCESS:
-        log.info("ofp_flow_mod(delete) was sent to datapath (dp_id=%s)",
-                 format_id(dp_id))
-    else:
-        log.info("Error sending ofp_flow_mod(delete) to datapath (dp_id=%s)",
-                 format_id(dp_id))
-
 # Event handlers
 def on_datapath_up(event):
     topology = core.components['topology']
@@ -212,16 +178,6 @@ class RFProcessor(IPC.IPCMessageProcessor):
         type_ = msg.get_type()
         if type_ == DATAPATH_CONFIG:
             flow_config(msg.get_dp_id(), msg.get_operation_id())
-        elif type_ == FLOW_MOD:
-            if (msg.get_is_removal()):
-                flow_delete(msg.get_dp_id(),
-                            msg.get_address(), msg.get_netmask(),
-                            msg.get_src_hwaddress())
-            else:
-                flow_add(msg.get_dp_id(),
-                         msg.get_address(), msg.get_netmask(),
-                         msg.get_src_hwaddress(), msg.get_dst_hwaddress(),
-                         msg.get_dst_port())
         elif type_ == ROUTE_MOD:
             try:
                 ofmsg = create_flow_mod(msg)
