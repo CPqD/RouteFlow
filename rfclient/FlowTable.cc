@@ -56,11 +56,6 @@ void FlowTable::RTPollingCb() {
     rtnl_listen(&rth, FlowTable::updateRouteTable, NULL);
 }
 
-void FlowTable::clear() {
-    FlowTable::routeTable.clear();
-    FlowTable::hostTable.clear();
-}
-
 void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces,
                       IPCMessageService* ipc, vector<uint32_t>* down_ports) {
     FlowTable::vm_id = vm_id;
@@ -74,8 +69,16 @@ void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces,
 
     HTPolling = boost::thread(&FlowTable::HTPollingCb);
     RTPolling = boost::thread(&FlowTable::RTPollingCb);
-    HTPolling.detach();
-    RTPolling.detach();
+}
+
+void FlowTable::clear() {
+    FlowTable::routeTable.clear();
+    FlowTable::hostTable.clear();
+}
+
+void FlowTable::interrupt() {
+    HTPolling.interrupt();
+    RTPolling.interrupt();
 }
 
 int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, void *) {
@@ -84,6 +87,8 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
 
 	char intf[IF_NAMESIZE + 1];
 	memset(intf, 0, IF_NAMESIZE + 1);
+
+	boost::this_thread::interruption_point();
 
 	if (if_indextoname((unsigned int) ndmsg_ptr->ndm_ifindex, (char *) intf) == NULL) {
 		perror("HostTable");
@@ -160,6 +165,8 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
 
 int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, void *) {
 	struct rtmsg *rtmsg_ptr = (struct rtmsg *) NLMSG_DATA(n);
+
+	boost::this_thread::interruption_point();
 
 	if (!((n->nlmsg_type == RTM_NEWROUTE || n->nlmsg_type == RTM_DELROUTE) && rtmsg_ptr->rtm_table == RT_TABLE_MAIN)) {
 		return 0;

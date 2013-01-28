@@ -90,6 +90,7 @@ class FlowTable {
         static const MACAddress& getGateway(const IPAddress&, const Interface&);
 
         static void clear();
+        static void interrupt();
         static void start(uint64_t vm_id, map<string, Interface> interfaces, IPCMessageService* ipc, vector<uint32_t>* down_ports);
         static void print_test();
 
