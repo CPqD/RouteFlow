@@ -36,12 +36,15 @@ struct rtnl_handle FlowTable::rthNeigh;
 boost::thread FlowTable::HTPolling;
 struct rtnl_handle FlowTable::rth;
 boost::thread FlowTable::RTPolling;
+boost::thread FlowTable::GWResolver;
 
 map<string, Interface> FlowTable::interfaces;
 vector<uint32_t>* FlowTable::down_ports;
 IPCMessageService* FlowTable::ipc;
 uint64_t FlowTable::vm_id;
 
+typedef std::pair<RouteModType,RouteEntry> PendingRoute;
+SyncQueue<PendingRoute> FlowTable::pendingRoutes;
 list<RouteEntry> FlowTable::routeTable;
 list<HostEntry> FlowTable::hostTable;
 
@@ -69,6 +72,9 @@ void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces,
 
     HTPolling = boost::thread(&FlowTable::HTPollingCb);
     RTPolling = boost::thread(&FlowTable::RTPollingCb);
+    GWResolver = boost::thread(&FlowTable::GWResolverCb);
+
+    GWResolver.join();
 }
 
 void FlowTable::clear() {
@@ -79,6 +85,47 @@ void FlowTable::clear() {
 void FlowTable::interrupt() {
     HTPolling.interrupt();
     RTPolling.interrupt();
+    GWResolver.interrupt();
+}
+
+void FlowTable::GWResolverCb() {
+    std::list<RouteEntry>::iterator itRoutes;
+    while (true) {
+        boost::this_thread::interruption_point();
+
+        PendingRoute re;
+        FlowTable::pendingRoutes.wait_and_pop(re);
+
+        RouteEntry* existingEntry = NULL;
+        for (itRoutes = FlowTable::routeTable.begin(); itRoutes != FlowTable::routeTable.end(); itRoutes++) {
+            if (re.second == (*itRoutes)) {
+                existingEntry = &(*itRoutes);
+                break;
+            }
+        }
+
+        if (existingEntry != NULL && re.first == RMT_ADD) {
+            fprintf(stdout, "Received duplicate route addition\n");
+            continue;
+        }
+
+        if (existingEntry == NULL && re.first == RMT_DELETE) {
+            fprintf(stdout, "Received route removal but route cannot be found.\n");
+            continue;
+        }
+
+        /* If we can't resolve the gateway, put it to the end of the queue. */
+        FlowTable::sendToHw(re.first, re.second)
+        FlowTable::pendingRoutes.push(re);
+
+        if (re.first == RMT_ADD) {
+            FlowTable::routeTable.push_back(re.second);
+        } else if (re.first == RMT_DELETE) {
+            FlowTable::routeTable.remove(re.second);
+        } else {
+            fprintf(stderr, "Received unexpected RouteModType (%d)\n", re.first);
+        }
+    }
 }
 
 int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, void *) {
@@ -276,8 +323,7 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 			}
 		}
 
-		FlowTable::sendToHw(RMT_ADD, rentry);
-		FlowTable::routeTable.push_back(rentry);
+		FlowTable::pendingRoutes.push(PendingRoute(RMT_ADD, rentry));
 		break;
 	case RTM_DELROUTE:
 		std::cout << "netlink->RTM_DELROUTE: net=" << net << ", mask=" << mask << ", gw=" << gw << std::endl;
@@ -297,8 +343,7 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 
 		for (itRoutes = FlowTable::routeTable.begin(); itRoutes != FlowTable::routeTable.end(); itRoutes++) {
 			if (rentry == (*itRoutes)) {
-				FlowTable::sendToHw(RMT_DELETE, rentry);
-				FlowTable::routeTable.remove(*itRoutes);
+				FlowTable::pendingRoutes.push(PendingRoute(RMT_DELETE, rentry));
 				return 0;
 			}
 		}

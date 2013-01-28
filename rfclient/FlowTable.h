@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <boost/thread.hpp>
 #include "libnetlink.hh"
+#include "SyncQueue.h"
 
 #include "ipc/IPC.h"
 #include "types/IPAddress.h"
@@ -86,6 +87,7 @@ class FlowTable {
     public:
         static void RTPollingCb();
         static void HTPollingCb();
+        static void GWResolverCb();
         static void fakeReq(const char *hostAddr, const char *intf);
         static const MACAddress& getGateway(const IPAddress&, const Interface&);
 
@@ -114,7 +116,9 @@ class FlowTable {
 
         static boost::thread HTPolling;
         static boost::thread RTPolling;
+        static boost::thread GWResolver;
 
+        static SyncQueue< std::pair<RouteModType,RouteEntry> > pendingRoutes;
         static list<RouteEntry> routeTable;
         static list<HostEntry> hostTable;
 
