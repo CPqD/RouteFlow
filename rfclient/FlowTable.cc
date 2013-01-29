@@ -115,8 +115,10 @@ void FlowTable::GWResolverCb() {
         }
 
         /* If we can't resolve the gateway, put it to the end of the queue. */
-        FlowTable::sendToHw(re.first, re.second)
-        FlowTable::pendingRoutes.push(re);
+        if (FlowTable::sendToHw(re.first, re.second) != 0) {
+            FlowTable::pendingRoutes.push(re);
+            continue;
+        }
 
         if (re.first == RMT_ADD) {
             FlowTable::routeTable.push_back(re.second);
@@ -448,18 +450,20 @@ int FlowTable::setIP(RouteMod& rm, const IPAddress& addr,
     return 0;
 }
 
-void FlowTable::sendToHw(RouteModType mod, const RouteEntry& re) {
+int FlowTable::sendToHw(RouteModType mod, const RouteEntry& re) {
     if (mod == RMT_DELETE) {
-        sendToHw(mod, re.address, re.netmask, re.interface,
-                 FlowTable::MAC_ADDR_NONE);
-    } else {
+        return sendToHw(mod, re.address, re.netmask, re.interface,
+                        FlowTable::MAC_ADDR_NONE);
+    } else if (mod == RMT_ADD) {
         const MACAddress& remoteMac = getGateway(re.gateway, re.interface);
-
-        sendToHw(mod, re.address, re.netmask, re.interface, remoteMac);
+        return sendToHw(mod, re.address, re.netmask, re.interface, remoteMac);
     }
+
+    fprintf(stderr, "Unhandled RouteModType (%d)\n", mod);
+    return -1;
 }
 
-void FlowTable::sendToHw(RouteModType mod, const HostEntry& he) {
+int FlowTable::sendToHw(RouteModType mod, const HostEntry& he) {
     boost::scoped_ptr<IPAddress> mask;
 
     if (he.address.getVersion() == IPV6) {
@@ -468,18 +472,18 @@ void FlowTable::sendToHw(RouteModType mod, const HostEntry& he) {
         mask.reset(new IPAddress(FULL_IPV4_MASK));
     } else {
         fprintf(stderr, "Received HostEntry with unsupported IP version\n");
-        return;
+        return -1;
     }
 
-    sendToHw(mod, he.address, *mask.get(), he.interface, he.hwaddress);
+    return sendToHw(mod, he.address, *mask.get(), he.interface, he.hwaddress);
 }
 
-void FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
+int FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
                          const IPAddress& mask, const Interface& local_iface,
                          const MACAddress& gateway) {
     if (is_port_down(local_iface.port)) {
         fprintf(stderr, "Cannot send RouteMod for down port\n");
-        return;
+        return -1;
     }
 
     RouteMod rm;
@@ -488,10 +492,10 @@ void FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
     rm.set_id(FlowTable::vm_id);
 
     if (setEthernet(rm, local_iface, gateway) != 0) {
-        return;
+        return -1;
     }
     if (setIP(rm, addr, mask) != 0) {
-        return;
+        return -1;
     }
 
     /* Add the output port. Even if we're removing the route, RFServer requires
@@ -499,4 +503,5 @@ void FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
     rm.add_action(Action(RFAT_OUTPUT, local_iface.port));
 
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, rm);
+    return 0;
 }
