@@ -73,7 +73,7 @@ void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces,
     RTPolling.detach();
 }
 
-int FlowTable::updateHostTable(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg) {
+int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, void *) {
 	struct ndmsg *ndmsg_ptr = (struct ndmsg *) NLMSG_DATA(n);
 	struct rtattr *rtattr_ptr;
 
@@ -153,7 +153,7 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *who, struct nlmsghdr *n
 	return 0;
 }
 
-int FlowTable::updateRouteTable(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg) {
+int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, void *) {
 	struct rtmsg *rtmsg_ptr = (struct rtmsg *) NLMSG_DATA(n);
 
 	if (!((n->nlmsg_type == RTM_NEWROUTE || n->nlmsg_type == RTM_DELROUTE) && rtmsg_ptr->rtm_table == RT_TABLE_MAIN)) {
@@ -308,8 +308,8 @@ void FlowTable::fakeReq(const char *hostAddr, const char *intf) {
 	sin->sin_family = AF_INET;
 	sin->sin_addr.s_addr = inet_addr(hostAddr);
 
-    // Cast to eliminate warning. in_addr.s_addr  is unsigned long.
-	if (sin->sin_addr.s_addr == (unsigned long) -1) {
+    // Cast to eliminate warning. in_addr.s_addr is uint32_t (netinet/in.h:141)
+	if (sin->sin_addr.s_addr == (uint32_t) -1) {
 		if (!(hp = gethostbyname(hostAddr))) {
 			fprintf(stderr, "ARP: %s ", hostAddr);
 			perror(NULL);
