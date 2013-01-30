@@ -7,6 +7,7 @@
 
 #include <string>
 #include <vector>
+#include <cstring>
 #include <iostream>
 
 #include "ipc/RFProtocol.h"
@@ -301,7 +302,7 @@ void FlowTable::fakeReq(const char *hostAddr, const char *intf) {
 	struct hostent *hp;
 	struct sockaddr_in *sin;
 
-	bzero((caddr_t) & req, sizeof(req));
+	memset(&req, 0, sizeof(req));
 
 	sin = (struct sockaddr_in *) &req.arp_pa;
 	sin->sin_family = AF_INET;
@@ -314,8 +315,7 @@ void FlowTable::fakeReq(const char *hostAddr, const char *intf) {
 			perror(NULL);
 			return;
 		}
-		bcopy((char *) hp->h_addr, (char *) &sin->sin_addr,
-				sizeof(sin->sin_addr));
+		memcpy(&sin->sin_addr, hp->h_addr, sizeof(sin->sin_addr));
 	}
 
 	if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
