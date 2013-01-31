@@ -92,7 +92,8 @@ class RFConfig(MongoTable):
         MongoTable.__init__(self, address, RFCONFIG_NAME, RFCONFIGENTRY)
         # TODO: perform validation of config
         configfile = file(ifile)
-        entries = [line.strip("\n").split(",") for line in configfile.readlines()[1:]]
+        lines = configfile.readlines()[1:]
+        entries = [line.strip("\n").split(",") for line in lines]
         for (a, b, c, d, e) in entries:
             self.set_entry(RFConfigEntry(int(a, 16), int(b),
                                          int(c),
@@ -124,7 +125,8 @@ def pack_into_dict(dest, obj, attr):
 
 
 class RFEntry:
-    def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None, dp_port=None, vs_id=None, vs_port=None):
+    def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None,
+                 dp_port=None, vs_id=None, vs_port=None):
         self.id = None
         self.vm_id = vm_id
         self.vm_port = vm_port
@@ -230,17 +232,17 @@ class RFEntry:
         pack_into_dict(data, self, "vs_id")
         pack_into_dict(data, self, "vs_port")
         return data
-        
-        
+
 class RFConfigEntry:
-    def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None, dp_port=None):
+    def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None,
+                 dp_port=None):
         self.id = None
         self.vm_id = vm_id
         self.vm_port = vm_port
         self.ct_id = ct_id
         self.dp_id = dp_id
         self.dp_port = dp_port
-        
+
     def __str__(self):
         return "vm_id: %s vm_port: %s "\
                "dp_id: %s dp_port: %s "\
@@ -249,7 +251,7 @@ class RFConfigEntry:
                                str(self.dp_id),
                                str(self.dp_port),
                                str(self.ct_id))
-                                
+
     def from_dict(self, data):
         for k, v in data.items():
             if str(v) is "":
@@ -271,4 +273,4 @@ class RFConfigEntry:
         pack_into_dict(data, self, "ct_id")
         pack_into_dict(data, self, "dp_id")
         pack_into_dict(data, self, "dp_port")
-        return data        
+        return data
