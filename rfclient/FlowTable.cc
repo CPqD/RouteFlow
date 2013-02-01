@@ -12,13 +12,16 @@
 
 #include "ipc/RFProtocol.h"
 #include "converter.h"
-#include "defs.h"
-
 #include "FlowTable.h"
 
 using namespace std;
 
-#define FULL_IPV4_MASK "255.255.255.255"
+#define FULL_IPV4_MASK ((in_addr){ 0xffffffff })
+#define FULL_CIDR_MASK 32
+#define FULL_IPV6_MASK ((in6_addr){{{ 0xff, 0xff, 0xff, 0xff, \
+                                      0xff, 0xff, 0xff, 0xff, \
+                                      0xff, 0xff, 0xff, 0xff, \
+                                      0xff, 0xff, 0xff, 0xff }}})
 #define EMPTY_MAC_ADDRESS "00:00:00:00:00:00"
 
 const MACAddress FlowTable::MAC_ADDR_NONE(EMPTY_MAC_ADDRESS);
@@ -139,14 +142,22 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
 	switch (n->nlmsg_type) {
 	    case RTM_NEWNEIGH:
 		    std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
+#ifdef ROUTEMOD_ENABLED
+		    FlowTable::sendToHw(RMT_ADD, hentry);
+#else
 		    FlowTable::addFlowToHw(hentry);
+#endif
 		    // TODO: Shouldn't we check for a duplicate?
 		    FlowTable::hostTable.push_back(hentry);
 		    break;
 	    /* TODO: enable this? It is causing serious problems. Why?
 	    case RTM_DELNEIGH:
 		    std::cout << "netlink->RTM_DELNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
+#ifdef ROUTEMOD_ENABLED
+		    FlowTable::sendToHw(RMT_DELETE, hentry);
+#else
 		    FlowTable::delFlowFromHw(hentry);
+#endif
 		    // TODO: delete from hostTable
 		    break;
 	    */
@@ -266,7 +277,11 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 			}
 		}
 
+#ifdef ROUTEMOD_ENABLED
+		FlowTable::sendToHw(RMT_ADD, rentry);
+#else
 		FlowTable::addFlowToHw(rentry);
+#endif
 		FlowTable::routeTable.push_back(rentry);
 		break;
 	case RTM_DELROUTE:
@@ -287,7 +302,11 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 
 		for (itRoutes = FlowTable::routeTable.begin(); itRoutes != FlowTable::routeTable.end(); itRoutes++) {
 			if (rentry == (*itRoutes)) {
+#ifdef ROUTEMOD_ENABLED
+				FlowTable::sendToHw(RMT_DELETE, rentry);
+#else
 				FlowTable::delFlowFromHw(rentry);
+#endif
 				FlowTable::routeTable.remove(*itRoutes);
 				return 0;
 			}
@@ -363,6 +382,90 @@ bool FlowTable::is_port_down(uint32_t port) {
     return false;
 }
 
+#ifdef ROUTEMOD_ENABLED
+int FlowTable::setEthernet(RouteMod& rm, const Interface& local_iface,
+                           const MACAddress& gateway) {
+    rm.add_match(Match(RFMT_ETHERNET, local_iface.hwaddress));
+
+    if (rm.get_mod() != RMT_DELETE) {
+        rm.add_action(Action(RFAT_SET_ETH_SRC, local_iface.hwaddress));
+        rm.add_action(Action(RFAT_SET_ETH_DST, gateway));
+    }
+
+    return 0;
+}
+
+int FlowTable::setIP(RouteMod& rm, const IPAddress& addr,
+                     const IPAddress& mask) {
+     if (addr.getVersion() == IPV4) {
+        rm.add_match(Match(RFMT_IPV4, addr, mask));
+    } else if (addr.getVersion() == IPV6) {
+        rm.add_match(Match(RFMT_IPV6, addr, mask));
+    } else {
+        fprintf(stderr, "Cannot send route with unsupported IP version\n");
+        return -1;
+    }
+
+    uint16_t priority = DEFAULT_PRIORITY;
+    priority += static_cast<uint16_t>(mask.toCIDRMask());
+    rm.add_option(Option(RFOT_PRIORITY, priority));
+
+    return 0;
+}
+
+void FlowTable::sendToHw(RouteModType mod, const RouteEntry& re) {
+    if (mod == RMT_DELETE) {
+        sendToHw(mod, re.address, re.netmask, re.interface,
+                 FlowTable::MAC_ADDR_NONE);
+    } else {
+        const MACAddress& remoteMac = getGateway(re.gateway, re.interface);
+
+        sendToHw(mod, re.address, re.netmask, re.interface, remoteMac);
+    }
+}
+
+void FlowTable::sendToHw(RouteModType mod, const HostEntry& he) {
+    boost::scoped_ptr<IPAddress> mask;
+
+    if (he.address.getVersion() == IPV6) {
+        mask.reset(new IPAddress(FULL_IPV6_MASK));
+    } else if (he.address.getVersion() == IPV4) {
+        mask.reset(new IPAddress(FULL_IPV4_MASK));
+    } else {
+        fprintf(stderr, "Received HostEntry with unsupported IP version\n");
+        return;
+    }
+
+    sendToHw(mod, he.address, *mask.get(), he.interface, he.hwaddress);
+}
+
+void FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
+                         const IPAddress& mask, const Interface& local_iface,
+                         const MACAddress& gateway) {
+    if (is_port_down(local_iface.port)) {
+        fprintf(stderr, "Cannot send RouteMod for down port\n");
+        return;
+    }
+
+    RouteMod rm;
+
+    rm.set_mod(mod);
+    rm.set_id(FlowTable::vm_id);
+
+    if (setEthernet(rm, local_iface, gateway) != 0) {
+        return;
+    }
+    if (setIP(rm, addr, mask) != 0) {
+        return;
+    }
+
+    if (mod != RMT_DELETE) {
+        rm.add_action(Action(RFAT_OUTPUT, local_iface.port));
+    }
+
+    FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, rm);
+}
+#else /* ROUTEMOD_ENABLED */
 void FlowTable::addFlowToHw(const RouteEntry& rentry) {
     if (is_port_down(rentry.interface.port)) {
         fprintf(stderr, "Cannot send RouteInfo for down port\n");
@@ -408,7 +511,7 @@ void FlowTable::addFlowToHw(const HostEntry& hentry) {
     msg.set_dst_hwaddress(hentry.hwaddress);
     // Rule
     msg.set_address(hentry.address);
-    msg.set_netmask(IPAddress(IPV4, FULL_IPV4_MASK));
+    msg.set_netmask(IPAddress(FULL_IPV4_MASK));
 
     // Send
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
@@ -454,8 +557,9 @@ void FlowTable::delFlowFromHw(const HostEntry& hentry) {
     msg.set_dst_hwaddress(hentry.hwaddress);
     // Rule
     msg.set_address(hentry.address);
-    msg.set_netmask(IPAddress(IPV4, FULL_IPV4_MASK));
+    msg.set_netmask(IPAddress(FULL_IPV4_MASK));
 
     // Send
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
 }
+#endif /* ROUTEMOD_ENABLED */
