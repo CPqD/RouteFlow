@@ -142,22 +142,14 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
 	switch (n->nlmsg_type) {
 	    case RTM_NEWNEIGH:
 		    std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
-#ifdef ROUTEMOD_ENABLED
 		    FlowTable::sendToHw(RMT_ADD, hentry);
-#else
-		    FlowTable::addFlowToHw(hentry);
-#endif
 		    // TODO: Shouldn't we check for a duplicate?
 		    FlowTable::hostTable.push_back(hentry);
 		    break;
 	    /* TODO: enable this? It is causing serious problems. Why?
 	    case RTM_DELNEIGH:
 		    std::cout << "netlink->RTM_DELNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
-#ifdef ROUTEMOD_ENABLED
 		    FlowTable::sendToHw(RMT_DELETE, hentry);
-#else
-		    FlowTable::delFlowFromHw(hentry);
-#endif
 		    // TODO: delete from hostTable
 		    break;
 	    */
@@ -277,11 +269,7 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 			}
 		}
 
-#ifdef ROUTEMOD_ENABLED
 		FlowTable::sendToHw(RMT_ADD, rentry);
-#else
-		FlowTable::addFlowToHw(rentry);
-#endif
 		FlowTable::routeTable.push_back(rentry);
 		break;
 	case RTM_DELROUTE:
@@ -302,11 +290,7 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 
 		for (itRoutes = FlowTable::routeTable.begin(); itRoutes != FlowTable::routeTable.end(); itRoutes++) {
 			if (rentry == (*itRoutes)) {
-#ifdef ROUTEMOD_ENABLED
 				FlowTable::sendToHw(RMT_DELETE, rentry);
-#else
-				FlowTable::delFlowFromHw(rentry);
-#endif
 				FlowTable::routeTable.remove(*itRoutes);
 				return 0;
 			}
@@ -382,7 +366,6 @@ bool FlowTable::is_port_down(uint32_t port) {
     return false;
 }
 
-#ifdef ROUTEMOD_ENABLED
 int FlowTable::setEthernet(RouteMod& rm, const Interface& local_iface,
                            const MACAddress& gateway) {
     rm.add_match(Match(RFMT_ETHERNET, local_iface.hwaddress));
@@ -465,101 +448,3 @@ void FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
 
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, rm);
 }
-#else /* ROUTEMOD_ENABLED */
-void FlowTable::addFlowToHw(const RouteEntry& rentry) {
-    if (is_port_down(rentry.interface.port)) {
-        fprintf(stderr, "Cannot send RouteInfo for down port\n");
-        return;
-    }
-
-    const MACAddress& dstMac = getGateway(rentry.gateway, rentry.interface);
-
-    if (dstMac == FlowTable::MAC_ADDR_NONE) {
-        fprintf(stderr, "Failed to resolve Gateway MAC\n");
-        return;
-    }
-
-    RouteInfo msg;
-    msg.set_is_removal(false);
-    msg.set_vm_id(FlowTable::vm_id);
-    msg.set_vm_port(rentry.interface.port);
-    // Action
-    msg.set_dst_port(rentry.interface.port);
-    msg.set_src_hwaddress(rentry.interface.hwaddress);
-    msg.set_dst_hwaddress(dstMac);
-    // Rule
-    msg.set_address(rentry.address);
-    msg.set_netmask(rentry.netmask);
-
-    // Send
-    FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-}
-
-void FlowTable::addFlowToHw(const HostEntry& hentry) {
-    if (is_port_down(hentry.interface.port)) {
-        fprintf(stderr, "Cannot send RouteInfo for down port\n");
-        return;
-    }
-
-    RouteInfo msg;
-    msg.set_is_removal(false);
-    msg.set_vm_id(FlowTable::vm_id);
-    msg.set_vm_port(hentry.interface.port);
-    // Action
-    msg.set_dst_port(hentry.interface.port);
-    msg.set_src_hwaddress(hentry.interface.hwaddress);
-    msg.set_dst_hwaddress(hentry.hwaddress);
-    // Rule
-    msg.set_address(hentry.address);
-    msg.set_netmask(IPAddress(FULL_IPV4_MASK));
-
-    // Send
-    FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-}
-
-void FlowTable::delFlowFromHw(const RouteEntry& rentry) {
-	// We don't need to resolve the gateway's IP on route flow deletion.
-	// The MAC address of the next-hop is useless when deleting flows.
-    if (is_port_down(rentry.interface.port)) {
-        fprintf(stderr, "Cannot send RouteInfo for down port\n");
-        return;
-    }
-
-    RouteInfo msg;
-    msg.set_is_removal(true);
-    msg.set_vm_id(FlowTable::vm_id);
-    msg.set_vm_port(rentry.interface.port);
-    // Action
-    msg.set_dst_port(0);
-    msg.set_src_hwaddress(rentry.interface.hwaddress);
-    msg.set_dst_hwaddress(MACAddress(EMPTY_MAC_ADDRESS));
-    // Rule
-    msg.set_address(rentry.address);
-    msg.set_netmask(rentry.netmask);
-
-    // Send
-    FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-}
-
-void FlowTable::delFlowFromHw(const HostEntry& hentry) {
-    if (is_port_down(hentry.interface.port)) {
-        fprintf(stderr, "Cannot send RouteInfo for down port\n");
-        return;
-    }
-
-    RouteInfo msg;
-    msg.set_is_removal(true);
-    msg.set_vm_id(FlowTable::vm_id);
-    msg.set_vm_port(hentry.interface.port);
-    // Action
-    msg.set_dst_port(hentry.interface.port);
-    msg.set_src_hwaddress(hentry.interface.hwaddress);
-    msg.set_dst_hwaddress(hentry.hwaddress);
-    // Rule
-    msg.set_address(hentry.address);
-    msg.set_netmask(IPAddress(FULL_IPV4_MASK));
-
-    // Send
-    FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
-}
-#endif /* ROUTEMOD_ENABLED */

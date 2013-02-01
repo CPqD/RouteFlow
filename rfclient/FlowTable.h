@@ -122,18 +122,11 @@ class FlowTable {
                                const MACAddress& gateway);
         static int setIP(RouteMod& rm, const IPAddress& addr,
                          const IPAddress& mask);
-#ifdef ROUTEMOD_ENABLED
         static void sendToHw(RouteModType, const RouteEntry&);
         static void sendToHw(RouteModType, const HostEntry&);
         static void sendToHw(RouteModType, const IPAddress& addr,
                              const IPAddress& mask, const Interface&,
                              const MACAddress& gateway);
-#else
-        static void addFlowToHw(const RouteEntry& route);
-        static void addFlowToHw(const HostEntry& host);
-        static void delFlowFromHw(const RouteEntry& route);
-        static void delFlowFromHw(const HostEntry& host);
-#endif /* ROUTEMOD_ENABLED */
 };
 
 #endif /* FLOWTABLE_HH_ */
