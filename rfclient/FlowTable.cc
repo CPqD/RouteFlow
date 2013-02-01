@@ -21,6 +21,8 @@ using namespace std;
 #define FULL_IPV4_MASK "255.255.255.255"
 #define EMPTY_MAC_ADDRESS "00:00:00:00:00:00"
 
+const MACAddress FlowTable::MAC_ADDR_NONE(EMPTY_MAC_ADDRESS);
+
 int FlowTable::family = AF_UNSPEC;
 unsigned FlowTable::groups = ~0U;
 int FlowTable::llink = 0;
@@ -327,6 +329,32 @@ void FlowTable::fakeReq(const char *hostAddr, const char *intf) {
 	close(s);
 }
 
+const MACAddress& FlowTable::getGateway(const IPAddress& gateway,
+                                        const Interface& iface) {
+    if (is_port_down(iface.port)) {
+        return FlowTable::MAC_ADDR_NONE;
+    }
+
+    // We need to resolve the gateway's IP in order to install a route flow.
+    // The MAC address of the next-hop is required as it is used to re-write
+    // the layer 2 header before forwarding the packet.
+    for (int tries = 0; tries < 50; tries++) {
+        list<HostEntry>::iterator iter;
+        for (iter = FlowTable::hostTable.begin();
+             iter != FlowTable::hostTable.end(); ++iter) {
+            if (iter->address == gateway) {
+                return (iter->hwaddress);
+            }
+        }
+
+        FlowTable::fakeReq(gateway.toString().c_str(), iface.name.c_str());
+        struct timespec sleep = {0, 20000000}; // 20ms
+        nanosleep(&sleep, NULL);
+    }
+
+    return FlowTable::MAC_ADDR_NONE;
+}
+
 bool FlowTable::is_port_down(uint32_t port) {
     vector<uint32_t>::iterator it;
     for (it=down_ports->begin() ; it < down_ports->end(); it++)
@@ -341,33 +369,12 @@ void FlowTable::addFlowToHw(const RouteEntry& rentry) {
         return;
     }
 
-	list<HostEntry>::iterator iter;
-	MACAddress dstMac;
+    const MACAddress& dstMac = getGateway(rentry.gateway, rentry.interface);
 
-	uint8_t tries = 0;
-    bool found;
-
-	// We need to resolve the gateway's IP in order to install a route flow.
-	// The MAC address of the next-hop is required as it is used to re-write
-	// the layer 2 header before forwarding the packet.
-	while (tries < 50 and not found) {
-		for (iter = FlowTable::hostTable.begin(); iter != FlowTable::hostTable.end(); iter++) {
-			if (iter->address == rentry.gateway) {
-				found = true;
-				dstMac = iter->hwaddress;
-				break;
-			}
-		}
-
-		if (not found) {
-			FlowTable::fakeReq(rentry.gateway.toString().c_str(), rentry.interface.name.c_str());
-			usleep(20000);
-		}
-		tries++;
-	}
-
-	if (not found)
-		return;
+    if (dstMac == FlowTable::MAC_ADDR_NONE) {
+        fprintf(stderr, "Failed to resolve Gateway MAC\n");
+        return;
+    }
 
     RouteInfo msg;
     msg.set_is_removal(false);

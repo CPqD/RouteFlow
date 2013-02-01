@@ -86,14 +86,15 @@ class FlowTable {
         static void RTPollingCb();
         static void HTPollingCb();
         static void fakeReq(const char *hostAddr, const char *intf);
+        static const MACAddress& getGateway(const IPAddress&, const Interface&);
+
         static void clear();
-        
         static void start(uint64_t vm_id, map<string, Interface> interfaces, IPCMessageService* ipc, vector<uint32_t>* down_ports);
         static void print_test();
 
         static int updateHostTable(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg);
         static int updateRouteTable(const struct sockaddr_nl *who, struct nlmsghdr *n, void *arg);
-        
+
     private:
         static struct rtnl_handle rth;
         static struct rtnl_handle rthNeigh;
@@ -103,11 +104,12 @@ class FlowTable {
         static int laddr;
         static int lroute;
 
+        static const MACAddress MAC_ADDR_NONE;
         static map<string, Interface> interfaces;
         static vector<uint32_t>* down_ports;
         static IPCMessageService* ipc;
         static uint64_t vm_id;
-        
+
         static boost::thread HTPolling;
         static boost::thread RTPolling;
 
