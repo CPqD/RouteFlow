@@ -1,7 +1,7 @@
 #include <net/ethernet.h>
 
 #include "defs.h"
-#include "openflow/rfofmsg.h"
+#include "rfofmsg.hh"
 #include "OFInterface.hh"
 
 static vigil::Vlog_module lg("rfproxy");

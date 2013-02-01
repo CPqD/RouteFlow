@@ -6,10 +6,9 @@
 #include <cstring>
 #include <linux/if_ether.h>
 
-#include "openflow.h"
-#include "rfofmsg.h"
 #include "defs.h"
 #include "MACAddress.h"
+#include "rfofmsg.hh"
 
 // TODO: this code is almost pure C, apart from the use of Boost and a few language constructs. Make it pure C.
 

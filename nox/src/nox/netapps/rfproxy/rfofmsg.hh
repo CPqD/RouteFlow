@@ -7,7 +7,7 @@
 #include <cstring>
 #include <linux/if_ether.h>
 
-#include "openflow.h"
+#include "openflow/openflow.h"
 #include "defs.h"
 
 #define OFP_BUFFER_NONE (0xffffffff)

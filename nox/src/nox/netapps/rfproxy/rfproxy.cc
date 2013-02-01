@@ -19,7 +19,7 @@
 #include "ipc/RFProtocol.h"
 #include "ipc/RFProtocolFactory.h"
 #include "OFInterface.hh"
-#include "openflow/rfofmsg.h"
+#include "rfofmsg.hh"
 #include "converter.h"
 #include "defs.h"
 
