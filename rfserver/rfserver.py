@@ -24,11 +24,14 @@ from rftable import *
 # Register actions
 REGISTER_IDLE = 0
 REGISTER_ASSOCIATED = 1
+REGISTER_ISL = 2
 
 class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
-    def __init__(self, configfile):
+    def __init__(self, configfile, islconffile):
         self.rftable = RFTable()
+        self.isltable = RFISLTable()
         self.config = RFConfig(configfile)
+        self.islconf = RFISLConf(islconffile)
         self.configured_rfvs = []
         # Logging
         self.log = logging.getLogger("rfserver")
@@ -126,7 +129,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
 
                 # If we can't find an associated datapath for this RouteMod,
                 # drop it.
-                if entry is None:
+                if entry is None or entry.get_status() == RFENTRY_IDLE_VM_PORT:
                     self.log.info("Received RouteMod destined for unknown "
                                   "datapath - Dropping (vm_id=%s)" %
                                   (format_id(vm_id)))
@@ -143,23 +146,46 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                     action_output.set_value(entry.dp_port)
                     rm.actions[i] = action_output.to_dict()
 
+                entries = self.rftable.get_entries(dp_id=entry.dp_id,
+                                                   ct_id=entry.ct_id)
+                entries.extend(self.isltable.get_entries(dp_id=entry.dp_id,
+                                                         ct_id=entry.ct_id))
                 rm.add_option(Option.CT_ID(entry.ct_id))
 
-                for entry in self.rftable.get_entries(vm_id=vm_id):
-                    if action_output.get_value() != entry.dp_port:
-                        if entry.get_status() == RFENTRY_ACTIVE:
-                            match_eth = Match.ETHERNET(entry.eth_addr)
-                            rm.add_match(match_eth)
-                            match_in_port = Match.IN_PORT(entry.dp_port)
-                            rm.add_match(match_in_port)
-                            self.ipc.send(RFSERVER_RFPROXY_CHANNEL,
-                                          str(entry.ct_id), rm)
-                            rm.set_matches(rm.get_matches()[:-2])
+                self._send_rm_with_matches(rm, entry.dp_port, entries)
+
+                remote_dps = self.isltable.get_entries(rem_ct=entry.ct_id,
+                                                       rem_id=entry.dp_id)
+                for r in remote_dps:
+                    if r.get_status() == RFISL_ACTIVE:
+                        rm.set_options(rm.get_options()[:-1])
+                        rm.add_option(Option.CT_ID(r.ct_id))
+                        rm.set_id(int(r.dp_id))
+                        rm.set_actions(None)
+                        rm.add_action(Action.SET_ETH_SRC(r.eth_addr))
+                        rm.add_action(Action.SET_ETH_DST(r.rem_eth_addr))
+                        rm.add_action(Action.OUTPUT(r.dp_port))
+                        entries = self.rftable.get_entries(dp_id=r.dp_id,
+                                                           ct_id=r.ct_id)
+                        self._send_rm_with_matches(rm, r.dp_port, entries)
+
                 return
 
         # If no output action is found, don't forward the routemod.
         self.log.info("Received RouteMod with no Output Port - Dropping "
                       "(vm_id=%s)" % (format_id(vm_id)))
+
+    def _send_rm_with_matches(self, rm, out_port, entries):
+        #send entries matching external ports
+        for entry in entries:
+            if out_port != entry.dp_port:
+                if entry.get_status() == RFENTRY_ACTIVE or \
+                   entry.get_status() == RFISL_ACTIVE:
+                    rm.add_match(Match.ETHERNET(entry.eth_addr))
+                    rm.add_match(Match.IN_PORT(entry.dp_port))
+                    self.ipc.send(RFSERVER_RFPROXY_CHANNEL,
+                                  str(entry.ct_id), rm)
+                    rm.set_matches(rm.get_matches()[:-2])
 
     # DatapathPortRegister methods
     def register_dp_port(self, ct_id, dp_id, dp_port):
@@ -172,8 +198,12 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         config_entry = self.config.get_config_for_dp_port(ct_id, dp_id,
                                                           dp_port)
         if config_entry is None:
-            # Register idle DP awaiting for configuration
-            action = REGISTER_IDLE
+            islconfs = self.islconf.get_entries_by_port(ct_id, dp_id, dp_port)
+            if islconfs:
+                action = REGISTER_ISL
+            else:
+                # Register idle DP awaiting for configuration
+                action = REGISTER_IDLE
         else:
             entry = self.rftable.get_entry_by_vm_port(config_entry.vm_id,
                                                       config_entry.vm_port)
@@ -199,6 +229,60 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                           "vm_port=%s)" % (format_id(dp_id), dp_port,
                                            format_id(entry.vm_id),
                                            entry.vm_port))
+        elif action == REGISTER_ISL:
+            self._register_islconf(islconfs, ct_id, dp_id, dp_port)
+
+    def _register_islconf(self, c_entries, ct_id, dp_id, dp_port):
+        for conf in c_entries:
+            entry = None
+            eth_addr = None
+            if conf.rem_id != dp_id or conf.rem_ct != ct_id:
+                entry = self.isltable.get_entry_by_addr(conf.rem_ct,
+                                                        conf.rem_id,
+                                                        conf.rem_port,
+                                                        conf.rem_eth_addr)
+                eth_addr = conf.eth_addr
+            else:
+                entry = self.isltable.get_entry_by_addr(conf.ct_id,
+                                                        conf.dp_id,
+                                                        conf.dp_port,
+                                                        conf.eth_addr)
+                eth_addr = conf.rem_eth_addr
+
+            if entry is None:
+                n_entry = RFISLEntry(vm_id=conf.vm_id, ct_id=ct_id,
+                                     dp_id=dp_id, dp_port=dp_port,
+                                     eth_addr=eth_addr)
+                self.isltable.set_entry(n_entry)
+                self.log.info("Registering ISL port as idle "
+                              "(dp_id=%s, dp_port=%i, eth_addr=%s)" %
+                              (format_id(dp_id), dp_port, eth_addr))
+            elif entry.get_status() == RFISL_IDLE_DP_PORT:
+                entry.associate(ct_id, dp_id, dp_port, eth_addr)
+                self.isltable.set_entry(entry)
+                n_entry = self.isltable.get_entry_by_remote(entry.ct_id,
+                                                            entry.dp_id,
+                                                            entry.dp_port,
+                                                            entry.eth_addr)
+                if n_entry is None:
+                    n_entry = RFISLEntry(vm_id=entry.vm_id, ct_id=ct_id,
+                                         dp_id=dp_id, dp_port=dp_port,
+                                         eth_addr=entry.rem_eth_addr,
+                                         rem_ct=entry.ct_id,
+                                         rem_id=entry.dp_id,
+                                         rem_port=entry.dp_port,
+                                         rem_eth_addr=entry.eth_addr)
+                    self.isltable.set_entry(n_entry)
+                else:
+                    n_entry.associate(ct_id, dp_id, dp_port, eth_addr)
+                    self.isltable.set_entry(n_entry)
+                self.log.info("Registering ISL port and associating to "
+                              "remote ISL port (ct_id=%s, dp_id=%s, "
+                              "dp_port=%s, rem_ct=%s, rem_id=%s, "
+                              "rem_port=%s)" % (ct_id, format_id(dp_id),
+                                                dp_port, entry.ct_id,
+                                                format_id(entry.dp_id),
+                                                entry.dp_port))
 
     def send_datapath_config_message(self, ct_id, dp_id, operation_id):
         rm = RouteMod(RMT_ADD, dp_id)
@@ -257,7 +341,8 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.configured_rfvs.append(dp_id)
             self.send_datapath_config_message(ct_id, dp_id, DC_ALL)
             self.log.info("Configuring RFVS (dp_id=%s)" % format_id(dp_id))
-        elif self.rftable.is_dp_registered(ct_id, dp_id):
+        elif self.rftable.is_dp_registered(ct_id, dp_id) or \
+             self.isltable.is_dp_registered(ct_id, dp_id):
             # Configure a normal switch. Clear the tables and install default
             # flows.
             self.send_datapath_config_message(ct_id, dp_id,
@@ -281,6 +366,12 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         for entry in self.rftable.get_dp_entries(ct_id, dp_id):
             # For every port registered in that datapath, put it down
             self.set_dp_port_down(entry.ct_id, entry.dp_id, entry.dp_port)
+        for entry in self.isltable.get_dp_entries(ct_id, dp_id):
+            entry.make_idle(RFISL_IDLE_REMOTE)
+            self.isltable.set_entry(entry)
+        for entry in self.isltable.get_entries(rem_ct=ct_id, rem_id=dp_id):
+            entry.make_idle(RFISL_IDLE_DP_PORT)
+            self.isltable.set_entry(entry)
         self.log.info("Datapath down (dp_id=%s)" % format_id(dp_id))
 
     def set_dp_port_down(self, ct_id, dp_id, dp_port):
@@ -312,14 +403,12 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                                dp_id=entry.dp_id, dp_port=entry.dp_port,
                                vs_id=vs_id, vs_port=vs_port)
             self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(entry.ct_id), msg)
-            self.log.info("Mapping client-datapath association (vm_id=%s, "
-                          "vm_port=%i, dp_id=%s, dp_port=%i, vs_id=%s, "
-                          "vs_port=%i)" % (format_id(entry.vm_id),
-                                           entry.vm_port,
-                                           format_id(entry.dp_id),
-                                           entry.dp_port,
-                                           format_id(entry.vs_id),
-                                           entry.vs_port))
+            self.log.info("Mapping client-datapath association "
+                          "(vm_id=%s, vm_port=%i, dp_id=%s, "
+                          "dp_port=%i, vs_id=%s, vs_port=%i)" %
+                          (format_id(entry.vm_id), entry.vm_port,
+                           format_id(entry.dp_id), entry.dp_port,
+                           format_id(entry.vs_id), entry.vs_port))
 
 if __name__ == "__main__":
     description='RFServer co-ordinates RFClient and RFProxy instances, ' \
@@ -329,9 +418,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=description, epilog=epilog)
     parser.add_argument('configfile',
                         help='VM-VS-DP mapping configuration file')
+    parser.add_argument('-i', '--islconfig',
+                        help='ISL mapping configuration file')
 
     args = parser.parse_args()
     try:
-        RFServer(args.configfile)
+        RFServer(args.configfile, args.islconfig)
     except IOError:
-        sys.exit("Error opening file: {}".format(configfile))
+        sys.exit("Error opening file: {}".format(args.configfile))

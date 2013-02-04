@@ -1,0 +1,2 @@
+vm_id,ct_id,dp_id,dp_port,eth_addr,rem_ct,rem_id,rem_port,rem_eth_addr
+12A0A0A0A0A0,0,0x99,2,66:FD:B5:BE:39:77,0,0x9a,2,6E:71:60:A9:B9:8D
