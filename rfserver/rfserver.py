@@ -44,7 +44,8 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
     def process(self, from_, to, channel, msg):
         type_ = msg.get_type()
         if type_ == PORT_REGISTER:
-            self.register_vm_port(msg.get_vm_id(), msg.get_vm_port())
+            self.register_vm_port(msg.get_vm_id(), msg.get_vm_port(),
+                                  msg.get_hwaddress())
         elif type_ == ROUTE_MOD:
             self.register_route_mod(msg)
         elif type_ == DATAPATH_PORT_REGISTER:
@@ -61,7 +62,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
         return True
 
     # Port register methods
-    def register_vm_port(self, vm_id, vm_port):
+    def register_vm_port(self, vm_id, vm_port, eth_addr):
         action = None
         config_entry = self.config.get_config_for_vm_port(vm_id, vm_port)
         if config_entry is None:
@@ -80,17 +81,20 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
 
         # Apply action
         if action == REGISTER_IDLE:
-            self.rftable.set_entry(RFEntry(vm_id=vm_id, vm_port=vm_port))
+            self.rftable.set_entry(RFEntry(vm_id=vm_id, vm_port=vm_port,
+                                           eth_addr=eth_addr))
             self.log.info("Registering client port as idle (vm_id=%s, "
-                          "vm_port=%i)" % (format_id(vm_id), vm_port))
+                          "vm_port=%i, eth_addr=%s)" % (format_id(vm_id),
+                                                        vm_port, eth_addr))
         elif action == REGISTER_ASSOCIATED:
-            entry.associate(vm_id, vm_port)
+            entry.associate(vm_id, vm_port, eth_addr=eth_addr)
             self.rftable.set_entry(entry)
             self.config_vm_port(vm_id, vm_port)
             self.log.info("Registering client port and associating to "
-                          "datapath port (vm_id=%s, vm_port=%i, dp_id=%s, "
-                          "dp_port=%s)" % (format_id(vm_id), vm_port,
-                                           format(entry.dp_id), entry.dp_port))
+                          "datapath port (vm_id=%s, vm_port=%i, "
+                          "eth_addr = %s, dp_id=%s, dp_port=%s)"
+                          % (format_id(vm_id), vm_port, eth_addr,
+                             format_id(entry.dp_id), entry.dp_port))
 
     def config_vm_port(self, vm_id, vm_port):
         self.ipc.send(RFCLIENT_RFSERVER_CHANNEL, str(vm_id),
@@ -137,7 +141,16 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                 ct_option = Option.CT_ID(entry.ct_id)
                 rm.add_option(ct_option)
 
-                self.ipc.send(RFSERVER_RFPROXY_CHANNEL, str(entry.ct_id), rm)
+                for entry in self.rftable.get_entries(vm_id=vm_id):
+                    if action_output.get_value() != entry.dp_port:
+                        if entry.get_status() == RFENTRY_ACTIVE:
+                            match_eth = Match.ETHERNET(entry.eth_addr)
+                            rm.add_match(match_eth)
+                            match_in_port = Match.IN_PORT(entry.dp_port)
+                            rm.add_match(match_in_port)
+                            self.ipc.send(RFSERVER_RFPROXY_CHANNEL,
+                                          str(entry.ct_id), rm)
+                            rm.set_matches(rm.get_matches()[:-2])
                 return
 
         # If no output action is found, don't forward the routemod.

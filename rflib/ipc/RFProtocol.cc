@@ -5,11 +5,13 @@
 PortRegister::PortRegister() {
     set_vm_id(0);
     set_vm_port(0);
+    set_hwaddress(MACAddress());
 }
 
-PortRegister::PortRegister(uint64_t vm_id, uint32_t vm_port) {
+PortRegister::PortRegister(uint64_t vm_id, uint32_t vm_port, MACAddress hwaddress) {
     set_vm_id(vm_id);
     set_vm_port(vm_port);
+    set_hwaddress(hwaddress);
 }
 
 int PortRegister::get_type() {
@@ -32,16 +34,26 @@ void PortRegister::set_vm_port(uint32_t vm_port) {
     this->vm_port = vm_port;
 }
 
+MACAddress PortRegister::get_hwaddress() {
+    return this->hwaddress;
+}
+
+void PortRegister::set_hwaddress(MACAddress hwaddress) {
+    this->hwaddress = hwaddress;
+}
+
 void PortRegister::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_vm_id(string_to<uint64_t>(obj["vm_id"].String()));
     set_vm_port(string_to<uint32_t>(obj["vm_port"].String()));
+    set_hwaddress(MACAddress(obj["hwaddress"].String()));
 }
 
 const char* PortRegister::to_BSON() {
     mongo::BSONObjBuilder _b;
     _b.append("vm_id", to_string<uint64_t>(get_vm_id()));
     _b.append("vm_port", to_string<uint32_t>(get_vm_port()));
+    _b.append("hwaddress", get_hwaddress().toString());
     mongo::BSONObj o = _b.obj();
     char* data = new char[o.objsize()];
     memcpy(data, o.objdata(), o.objsize());
@@ -53,6 +65,7 @@ string PortRegister::str() {
     ss << "PortRegister" << endl;
     ss << "  vm_id: " << to_string<uint64_t>(get_vm_id()) << endl;
     ss << "  vm_port: " << to_string<uint32_t>(get_vm_port()) << endl;
+    ss << "  hwaddress: " << get_hwaddress().toString() << endl;
     return ss.str();
 }
 

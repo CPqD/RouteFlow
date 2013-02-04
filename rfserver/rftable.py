@@ -11,6 +11,7 @@ RFENTRY_ACTIVE = 4
 
 RFENTRY = 0
 RFCONFIGENTRY = 1
+
 class MongoTableEntryFactory:
     @staticmethod
     def make(type_):
@@ -125,8 +126,8 @@ def pack_into_dict(dest, obj, attr):
 
 
 class RFEntry:
-    def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None,
-                 dp_port=None, vs_id=None, vs_port=None):
+    def __init__(self, vm_id=None, vm_port=None, ct_id=None, dp_id=None, 
+                 dp_port=None, vs_id=None, vs_port=None, eth_addr=None):
         self.id = None
         self.vm_id = vm_id
         self.vm_port = vm_port
@@ -135,6 +136,7 @@ class RFEntry:
         self.dp_port = dp_port
         self.vs_id = vs_id
         self.vs_port = vs_port
+        self.eth_addr = eth_addr
 
     def _is_idle_vm_port(self):
         return (self.vm_id is not None and
@@ -166,8 +168,9 @@ class RFEntry:
             self.vm_port = None
             self.vs_id = None
             self.vs_port = None
+            self.eth_addr = None
 
-    def associate(self, id_, port, ct_id=None):
+    def associate(self, id_, port, ct_id=None, eth_addr=None):
         if self._is_idle_vm_port():
             self.ct_id = ct_id
             self.dp_id = id_
@@ -175,6 +178,7 @@ class RFEntry:
         elif self._is_idle_dp_port():
             self.vm_id = id_
             self.vm_port = port
+            self.eth_addr = eth_addr
         else:
             raise ValueError
 
@@ -196,20 +200,22 @@ class RFEntry:
         return "vm_id: %s\nvm_port: %s\n"\
                "dp_id: %s\ndp_port: %s\n"\
                "vs_id: %s\nvs_port: %s\n"\
-               "ct_id: %s\nstatus:%s" % (str(self.vm_id),
-                                         str(self.vm_port),
-                                         str(self.dp_id),
-                                         str(self.dp_port),
-                                         str(self.vs_id),
-                                         str(self.vs_port),
-                                         str(self.ct_id),
-                                         str(self.get_status()))
+               "eth_addr: %s\nct_id: %s\n"\
+               "status:%s" % (str(self.vm_id),
+                              str(self.vm_port),
+                              str(self.dp_id),
+                              str(self.dp_port),
+                              str(self.vs_id),
+                              str(self.vs_port),
+                              str(self.eth_addr),
+                              str(self.ct_id),
+                              str(self.get_status()))
 
     def from_dict(self, data):
         for k, v in data.items():
             if str(v) is "":
                 data[k] = None
-            elif k != "_id": # All our data is int
+            elif k != "_id" and k != "eth_addr": # All our data is int
                 data[k] = int(v)
         self.id = data["_id"]
         load_from_dict(data, self, "vm_id")
@@ -219,6 +225,7 @@ class RFEntry:
         load_from_dict(data, self, "dp_port")
         load_from_dict(data, self, "vs_id")
         load_from_dict(data, self, "vs_port")
+        load_from_dict(data, self, "eth_addr")
 
     def to_dict(self):
         data = {}
@@ -231,6 +238,7 @@ class RFEntry:
         pack_into_dict(data, self, "dp_port")
         pack_into_dict(data, self, "vs_id")
         pack_into_dict(data, self, "vs_port")
+        pack_into_dict(data, self, "eth_addr")
         return data
 
 class RFConfigEntry:
@@ -246,16 +254,16 @@ class RFConfigEntry:
     def __str__(self):
         return "vm_id: %s vm_port: %s "\
                "dp_id: %s dp_port: %s "\
-               "ct_id: %s " % (str(self.vm_id),
-                               str(self.vm_port),
-                               str(self.dp_id),
-                               str(self.dp_port),
-                               str(self.ct_id))
+               "ct_id: %s" % (str(self.vm_id), str(self.vm_port),
+                              str(self.dp_id), str(self.dp_port),
+                              str(self.ct_id))
 
     def from_dict(self, data):
         for k, v in data.items():
             if str(v) is "":
                 data[k] = None
+            elif k != "_id": # All our data is int
+                data[k] = int(v)
         self.id = data["_id"]
         load_from_dict(data, self, "vm_id")
         load_from_dict(data, self, "vm_port")

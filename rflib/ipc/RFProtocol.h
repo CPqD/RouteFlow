@@ -25,13 +25,16 @@ enum {
 class PortRegister : public IPCMessage {
     public:
         PortRegister();
-        PortRegister(uint64_t vm_id, uint32_t vm_port);
+        PortRegister(uint64_t vm_id, uint32_t vm_port, MACAddress hwaddress);
 
         uint64_t get_vm_id();
         void set_vm_id(uint64_t vm_id);
 
         uint32_t get_vm_port();
         void set_vm_port(uint32_t vm_port);
+
+        MACAddress get_hwaddress();
+        void set_hwaddress(MACAddress hwaddress);
 
         virtual int get_type();
         virtual void from_BSON(const char* data);
@@ -41,6 +44,7 @@ class PortRegister : public IPCMessage {
     private:
         uint64_t vm_id;
         uint32_t vm_port;
+        MACAddress hwaddress;
 };
 
 class PortConfig : public IPCMessage {

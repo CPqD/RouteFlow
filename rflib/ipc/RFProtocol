@@ -1,6 +1,7 @@
 PortRegister
     i64 vm_id
     i32 vm_port
+    mac hwaddress
 
 PortConfig
     i64 vm_id

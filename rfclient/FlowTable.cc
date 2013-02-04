@@ -479,7 +479,11 @@ bool FlowTable::is_port_down(uint32_t port) {
 
 int FlowTable::setEthernet(RouteMod& rm, const Interface& local_iface,
                            const MACAddress& gateway) {
-    rm.add_match(Match(RFMT_ETHERNET, local_iface.hwaddress));
+    /* Theoretically we would need N*M rules in OpenFlow 1.0 to correctly
+     * match on all switch MAC addresses (N) and L3 routes (M). To avoid this
+     * issue, we simply don't match on MAC addresses. This reduces the number
+     * of flows required on a switch to ~M. */
+    //rm.add_match(Match(RFMT_ETHERNET, local_iface.hwaddress));
 
     if (rm.get_mod() != RMT_DELETE) {
         rm.add_action(Action(RFAT_SET_ETH_SRC, local_iface.hwaddress));
