@@ -543,8 +543,8 @@ int FlowTable::setIP(RouteMod& rm, const IPAddress& addr,
         return -1;
     }
 
-    uint16_t priority = DEFAULT_PRIORITY;
-    priority += mask.toPrefixLen();
+    uint16_t priority = PRIORITY_LOW;
+    priority += (mask.toPrefixLen() * PRIORITY_BAND);
     rm.add_option(Option(RFOT_PRIORITY, priority));
 
     return 0;

@@ -201,12 +201,13 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
 
         if operation_id == DC_CLEAR_FLOW_TABLE:
             rm.set_mod(RMT_DELETE)
-            rm.add_option(Option.PRIORITY(0))
+            rm.add_option(Option.PRIORITY(PRIORITY_LOWEST))
         elif operation_id == DC_DROP_ALL:
-            rm.add_option(Option.PRIORITY(1))
+            rm.add_option(Option.PRIORITY(PRIORITY_LOWEST + PRIORITY_BAND))
             # No action specifies discard
             pass
         else:
+            rm.add_option(Option.PRIORITY(PRIORITY_HIGH))
             if operation_id == DC_RIPV2:
                 rm.add_match(Match.ETHERTYPE(ETHERTYPE_IP))
                 rm.add_match(Match.NW_PROTO(IPPROTO_UDP))

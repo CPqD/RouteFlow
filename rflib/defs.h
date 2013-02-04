@@ -55,4 +55,10 @@ typedef enum route_mod_type {
 #define PC_MAP 0
 #define PC_RESET 1
 
+#define PRIORITY_BAND 0xA
+#define PRIORITY_LOWEST 0x0000
+#define PRIORITY_LOW 0x4010
+#define PRIORITY_HIGH 0x8020
+#define PRIORITY_HIGHEST 0xC030
+
 #endif /* __DEFS_H__ */
