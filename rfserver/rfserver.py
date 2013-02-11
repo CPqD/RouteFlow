@@ -169,9 +169,15 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                     return
 
                 # Replace the VM id,port with the Datapath id.port
-                action_output.set_value(entry.dp_port)
                 rm.set_id(int(entry.dp_id))
-                rm.actions[i] = action_output.to_dict()
+
+                if rm.get_mod() is RMT_DELETE:
+                    # When deleting a route, we don't need an output action.
+                    rm.actions.remove(action)
+                else:
+                    # Replace the VM port with the datapath port
+                    action_output.set_value(entry.dp_port)
+                    rm.actions[i] = action_output.to_dict()
 
                 ct_option = Option.CT_ID(entry.ct_id)
                 rm.add_option(ct_option)

@@ -459,9 +459,9 @@ void FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
         return;
     }
 
-    if (mod != RMT_DELETE) {
-        rm.add_action(Action(RFAT_OUTPUT, local_iface.port));
-    }
+    /* Add the output port. Even if we're removing the route, RFServer requires
+     * the port to determine which datapath to send to. */
+    rm.add_action(Action(RFAT_OUTPUT, local_iface.port));
 
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, rm);
 }
