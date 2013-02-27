@@ -850,7 +850,13 @@ class RouteMod(MongoIPCMessage):
         s = "RouteMod\n"
         s += "  mod: " + str(self.get_mod()) + "\n"
         s += "  id: " + str(self.get_id()) + "\n"
-        s += "  matches: " + str(self.get_matches()) + "\n"
-        s += "  actions: " + str(self.get_actions()) + "\n"
-        s += "  options: " + str(self.get_options()) + "\n"
+        s += "  matches:\n"
+        for match in self.get_matches():
+            s += "    " + str(Match.from_dict(match)) + "\n"
+        s += "  actions:\n"
+        for action in self.get_actions():
+            s += "    " + str(Action.from_dict(action)) + "\n"
+        s += "  options:\n"
+        for option in self.get_options():
+            s += "    " + str(Option.from_dict(option)) + "\n"
         return s

@@ -59,6 +59,12 @@ importType = {
 }
 
 # Python
+pyTypesMap = {
+"match" : "Match",
+"action" : "Action",
+"option" : "Option",
+}
+
 pyDefaultValues = {
 "i8": "0",
 "i32": "0",
@@ -442,7 +448,14 @@ def genPy(messages, fname):
         g.addLine("s = \"{0}\\n\"".format(name))
         for t, f in msg:
             value = "self.get_{0}()".format(f)
-            g.addLine("s += \"  {0}: \" + str({1}) + \"\\n\"".format(f, value))
+            if t[-2:] == "[]":
+                g.addLine("s += \"  {0}:\\n\"".format(f))
+                g.addLine("for {0} in {1}:".format(t[:-2], value))
+                g.increaseIndent()
+                g.addLine("s += \"    \" + str({0}.from_dict({1})) + \"\\n\"".format(pyTypesMap[t[:-2]], t[:-2]))
+                g.decreaseIndent()
+            else:
+                g.addLine("s += \"  {0}: \" + str({1}) + \"\\n\"".format(f, value))
         g.addLine("return s")
         g.decreaseIndent()
         g.decreaseIndent()
