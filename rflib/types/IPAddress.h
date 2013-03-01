@@ -33,6 +33,7 @@ class IPAddress {
         string toString() const;
         uint32_t toCIDRMask() const;
         int getVersion() const;
+        size_t getLength() const;
 
     private:
         int version;

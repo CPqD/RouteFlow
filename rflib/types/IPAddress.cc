@@ -140,6 +140,10 @@ int IPAddress::getVersion() const {
     return this->version;
 }
 
+size_t IPaddress::getLength() const {
+    return this->length;
+}
+
 void IPAddress::init(const int version) {
     this->version = version;
     if (this->version == IPV4)
