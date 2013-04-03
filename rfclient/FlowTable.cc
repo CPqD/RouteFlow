@@ -132,6 +132,33 @@ void FlowTable::GWResolverCb() {
     }
 }
 
+/**
+ * Get the local interface corresponding to the given interface number.
+ *
+ * On success, overwrites given interface pointer with the active interface
+ * and returns 0;
+ * On error, prints to stderr with appropriate message and returns -1.
+ */
+int FlowTable::getInterface(const char *intf, const char *type,
+                            Interface* iface) {
+    map<string, Interface>::iterator it = interfaces.find(intf);
+
+    if (it == interfaces.end()) {
+        fprintf(stderr, "Interface %s not found, dropping %s entry\n",
+                intf, type);
+        return -1;
+    }
+
+    if (not it->second.active) {
+        fprintf(stderr, "Interface %s inactive, dropping %s entry\n",
+                intf, type);
+        return -1;
+    }
+
+    *iface = it->second;
+    return 0;
+}
+
 int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, void *) {
     struct ndmsg *ndmsg_ptr = (struct ndmsg *) NLMSG_DATA(n);
     struct rtattr *rtattr_ptr;
@@ -182,20 +209,10 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
     }
 
     HostEntry hentry;
-    map<string, Interface>::iterator it;
 
     hentry.address = IPAddress(IPV4, ip);
     hentry.hwaddress = MACAddress(mac);
-
-    it = interfaces.find(intf);
-    if (it != interfaces.end()) {
-        hentry.interface = it->second;
-    } else {
-        fprintf(stderr, "Interface %s not found, dropping host entry\n", intf);
-        return 0;
-    }
-    if (not hentry.interface.active) {
-        fprintf(stderr, "Interface %s inactive. Dropping Host Entry\n", intf);
+    if (getInterface(intf, "host", &hentry.interface) != 0) {
         return 0;
     }
 
@@ -308,22 +325,11 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
     snprintf(mask, sizeof(mask), "%s", inet_ntoa(convmask));
 
     RouteEntry rentry;
-    map<string, Interface>::iterator it;
 
     rentry.address = IPAddress(IPV4, net);
     rentry.gateway = IPAddress(IPV4, gw);
     rentry.netmask = IPAddress(IPV4, mask);
-
-    it = interfaces.find(intf);
-    if (it != interfaces.end()) {
-        rentry.interface = it->second;
-    } else {
-        fprintf(stderr, "Interface %s not found, dropping route entry\n", intf);
-        return 0;
-    }
-
-    if (not rentry.interface.active) {
-        fprintf(stderr, "Interface %s inactive, dropping route entry\n", intf);
+    if (getInterface(intf, "route", &rentry.interface) != 0) {
         return 0;
     }
 
