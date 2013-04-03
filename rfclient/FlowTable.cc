@@ -46,7 +46,7 @@ uint64_t FlowTable::vm_id;
 typedef std::pair<RouteModType,RouteEntry> PendingRoute;
 SyncQueue<PendingRoute> FlowTable::pendingRoutes;
 list<RouteEntry> FlowTable::routeTable;
-list<HostEntry> FlowTable::hostTable;
+map<string, HostEntry> FlowTable::hostTable;
 
 // TODO: implement a way to pause the flow table updates when the VM is not
 //       associated with a valid datapath
@@ -198,7 +198,7 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
             std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
             FlowTable::sendToHw(RMT_ADD, hentry);
             // TODO: Shouldn't we check for a duplicate?
-            FlowTable::hostTable.push_back(hentry);
+            FlowTable[hentry.address.toString()] = hentry;
             break;
         /* TODO: enable this? It is causing serious problems. Why?
         case RTM_DELNEIGH:
@@ -396,12 +396,10 @@ const MACAddress& FlowTable::getGateway(const IPAddress& gateway,
     // The MAC address of the next-hop is required as it is used to re-write
     // the layer 2 header before forwarding the packet.
     for (int tries = 0; tries < 50; tries++) {
-        list<HostEntry>::iterator iter;
-        for (iter = FlowTable::hostTable.begin();
-             iter != FlowTable::hostTable.end(); ++iter) {
-            if (iter->address == gateway) {
-                return (iter->hwaddress);
-            }
+        map<string, HostEntry>::iterator iter;
+        iter = FlowTable::hostTable.find(gateway.toString());
+        if (iter != FlowTable::hostTable.end()) {
+            return (iter->second.hwaddress);
         }
 
         FlowTable::fakeReq(gateway.toString().c_str(), iface.name.c_str());

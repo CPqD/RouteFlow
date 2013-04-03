@@ -118,7 +118,7 @@ class FlowTable {
 
         static SyncQueue< std::pair<RouteModType,RouteEntry> > pendingRoutes;
         static list<RouteEntry> routeTable;
-        static list<HostEntry> hostTable;
+        static map<string, HostEntry> hostTable;
 
         static bool is_port_down(uint32_t port);
         static int setEthernet(RouteMod& rm, const Interface& local_iface,
