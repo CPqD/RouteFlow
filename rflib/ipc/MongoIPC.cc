@@ -60,6 +60,7 @@ void MongoIPCMessageService::listen(const string &channelId, IPCMessageFactory *
 }
 
 bool MongoIPCMessageService::send(const string &channelId, const string &to, IPCMessage& msg) {
+    boost::lock_guard<boost::mutex> lock(ipcMutex);
     string ns = this->db + "." + channelId;
     
     this->createChannel(producerConnection, ns);

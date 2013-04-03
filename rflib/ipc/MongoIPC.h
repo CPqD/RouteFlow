@@ -32,6 +32,7 @@ class MongoIPCMessageService : public IPCMessageService {
         string db;
         string address;
         mongo::DBClientConnection producerConnection;
+        boost::mutex ipcMutex;
         void listenWorker(const string &channelId, IPCMessageFactory *factory, IPCMessageProcessor *processor);
         void createChannel(mongo::DBClientConnection &con, const string &ns);
         void connect(mongo::DBClientConnection &connection, const string &address);
