@@ -309,63 +309,41 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 
     RouteEntry rentry;
     map<string, Interface>::iterator it;
-    list<RouteEntry>::iterator itRoutes;
+
+    rentry.address = IPAddress(IPV4, net);
+    rentry.gateway = IPAddress(IPV4, gw);
+    rentry.netmask = IPAddress(IPV4, mask);
+
+    it = interfaces.find(intf);
+    if (it != interfaces.end()) {
+        rentry.interface = it->second;
+    } else {
+        fprintf(stderr, "Interface %s not found, dropping route entry\n", intf);
+        return 0;
+    }
+
+    if (not rentry.interface.active) {
+        fprintf(stderr, "Interface %s inactive, dropping route entry\n", intf);
+        return 0;
+    }
+
+    // Discard if there's no gateway (IPv4-only)
+    if (inet_addr(gw) == INADDR_NONE) {
+        fprintf(stderr, "No gateway specified, dropping route entry\n");
+        return 0;
+    }
 
     switch (n->nlmsg_type) {
-    case RTM_NEWROUTE:
-        std::cout << "netlink->RTM_NEWROUTE: net=" << net << ", mask=" << mask << ", gw=" << gw << std::endl;
-
-        // Discard if there's no gateway
-        if (inet_addr(gw) == INADDR_NONE) {
-            fprintf(stderr, "No gateway specified. Dropping Route\n");
-            return 0;
-        }
-
-        rentry.address = IPAddress(IPV4, net);
-        rentry.gateway = IPAddress(IPV4, gw);
-        rentry.netmask = IPAddress(IPV4, mask);
-
-        it = interfaces.find(intf);
-        if (it != interfaces.end())
-            rentry.interface = it->second;
-
-        if (not rentry.interface.active) {
-            fprintf(stderr, "Interface inactive. Dropping NEWROUTE\n");
-            return 0;
-        }
-
-        for (itRoutes = FlowTable::routeTable.begin(); itRoutes != FlowTable::routeTable.end(); itRoutes++) {
-            if (rentry == (*itRoutes)) {
-                std::cout << "Duplicate route add request.\n" << "\n";
-                return 0;
-            }
-        }
-
-        FlowTable::pendingRoutes.push(PendingRoute(RMT_ADD, rentry));
-        break;
-    case RTM_DELROUTE:
-        std::cout << "netlink->RTM_DELROUTE: net=" << net << ", mask=" << mask << ", gw=" << gw << std::endl;
-
-        rentry.address = IPAddress(IPV4, net);
-        rentry.gateway = IPAddress(IPV4, gw);
-        rentry.netmask = IPAddress(IPV4, mask);
-
-        it = interfaces.find(intf);
-        if (it != interfaces.end())
-            rentry.interface = it->second;
-
-        if (not rentry.interface.active) {
-            fprintf(stderr, "Interface inactive. Dropping DELROUTE\n");
-            return 0;
-        }
-
-        for (itRoutes = FlowTable::routeTable.begin(); itRoutes != FlowTable::routeTable.end(); itRoutes++) {
-            if (rentry == (*itRoutes)) {
-                FlowTable::pendingRoutes.push(PendingRoute(RMT_DELETE, rentry));
-                return 0;
-            }
-        }
-        break;
+        case RTM_NEWROUTE:
+            std::cout << "netlink->RTM_NEWROUTE: net=" << net << ", mask="
+                      << mask << ", gw=" << gw << std::endl;
+            FlowTable::pendingRoutes.push(PendingRoute(RMT_ADD, rentry));
+            break;
+        case RTM_DELROUTE:
+            std::cout << "netlink->RTM_DELROUTE: net=" << net << ", mask="
+                      << mask << ", gw=" << gw << std::endl;
+            FlowTable::pendingRoutes.push(PendingRoute(RMT_DELETE, rentry));
+            break;
     }
 
     return 0;
