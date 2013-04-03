@@ -26,21 +26,21 @@ void MongoIPCMessageService::connect(mongo::DBClientConnection &connection, cons
 void MongoIPCMessageService::listenWorker(const string &channelId, IPCMessageFactory *factory, IPCMessageProcessor *processor) {
     auto_ptr<mongo::DBClientCursor> cur;
     string ns = this->db + "." + channelId;
-    
+
     mongo::DBClientConnection connection;
     this->connect(connection, this->address);
-    
+
     this->createChannel(connection, ns);
     mongo::Query query = QUERY(TO_FIELD << this->get_id() << READ_FIELD << false).sort("$natural");
     cur = connection.query(ns, query);
     while (true) {
         while (cur->more()) {
             mongo::BSONObj envelope = cur->nextSafe();
-            
+
             IPCMessage *msg = takeFromEnvelope(envelope, factory);
             processor->process(envelope["from"].String(), this->get_id(), channelId, *msg);
             delete msg;
-            
+
             connection.update(ns,
                 QUERY("_id" << envelope["_id"]), 
                 BSON("$set" << BSON(READ_FIELD << true)),
@@ -62,26 +62,26 @@ void MongoIPCMessageService::listen(const string &channelId, IPCMessageFactory *
 bool MongoIPCMessageService::send(const string &channelId, const string &to, IPCMessage& msg) {
     boost::lock_guard<boost::mutex> lock(ipcMutex);
     string ns = this->db + "." + channelId;
-    
+
     this->createChannel(producerConnection, ns);
     this->producerConnection.insert(ns, putInEnvelope(this->get_id(), to, msg));
-    
+
     return true;
 }
 
 mongo::BSONObj putInEnvelope(const string &from, const string &to, IPCMessage &msg) {
     mongo::BSONObjBuilder envelope;
-    
+
     envelope.genOID();
     envelope.append(FROM_FIELD, from);
     envelope.append(TO_FIELD, to);
     envelope.append(TYPE_FIELD, msg.get_type());
     envelope.append(READ_FIELD, false);
-        
+
     const char* data = msg.to_BSON();
     envelope.append(CONTENT_FIELD, mongo::BSONObj(data));
     delete data;
-    
+
     return envelope.obj();
 }
 
