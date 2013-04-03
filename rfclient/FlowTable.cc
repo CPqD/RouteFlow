@@ -451,11 +451,17 @@ int FlowTable::setIP(RouteMod& rm, const IPAddress& addr,
 }
 
 int FlowTable::sendToHw(RouteModType mod, const RouteEntry& re) {
+    const string gateway_str = re.gateway.toString();
     if (mod == RMT_DELETE) {
         return sendToHw(mod, re.address, re.netmask, re.interface,
                         FlowTable::MAC_ADDR_NONE);
     } else if (mod == RMT_ADD) {
         const MACAddress& remoteMac = getGateway(re.gateway, re.interface);
+        if (remoteMac == FlowTable::MAC_ADDR_NONE) {
+            fprintf(stderr, "Cannot Resolve %s\n", gateway_str.c_str());
+            return -1;
+        }
+
         return sendToHw(mod, re.address, re.netmask, re.interface, remoteMac);
     }
 
