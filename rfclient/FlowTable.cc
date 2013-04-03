@@ -89,7 +89,6 @@ void FlowTable::interrupt() {
 }
 
 void FlowTable::GWResolverCb() {
-    std::list<RouteEntry>::iterator itRoutes;
     while (true) {
         boost::this_thread::interruption_point();
 
@@ -97,7 +96,8 @@ void FlowTable::GWResolverCb() {
         FlowTable::pendingRoutes.wait_and_pop(re);
 
         RouteEntry* existingEntry = NULL;
-        for (itRoutes = FlowTable::routeTable.begin(); itRoutes != FlowTable::routeTable.end(); itRoutes++) {
+        std::list<RouteEntry>::iterator itRoutes = FlowTable::routeTable.begin();
+        for (; itRoutes != FlowTable::routeTable.end(); itRoutes++) {
             if (re.second == (*itRoutes)) {
                 existingEntry = &(*itRoutes);
                 break;
