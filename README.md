@@ -18,8 +18,9 @@ There is also a library of common functions (rflib). It has implementations of t
 
 Additionally, there's `rfweb`, an extra module that provides an web interface for RouteFlow.
 
-# RouteFlow architecture
 ```
+The RouteFlow Architecture
+
 +--------VM---------+
 | Quagga | RFClient |
 +-------------------+
@@ -77,7 +78,7 @@ First, create the default LXC containers that will run as virtual machines:
 ```
 $ sudo ./create
 ```
-The containers will have a default root/root user/password combination. **You should change that if you plan to deploy RouteFlow**.
+The containers will have a default ubuntu/ubuntu user/password combination. **You should change that if you plan to deploy RouteFlow**.
 
 By default, the tests below will use the LXC containers created  by the `create` script. You can use other virtualization technologies. If you have experience with or questions about setting up RouteFlow on a particular technology, contact us! See the "Support" section.
 
@@ -141,6 +142,7 @@ For more details on this test, see its [explanation](http://sites.google.com/sit
 If you want to use the web interface to inspect RouteFlow behavior, see the wiki page on [rfweb](https://github.com/CPqD/RouteFlow/wiki/The-web-interface).
 
 If you want to create your custom configurations schemes for a given setup, check out the [configuration section of the first tutorial](https://github.com/CPqD/RouteFlow/wiki/Tutorial-1:-rftest1#configuration-file) and the guide on [how to create your virtual environment](https://github.com/CPqD/RouteFlow/wiki/Virtual-environment-creation).
+
 
 # Support
 If you want to know more or need to contact us regarding the project for anything (questions, suggestions, bug reports, discussions about RouteFlow and SDN in general) you can use the following resources:
