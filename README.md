@@ -76,6 +76,7 @@ The folder rftest contains all that is needed to create and run two test cases.
 ## Virtual environment
 First, create the default LXC containers that will run as virtual machines:
 ```
+$ cd rftest
 $ sudo ./create
 ```
 The containers will have a default ubuntu/ubuntu user/password combination. **You should change that if you plan to deploy RouteFlow**.
