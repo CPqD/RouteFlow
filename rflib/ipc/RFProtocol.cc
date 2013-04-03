@@ -567,7 +567,7 @@ void RouteMod::from_BSON(const char* data) {
 
 const char* RouteMod::to_BSON() {
     mongo::BSONObjBuilder _b;
-    _b.append("mod", get_mod());
+    _b.append("mod", to_string<uint8_t>(get_mod()));
     _b.append("id", to_string<uint64_t>(get_id()));
     _b.appendArray("matches", MatchList::to_BSON(get_matches()));
     _b.appendArray("actions", ActionList::to_BSON(get_actions()));
@@ -581,7 +581,7 @@ const char* RouteMod::to_BSON() {
 string RouteMod::str() {
     stringstream ss;
     ss << "RouteMod" << endl;
-    ss << "  mod: " << get_mod() << endl;
+    ss << "  mod: " << to_string<uint8_t>(get_mod()) << endl;
     ss << "  id: " << to_string<uint64_t>(get_id()) << endl;
     ss << "  matches: " << MatchList::to_BSON(get_matches()) << endl;
     ss << "  actions: " << ActionList::to_BSON(get_actions()) << endl;

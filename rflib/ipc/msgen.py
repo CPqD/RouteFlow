@@ -33,7 +33,7 @@ defaultValues = {
 }
 
 exportType = {
-"i8": "{0}",
+"i8": "to_string<uint8_t>({0})",
 "i32": "to_string<uint32_t>({0})",
 "i64": "to_string<uint64_t>({0})",
 "bool": "{0}",
