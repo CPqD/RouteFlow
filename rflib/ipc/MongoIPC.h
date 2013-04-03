@@ -13,6 +13,9 @@
 // 1 MB for the capped collection
 #define CC_SIZE 1048576
 
+// Handle a maximum of 10 messages at a time
+#define PENDINGLIMIT 10
+
 mongo::BSONObj putInEnvelope(const string &from, const string &to, IPCMessage &msg);
 IPCMessage* takeFromEnvelope(mongo::BSONObj envelope, IPCMessageFactory *factory);
 

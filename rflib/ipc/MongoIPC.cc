@@ -24,7 +24,6 @@ void MongoIPCMessageService::connect(mongo::DBClientConnection &connection, cons
     }
 }
 void MongoIPCMessageService::listenWorker(const string &channelId, IPCMessageFactory *factory, IPCMessageProcessor *processor) {
-    auto_ptr<mongo::DBClientCursor> cur;
     string ns = this->db + "." + channelId;
 
     mongo::DBClientConnection connection;
@@ -32,11 +31,11 @@ void MongoIPCMessageService::listenWorker(const string &channelId, IPCMessageFac
 
     this->createChannel(connection, ns);
     mongo::Query query = QUERY(TO_FIELD << this->get_id() << READ_FIELD << false).sort("$natural");
-    cur = connection.query(ns, query);
     while (true) {
+        auto_ptr<mongo::DBClientCursor> cur = connection.query(ns, query,
+                                                               PENDINGLIMIT);
         while (cur->more()) {
             mongo::BSONObj envelope = cur->nextSafe();
-
             IPCMessage *msg = takeFromEnvelope(envelope, factory);
             processor->process(envelope["from"].String(), this->get_id(), channelId, *msg);
             delete msg;
@@ -46,8 +45,7 @@ void MongoIPCMessageService::listenWorker(const string &channelId, IPCMessageFac
                 BSON("$set" << BSON(READ_FIELD << true)),
                 false, true);
         }
-        usleep(50000);
-        cur = connection.query(ns, query);
+        usleep(50000); // 50ms
     }
 }
 
