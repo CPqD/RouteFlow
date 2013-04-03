@@ -117,10 +117,13 @@ void FlowTable::GWResolverCb() {
         }
 
         /* If we can't resolve the gateway, put it to the end of the queue. */
-        if (FlowTable::sendToHw(re.first, re.second) != 0) {
+        const RouteEntry& dst = re.second;
+        if (getGateway(dst.gateway, dst.interface) == FlowTable::MAC_ADDR_NONE) {
             FlowTable::pendingRoutes.push(re);
             continue;
         }
+
+        FlowTable::sendToHw(re.first, re.second);
 
         if (re.first == RMT_ADD) {
             FlowTable::routeTable.push_back(re.second);
