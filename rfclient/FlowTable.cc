@@ -46,6 +46,7 @@ uint64_t FlowTable::vm_id;
 typedef std::pair<RouteModType,RouteEntry> PendingRoute;
 SyncQueue<PendingRoute> FlowTable::pendingRoutes;
 list<RouteEntry> FlowTable::routeTable;
+boost::mutex hostTableMutex;
 map<string, HostEntry> FlowTable::hostTable;
 
 // TODO: implement a way to pause the flow table updates when the VM is not
@@ -79,6 +80,7 @@ void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces,
 
 void FlowTable::clear() {
     FlowTable::routeTable.clear();
+    boost::lock_guard<boost::mutex> lock(hostTableMutex);
     FlowTable::hostTable.clear();
 }
 
@@ -194,18 +196,23 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
     }
 
     switch (n->nlmsg_type) {
-        case RTM_NEWNEIGH:
-            std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
+        case RTM_NEWNEIGH: {
             FlowTable::sendToHw(RMT_ADD, hentry);
-            // TODO: Shouldn't we check for a duplicate?
-            FlowTable[hentry.address.toString()] = hentry;
+            boost::lock_guard<boost::mutex> lock(hostTableMutex);
+            FlowTable::hostTable[hentry.address.toString()] = hentry;
+
+            std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac
+                      << std::endl;
             break;
+        }
         /* TODO: enable this? It is causing serious problems. Why?
-        case RTM_DELNEIGH:
+        case RTM_DELNEIGH: {
             std::cout << "netlink->RTM_DELNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
             FlowTable::sendToHw(RMT_DELETE, hentry);
             // TODO: delete from hostTable
+            boost::lock_guard<boost::mutex> lock(hostTableMutex);
             break;
+        }
         */
     }
 
@@ -396,6 +403,7 @@ const MACAddress& FlowTable::getGateway(const IPAddress& gateway,
     // The MAC address of the next-hop is required as it is used to re-write
     // the layer 2 header before forwarding the packet.
     for (int tries = 0; tries < 50; tries++) {
+        boost::lock_guard<boost::mutex> lock(hostTableMutex);
         map<string, HostEntry>::iterator iter;
         iter = FlowTable::hostTable.find(gateway.toString());
         if (iter != FlowTable::hostTable.end()) {
