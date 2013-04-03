@@ -22,9 +22,8 @@ class Interface {
         IPAddress address;
         IPAddress netmask;
         MACAddress hwaddress;
-        
         bool active;
-        
+
         Interface() {
             this->active = false;
         }
@@ -33,24 +32,22 @@ class Interface {
             if (this != &other) {
                 this->port = other.port;
                 this->name = other.name;
-		        this->address = other.address;
-		        this->netmask = other.netmask;
-		        this->hwaddress = other.hwaddress;
-		        
-		        this->active = other.active;
-	        }
-	        return *this;
+                this->address = other.address;
+                this->netmask = other.netmask;
+                this->hwaddress = other.hwaddress;
+                this->active = other.active;
+            }
+            return *this;
         }
-                
+
         bool operator==(const Interface& other) {
-	        return
-	            (this->port == other.port) and 
-	            (this->name == other.name) and
-			    (this->address == other.address) and 
-			    (this->netmask == other.netmask) and
-			    (this->hwaddress == other.hwaddress) and
-			    
-			    (this->active == other.active);
+            return
+                (this->port == other.port) and
+                (this->name == other.name) and
+                (this->address == other.address) and
+                (this->netmask == other.netmask) and
+                (this->hwaddress == other.hwaddress) and
+                (this->active == other.active);
         }
 };
 
@@ -60,12 +57,12 @@ class RouteEntry {
         IPAddress gateway;
         IPAddress netmask;
         Interface interface;
-        
+
         bool operator==(const RouteEntry& other) {
-	        return (this->address == other.address) and 
-	            (this->gateway == other.gateway) and
-			    (this->netmask == other.netmask) and 
-			    (this->interface == other.interface);
+            return (this->address == other.address) and
+                (this->gateway == other.gateway) and
+                (this->netmask == other.netmask) and
+                (this->interface == other.interface);
         }
 };
 
@@ -75,9 +72,9 @@ class HostEntry {
         MACAddress hwaddress;
         Interface interface;
         bool operator==(const HostEntry& other) {
-	        return (this->address == other.address) and 
-	            (this->hwaddress == other.hwaddress) and
-			    (this->interface == other.interface);
+            return (this->address == other.address) and
+                (this->hwaddress == other.hwaddress) and
+                (this->interface == other.interface);
         }
 };
 
