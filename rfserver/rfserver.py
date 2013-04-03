@@ -26,7 +26,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
     def __init__(self, configfile):
         self.rftable = RFTable()
         self.config = RFConfig(configfile)
-        self.configured_rfvs = False
+        self.configured_rfvs = []
         # Logging
         self.log = logging.getLogger("rfserver")
         self.log.setLevel(logging.INFO)
@@ -228,10 +228,10 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                                      operation_id=operation_id))
 
     def config_dp(self, ct_id, dp_id):
-        if is_rfvs(dp_id) and not self.configured_rfvs:
+        if is_rfvs(dp_id) and dp_id not in self.configured_rfvs:
             # If rfvs is coming up and we haven't configured it yet, do it
             # TODO: support more than one OVS
-            self.configured_rfvs = True
+            self.configured_rfvs.append(dp_id)
             self.send_datapath_config_message(ct_id, dp_id, DC_ALL)
             self.log.info("Configuring RFVS (dp_id=%s)" % format_id(dp_id))
         elif self.rftable.is_dp_registered(ct_id, dp_id):
