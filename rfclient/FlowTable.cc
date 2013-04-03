@@ -188,10 +188,19 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
     hentry.hwaddress = MACAddress(mac);
 
     it = interfaces.find(intf);
-    if (it != interfaces.end())
+    if (it != interfaces.end()) {
         hentry.interface = it->second;
+    } else {
+        fprintf(stderr, "Interface %s not found, dropping host entry\n", intf);
+        return 0;
+    }
     if (not hentry.interface.active) {
-        fprintf(stderr, "Interface inactive. Dropping Host Entry\n");
+        fprintf(stderr, "Interface %s inactive. Dropping Host Entry\n", intf);
+        return 0;
+    }
+
+    if (strlen(mac) == 0) {
+        fprintf(stderr, "Received host entry with blank mac. Ignoring\n");
         return 0;
     }
 
