@@ -12,7 +12,7 @@ RouteFlow is a distribution composed by three basic applications: RFClient, RFSe
 
 * RFServer is a standalone application that manages the VMs running the RFClient daemons. The RFServer keeps the mapping between the RFClient VM instances and interfaces and the corresponding switches and ports. It connects to RFProxy to instruct it about when to configure flows and also to configure the Open vSwitch to maintain the connectivity in the virtual environment formed by the set of VMs.
 
-* RFProxy is an application (for POX and other controllers) responsible for the interactions with the OpenFlow switches (identified by datapaths) via the OpenFlow protocol. It listens to instructions from the RFServer and notifies it about events in the network. We recommend running POX when you are experimenting and testing your network. You can also use NOX though if you need or want (for production maybe).
+* RFProxy is an application (for POX and other controllers) responsible for the interactions with the OpenFlow switches (identified by datapaths) via the OpenFlow protocol. It listens to instructions from the RFServer and notifies it about events in the network. We recommend running POX when you are experimenting and testing your network. Other implementations in different controllers will be available soon.
 
 There is also a library of common functions (rflib). It has implementations of the IPC, utilities like custom types for IP and MAC addresses manipulation and OpenFlow message creation.
 
@@ -35,7 +35,7 @@ M:1      \ RFProtocol
 +-------------------+
 |      RFProxy      |
 |-------------------|
-|      NOX/POX      |
+|    Controller     |
 +-------------------+
          \
 1:N      \ OpenFlow Protocol
@@ -83,14 +83,13 @@ By default, the tests below will use the LXC containers created  by the `create`
 
 ## Test cases
 
-In the tests below, you can choose to run with either NOX or POX by changing the command line arguments.
 Default configuration files are provided for these tests in the `rftest` directory (you don't need to change anything).
 You can stops them at any time by pressing CTRL+C.
 
 ### rftest1
 1. Run:
 ```
-$ sudo ./rftest1 --nox
+$ sudo ./rftest1
 ```
 
 2. You can then log in to the LXC container b1 and try to ping b2:
