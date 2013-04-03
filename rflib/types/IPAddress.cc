@@ -41,6 +41,16 @@ IPAddress::IPAddress(const int version, const uint8_t* data) {
     memcpy(this->data, data, this->length);
 }
 
+IPAddress::IPAddress(in_addr data) {
+    this->init(IPV4);
+    memcpy(this->data, &data, this->length);
+}
+
+IPAddress::IPAddress(in6_addr data) {
+    this->init(IPV6);
+    memcpy(this->data, &data, this->length);
+}
+
 IPAddress::~IPAddress() {
     delete this->data;
 }
@@ -113,7 +123,7 @@ string IPAddress::toString() const {
     return result;
 }
 
-uint32_t IPAddress::toCIDRMask() {
+uint32_t IPAddress::toCIDRMask() const {
     uint32_t mask = this->toUint32();
 
 	uint8_t n = 0;

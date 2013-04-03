@@ -39,6 +39,10 @@ DC_LDP_PASSIVE = 9		# LDP protocol
 DC_LDP_ACTIVE = 10		# LDP protocol
 DC_ALL = 255			# Send all traffic to the controller
 
+RMT_ADD = 0			# Add flow to datapath
+RMT_DELETE = 1			# Remove flow from datapath
+#RMT_MODIFY = 2		# Modify existing flow (Unimplemented)
+
 PC_MAP = 0
 PC_RESET = 1
 
@@ -53,3 +57,5 @@ IPPROTO_UDP = 0x11
 IPPROTO_OSPF = 0x59
 TPORT_BGP = 0x00B3
 TPORT_LDP = 0x286
+
+OFPP_CONTROLLER = 65533

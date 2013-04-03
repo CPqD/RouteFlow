@@ -90,7 +90,7 @@ void RFClient::startFlowTable() {
     t.detach();
 }
 
-bool RFClient::process(const string &from, const string &to, const string &channel, IPCMessage& msg) {
+bool RFClient::process(const string &, const string &, const string &, IPCMessage& msg) {
     int type = msg.get_type();
     if (type == PORT_CONFIG) {
         PortConfig *config = dynamic_cast<PortConfig*>(&msg);

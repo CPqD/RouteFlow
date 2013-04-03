@@ -45,6 +45,13 @@ typedef enum dp_config {
 
 } DATAPATH_CONFIG_OPERATION;
 
+typedef enum route_mod_type {
+	RMT_ADD,			/* Add flow to datapath */
+	RMT_DELETE			/* Remove flow from datapath */
+	/* Future implementation */
+	//RMT_MODIFY		/* Modify existing flow (Unimplemented) */
+} RouteModType;
+
 #define PC_MAP 0
 #define PC_RESET 1
 

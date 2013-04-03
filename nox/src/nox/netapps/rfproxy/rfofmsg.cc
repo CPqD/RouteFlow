@@ -6,10 +6,9 @@
 #include <cstring>
 #include <linux/if_ether.h>
 
-#include "openflow.h"
-#include "rfofmsg.h"
 #include "defs.h"
 #include "MACAddress.h"
+#include "rfofmsg.hh"
 
 // TODO: this code is almost pure C, apart from the use of Boost and a few language constructs. Make it pure C.
 
@@ -168,6 +167,15 @@ void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match, uint16_t src,
 }
 
 /**
+ * Initialises the given OpenFlow Action header with the given type and len
+ */
+void ofm_action_init(ofp_action_header* hdr, uint16_t type, uint16_t len) {
+    std::memset((uint8_t *)hdr, 0, len);
+    hdr->type = htons(type);
+    hdr->len = htons(len);
+}
+
+/**
  * Set action values for header
  *
  * hdr: Action header to initialise
@@ -176,18 +184,20 @@ void ofm_match_tp(ofp_flow_mod* ofm, uint32_t match, uint16_t src,
  * max_len: Max packet size to send when output port is OFPP_CONTROLLER
  * addr: Value to use if writing DL_SRC, DL_DST
  */
-void ofm_set_action(ofp_action_header* hdr, uint16_t type, uint16_t len,
-                    uint16_t port, uint16_t max_len, const uint8_t addr[]) {
-    std::memset((uint8_t *)hdr, 0, len);
-    hdr->type = htons(type);
-    hdr->len = htons(len);
-
+void ofm_set_action(ofp_action_header* hdr, uint16_t type, uint16_t port,
+                    const uint8_t addr[]) {
     if (type == OFPAT_OUTPUT) {
         ofp_action_output* action = (ofp_action_output*)hdr;
+        ofm_action_init(hdr, type, sizeof(*action));
+
         action->port = htons(port);
-        action->max_len = htons(max_len);
+        if (port == OFPP_CONTROLLER) {
+            action->max_len = htons(RF_MAX_PACKET_SIZE);
+        }
     } else if (type == OFPAT_SET_DL_SRC || type == OFPAT_SET_DL_DST) {
         ofp_action_dl_addr* action = (ofp_action_dl_addr*)hdr;
+        ofm_action_init(hdr, type, sizeof(*action));
+
         std::memcpy(&action->dl_addr, addr, OFP_ETH_ALEN);
     }
 }
@@ -213,6 +223,46 @@ void ofm_set_command(ofp_flow_mod* ofm, enum ofp_flow_mod_command cmd,
 }
 
 /**
+ * Set FlowMod attributes
+ *
+ * ofm: FlowMod to modify
+ * cmd: Command - OFPFC_*
+ */
+void ofm_set_command(ofp_flow_mod* ofm, enum ofp_flow_mod_command cmd) {
+    ofm_set_command(ofm, cmd, OFP_BUFFER_NONE, OFP_FLOW_PERMANENT,
+                    OFP_FLOW_PERMANENT, OFPP_NONE);
+}
+
+/**
+ * Convert the given CIDR mask to an OpenFlow 1.0 match bitmask
+ *
+ * mask: CIDR mask, eg 24
+ * shift: OpenFlow shift value (OFPFW_NW_*_SHIFT)
+ */
+uint32_t ofp_get_mask(uint8_t mask, int shift) {
+    return ((uint32_t) 31 + mask) << shift;
+}
+
+/**
+ * Convert the given full IPv4 mask to an OpenFlow 1.0 match bitmask
+ *
+ * ip_mask: Full IPv4 bitmask in network byte-order, eg 255.255.255.0
+ * shift: OpenFlow shift value (OFPFW_NW_*_SHIFT)
+ */
+uint32_t ofp_get_mask(struct in_addr ip, int shift) {
+    uint8_t cidr_mask = 0;
+    uint32_t ip_mask = ntohl(ip.s_addr);
+
+    /* Convert to CIDR mask */
+    while (ip_mask & (1<<31)) {
+        cidr_mask++;
+        ip_mask <<= 1;
+    }
+
+    return ofp_get_mask(cidr_mask, shift);
+}
+
+/**
  * Create the OpenFlow configuration message that corresponds to the RouteFlow
  * DATAPATH_CONFIG_OPERATION
  *
@@ -232,12 +282,10 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
     ofm_init(ofm, size);
 
     if (operation == DC_CLEAR_FLOW_TABLE) {
-        ofm_set_command(ofm, OFPFC_DELETE, 0, OFP_FLOW_PERMANENT,
-                        OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm_set_command(ofm, OFPFC_DELETE);
         ofm->priority = htons(0);
     } else if (operation == DC_DROP_ALL) {
-        ofm_set_command(ofm, OFPFC_ADD, 0, OFP_FLOW_PERMANENT,
-                        OFP_FLOW_PERMANENT, OFPP_NONE);
+        ofm_set_command(ofm, OFPFC_ADD);
         /* No action implies discard. */
         ofm->priority = htons(1);
     } else {
@@ -285,10 +333,8 @@ MSG create_config_msg(DATAPATH_CONFIG_OPERATION operation) {
                 break;
         }
 
-        ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT,
-                        OFP_FLOW_PERMANENT, OFPP_NONE);
-        ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output),
-                       OFPP_CONTROLLER, RF_MAX_PACKET_SIZE, 0);
+        ofm_set_command(ofm, OFPFC_ADD);
+        ofm_set_action(ofm->actions, OFPAT_OUTPUT, OFPP_CONTROLLER, 0);
     }
 
     return msg_new((uint8_t*) &ofm->header, size);
@@ -319,10 +365,9 @@ MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[],
     if (MATCH_L2) {
         ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
     }
-    ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
+    ofm_match_nw(ofm, ofp_get_mask(mask, OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
-    ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, OFP_FLOW_PERMANENT,
-                    OFP_FLOW_PERMANENT, OFPP_NONE);
+    ofm_set_command(ofm, OFPFC_ADD);
 
     if (mask == 32) {
         ofm->idle_timeout = htons(300);
@@ -333,18 +378,15 @@ MSG create_flow_install_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[],
     uint8_t *pActions = (uint8_t *) ofm->actions;
 
     /*Action: change the dst MAC address.*/
-    ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_DST,
-                   sizeof(ofp_action_dl_addr), 0, 0, dstMac);
+    ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_DST, 0, dstMac);
     pActions += sizeof(ofp_action_dl_addr);
 
     /*Action: change the src MAC address.*/
-    ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_SRC,
-                   sizeof(ofp_action_dl_addr), 0, 0, srcMac);
+    ofm_set_action((ofp_action_header*)pActions, OFPAT_SET_DL_SRC, 0, srcMac);
     pActions += sizeof(ofp_action_dl_addr);
 
     /*Action: forward to port dstPort. */
-    ofm_set_action((ofp_action_header*) pActions, OFPAT_OUTPUT,
-                   sizeof(ofp_action_output), dstPort, 0, 0);
+    ofm_set_action((ofp_action_header*) pActions, OFPAT_OUTPUT, dstPort, 0);
 
     return msg_new((uint8_t*) &ofm->header, size);
 }
@@ -371,11 +413,10 @@ MSG create_flow_remove_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
         ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
     }
 
-    ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
+    ofm_match_nw(ofm, ofp_get_mask(mask, OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
-    ofm_set_command(ofm, OFPFC_DELETE_STRICT, UINT32_MAX, 0,
-                    OFP_FLOW_PERMANENT, OFPP_NONE);
+    ofm_set_command(ofm, OFPFC_DELETE_STRICT);
 
     return msg_new((uint8_t*) &ofm->header, size);
 }
@@ -404,12 +445,12 @@ MSG create_temporary_flow_msg(uint32_t ip, uint32_t mask, uint8_t srcMac[]) {
         ofm_match_dl(ofm, OFPFW_DL_DST, 0, 0, srcMac);
     }
 
-    ofm_match_nw(ofm, (((uint32_t) 31 + mask) << OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
+    ofm_match_nw(ofm, ofp_get_mask(mask, OFPFW_NW_DST_SHIFT), 0, 0, 0, ip);
 
     ofm->priority = htons((OFP_DEFAULT_PRIORITY + mask));
-    ofm_set_command(ofm, OFPFC_ADD, UINT32_MAX, 60, OFP_FLOW_PERMANENT,
+    ofm_set_command(ofm, OFPFC_ADD, OFP_BUFFER_NONE, 60, OFP_FLOW_PERMANENT,
                     OFPP_NONE);
-    ofm_set_action(ofm->actions, OFPAT_OUTPUT, sizeof(ofp_action_output), 0, 0, 0);
+    ofm_set_action(ofm->actions, OFPAT_OUTPUT, 0, 0);
 
     return msg_new((uint8_t*) &ofm->header, size);
 }

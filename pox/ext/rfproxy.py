@@ -222,7 +222,17 @@ class RFProcessor(IPC.IPCMessageProcessor):
                          msg.get_address(), msg.get_netmask(),
                          msg.get_src_hwaddress(), msg.get_dst_hwaddress(),
                          msg.get_dst_port())
-
+        elif type_ == ROUTE_MOD:
+            try:
+                ofmsg = create_flow_mod(msg)
+            except Warning as e:
+                log.info("Error creating FlowMod: {}" % str(e))
+            if send_of_msg(msg.get_id(), ofmsg) == SUCCESS:
+                log.info("routemod sent to datapath (dp_id=%s)",
+                         format_id(msg.get_id()))
+            else:
+                log.info("Error sending routemod to datapath (dp_id=%s)",
+                         format_id(msg.get_id()))
         if type_ == DATA_PLANE_MAP:
             table.update_dp_port(msg.get_dp_id(), msg.get_dp_port(),
                                  msg.get_vs_id(), msg.get_vs_port())

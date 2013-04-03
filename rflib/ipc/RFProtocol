@@ -53,3 +53,10 @@ DataPlaneMap
     i32 dp_port
     i64 vs_id
     i32 vs_port
+
+RouteMod
+    i8 mod
+    i64 id
+    match[] matches
+    action[] actions
+    option[] options
