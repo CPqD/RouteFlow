@@ -67,46 +67,39 @@ kill_process_tree() {
 reset() {
     init=$1;
     if [ $init -eq 1 ]; then
-        echo_bold "-> Starting OVS daemons...";
-        # Always try to start OVS
-        ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
-	                         --remote=db:Open_vSwitch,manager_options \
-	                         --private-key=db:SSL,private_key \
-	                         --certificate=db:SSL,certificate \
-	                         --bootstrap-ca-cert=db:SSL,ca_cert \
-	                         --pidfile --detach
-        ovs-vswitchd --pidfile --detach
+        echo_bold "-> Starting $SCRIPT_NAME";
     else
         echo_bold "-> Stopping child processes...";
         kill_process_tree 1 $$
     fi
 
-    sudo ovs-vsctl del-br sw0 &> /dev/null;
-    sudo ovs-vsctl del-br br0 &> /dev/null;
     sudo ovs-vsctl del-br dp0 &> /dev/null;
     sudo ovs-vsctl del-br switch1 &> /dev/null;
     sudo ovs-vsctl emer-reset &> /dev/null;
 
     echo_bold "-> Stopping and resetting LXC VMs...";
-    lxc-stop -n rfvm1 &> /dev/null;
-    lxc-stop -n b1 &> /dev/null;
-    lxc-stop -n b2 &> /dev/null;
+    lxc-shutdown -n rfvm1;
+    lxc-shutdown -n b1;
+    lxc-shutdown -n b2;
 
+    echo_bold "-> Deleting data from previous runs...";
+    mongo db --eval "
+        db.getCollection('rftable').drop(); 
+        db.getCollection('rfconfig').drop(); 
+        db.getCollection('rfstats').drop(); 
+        db.getCollection('rfclient<->rfserver').drop(); 
+        db.getCollection('rfserver<->rfproxy').drop();
+    "
     rm -rf $LXCDIR/rfvm1/rootfs/var/run/network/ifstate;
     rm -rf $LXCDIR/b1/rootfs/var/run/network/ifstate;
     rm -rf $LXCDIR/b2/rootfs/var/run/network/ifstate;
-
-    echo_bold "-> Deleting data from previous runs...";
-    rm -rf $HOME/db;
     rm -rf /var/lib/lxc/rfvm1/rootfs/opt/rfclient;
 }
 reset 1
 trap "reset 0; exit 0" INT
 
 if [ "$ACTION" != "RESET" ]; then
-    echo_bold "-> Starting MongoDB..."
-    mkdir $HOME/db
-    mongod --quiet --dbpath $HOME/db --logpath /dev/null &
+    echo_bold "-> Waiting for MongoDB..."
     wait_port_listen $MONGODB_PORT
 
     echo_bold "-> Starting the rfvm1 virtual machine..."
@@ -116,23 +109,17 @@ if [ "$ACTION" != "RESET" ]; then
     # Copy the rfclient executable
     cp build/rfclient /var/lib/lxc/rfvm1/rootfs/opt/rfclient/rfclient
 
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvm1/rootfs/usr/lib
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvm1/rootfs/usr/lib
-
     # We sleep for a few seconds to wait for the interfaces to go up
     echo "#!/bin/sh" > /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
-    echo "sleep 5" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh    
+    echo "sleep 3" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh    
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
     chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
     lxc-start -n rfvm1 -d
 
-    echo_bold "-> Starting the management network (br0)..."
-	ovs-vsctl add-br br0 \
-		-- add-port br0 rfvm1.0
-    ifconfig br0 up
-    ifconfig br0 192.169.1.1
+    echo_bold "-> Setting up the management bridge (lxcbr0)..."
+    ifconfig lxcbr0 192.169.1.1 up
 
     echo_bold "-> Starting the controller ($ACTION) and RFPRoxy..."
     case "$ACTION" in

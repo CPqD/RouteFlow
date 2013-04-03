@@ -1,2 +1,0 @@
-proc            /var/lib/lxc/rfvmB/rootfs/proc         proc    nodev,noexec,nosuid 0 0
-sysfs           /var/lib/lxc/rfvmB/rootfs/sys          sysfs defaults  0 0

@@ -1,8 +1,0 @@
-{
-    "components": [
-        {
-            "name": "snmp" ,
-            "library": "snmp" 
-        }
-    ]
-}

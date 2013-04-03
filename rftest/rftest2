@@ -24,11 +24,12 @@ case "$1" in
     echo "Options: "
     echo "    --pox: run using POX"
     echo "    --nox: run using NOX"
-    echo "    --reset: stop running and clear data from previous executions"
+    echo "    --reset: stop running and clear data from previous runs"
     exit
     ;;
 esac
 
+SCRIPT_NAME="rftest2"
 LXCDIR=/var/lib/lxc
 RF_HOME=..
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
@@ -67,39 +68,30 @@ kill_process_tree() {
 reset() {
     init=$1;
     if [ $init -eq 1 ]; then
-        echo_bold "-> Starting OVS daemons...";
-        # Always try to start OVS
-        ovsdb-server --remote=punix:/usr/local/var/run/openvswitch/db.sock \
-                             --remote=db:Open_vSwitch,manager_options \
-                             --private-key=db:SSL,private_key \
-                             --certificate=db:SSL,certificate \
-                             --bootstrap-ca-cert=db:SSL,ca_cert \
-                             --pidfile --detach
-        ovs-vswitchd --pidfile --detach
+        echo_bold "-> Starting $SCRIPT_NAME";
     else
         echo_bold "-> Stopping child processes...";
         kill_process_tree 1 $$
     fi
 
-    sudo ovs-vsctl del-br sw0 &> /dev/null;
-    sudo ovs-vsctl del-br br0 &> /dev/null;
-    sudo ovs-vsctl del-br dp0 &> /dev/null;
-    sudo ovs-vsctl del-br switch1 &> /dev/null;
-    sudo ovs-vsctl emer-reset &> /dev/null;
+    ovs-vsctl del-br dp0 &> /dev/null;
+    ovs-vsctl emer-reset &> /dev/null;
 
     echo_bold "-> Stopping and resetting LXC VMs...";
-    lxc-stop -n rfvmA;
-    lxc-stop -n rfvmB;
-    lxc-stop -n rfvmC;
-    lxc-stop -n rfvmD;
+    lxc-shutdown -n rfvmA;
+    lxc-shutdown -n rfvmB;
+    lxc-shutdown -n rfvmC;
+    lxc-shutdown -n rfvmD;
 
-    rm -rf $LXCDIR/rfvmA/rootfs/var/run/network/ifstate;
-    rm -rf $LXCDIR/rfvmB/rootfs/var/run/network/ifstate;
-    rm -rf $LXCDIR/rfvmC/rootfs/var/run/network/ifstate;
-    rm -rf $LXCDIR/rfvmD/rootfs/var/run/network/ifstate;
-
-    echo_bold "-> Deleting data from previous runs...";
-    rm -rf $HOME/db;
+    echo_bold "-> Deleting (previous) run data...";
+    mongo db --eval "
+        db.getCollection('rftable').drop(); 
+        db.getCollection('rfconfig').drop(); 
+        db.getCollection('rfstats').drop(); 
+        db.getCollection('rfclient<->rfserver').drop(); 
+        db.getCollection('rfserver<->rfproxy').drop();
+    "
+        
     rm -rf /var/lib/lxc/rfvmA/rootfs/opt/rfclient;
     rm -rf /var/lib/lxc/rfvmB/rootfs/opt/rfclient;
     rm -rf /var/lib/lxc/rfvmC/rootfs/opt/rfclient;
@@ -109,12 +101,10 @@ reset 1
 trap "reset 0; exit 0" INT
 
 if [ "$ACTION" != "RESET" ]; then
-    echo_bold "-> Starting MongoDB..."
-    mkdir $HOME/db
-    mongod --quiet --dbpath $HOME/db --logpath /dev/null &
+    echo_bold "-> Waiting for MongoDB..."
     wait_port_listen $MONGODB_PORT
 
-    echo_bold "-> Starting the virtual machines..."
+    echo_bold "-> Configuring the virtual machines..."
     # Create the rfclient dir
     mkdir /var/lib/lxc/rfvmA/rootfs/opt/rfclient
     mkdir /var/lib/lxc/rfvmB/rootfs/opt/rfclient
@@ -127,33 +117,24 @@ if [ "$ACTION" != "RESET" ]; then
     cp build/rfclient /var/lib/lxc/rfvmC/rootfs/opt/rfclient/rfclient
     cp build/rfclient /var/lib/lxc/rfvmD/rootfs/opt/rfclient/rfclient
 
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmA/rootfs/usr/lib
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmA/rootfs/usr/lib
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmB/rootfs/usr/lib
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmB/rootfs/usr/lib
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmC/rootfs/usr/lib
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmC/rootfs/usr/lib
-    cp /usr/lib/libmongoclient.a /var/lib/lxc/rfvmD/rootfs/usr/lib
-    cp /usr/lib/libmongoclient.so /var/lib/lxc/rfvmD/rootfs/usr/lib
-
     # We sleep for a few seconds to wait for the interfaces to go up
     echo "#!/bin/sh" > /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
-    echo "sleep 5" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
+    echo "sleep 3" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
 
     echo "#!/bin/sh" > /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
-    echo "sleep 5" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
+    echo "sleep 3" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
 
     echo "#!/bin/sh" > /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
-    echo "sleep 5" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
+    echo "sleep 3" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
 
     echo "#!/bin/sh" > /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
-    echo "sleep 5" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
+    echo "sleep 3" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
     echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
     echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
 
@@ -162,19 +143,14 @@ if [ "$ACTION" != "RESET" ]; then
     chmod +x /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
     chmod +x /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
 
+    echo_bold "-> Starting the virtual machines..."
     lxc-start -n rfvmA -d
     lxc-start -n rfvmB -d
     lxc-start -n rfvmC -d
     lxc-start -n rfvmD -d
 
-    echo_bold "-> Starting the management network (br0)..."
-    ovs-vsctl add-br br0
-    ovs-vsctl add-port br0 rfvmA.0
-    ovs-vsctl add-port br0 rfvmB.0
-    ovs-vsctl add-port br0 rfvmC.0
-    ovs-vsctl add-port br0 rfvmD.0
-    ifconfig br0 up
-    ifconfig br0 192.169.1.1
+    echo_bold "-> Setting up the management bridge (lxcbr0)..."
+    ifconfig lxcbr0 192.169.1.1 up
 
     echo_bold "-> Starting the controller ($ACTION) and RFPRoxy..."
     case "$ACTION" in
@@ -212,12 +188,11 @@ if [ "$ACTION" != "RESET" ]; then
     ovs-vsctl add-port dp0 rfvmD.4
     ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
     ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
-    ifconfig dp0 up
 
     echo_bold "---"
     echo_bold "This test is up and running."
     echo_bold "Start Mininet:"
-    echo_bold "  $ sudo mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo"
+    echo_bold "  $ mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo"
     echo_bold "    --controller=remote --ip=ADDRESS --port=$CONTROLLER_PORT"
     echo_bold "Replace ADDRESS with the address of this host's interface connected "
     echo_bold "to the Mininet VM."

@@ -1,32 +1,45 @@
 lxc.utsname = rfvmD
 lxc.network.type = veth
 lxc.network.flags = up
-lxc.network.veth.pair = rfvmD.0
-lxc.network.ipv4 = 192.169.1.104/24
 lxc.network.hwaddr = 02:d0:d0:d0:d0:d0
+lxc.network.link=lxcbr0
+
 lxc.network.type = veth
 lxc.network.flags = up
 lxc.network.veth.pair = rfvmD.1
 lxc.network.hwaddr = 02:d1:d1:d1:d1:d1
+
 lxc.network.type = veth
 lxc.network.flags = up
 lxc.network.veth.pair = rfvmD.2
 lxc.network.hwaddr = 02:d2:d2:d2:d2:d2
+
 lxc.network.type = veth
 lxc.network.flags = up
 lxc.network.veth.pair = rfvmD.3
 lxc.network.hwaddr = 02:d3:d3:d3:d3:d3
+
 lxc.network.type = veth
 lxc.network.flags = up
 lxc.network.veth.pair = rfvmD.4
 lxc.network.hwaddr = 02:d4:d4:d4:d4:d4
 
+lxc.devttydir = lxc
 lxc.tty = 4
 lxc.pts = 1024
 lxc.rootfs = /var/lib/lxc/rfvmD/rootfs
 lxc.mount  = /var/lib/lxc/rfvmD/fstab
+lxc.arch = amd64
+lxc.cap.drop = sys_module mac_admin
+lxc.pivotdir = lxc_putold
+
+# uncomment the next line to run the container unconfined:
+#lxc.aa_profile = unconfined
 
 lxc.cgroup.devices.deny = a
+# Allow any mknod (but not using the node)
+lxc.cgroup.devices.allow = c *:* m
+lxc.cgroup.devices.allow = b *:* m
 # /dev/null and zero
 lxc.cgroup.devices.allow = c 1:3 rwm
 lxc.cgroup.devices.allow = c 1:5 rwm
@@ -42,3 +55,13 @@ lxc.cgroup.devices.allow = c 136:* rwm
 lxc.cgroup.devices.allow = c 5:2 rwm
 # rtc
 lxc.cgroup.devices.allow = c 254:0 rwm
+#fuse
+lxc.cgroup.devices.allow = c 10:229 rwm
+#tun
+lxc.cgroup.devices.allow = c 10:200 rwm
+#full
+lxc.cgroup.devices.allow = c 1:7 rwm
+#hpet
+lxc.cgroup.devices.allow = c 10:228 rwm
+#kvm
+lxc.cgroup.devices.allow = c 10:232 rwm
