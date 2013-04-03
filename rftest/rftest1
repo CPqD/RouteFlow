@@ -1,35 +1,15 @@
 #!/bin/bash
 
-MONGODB_PORT=27017
-CONTROLLER_PORT=6633
-
 if [ "$EUID" != "0" ]; then
   echo "You must be root to run this script."
   exit 1
 fi
 
-ACTION=""
-case "$1" in
---pox)
-    ACTION="POX"
-    ;;
---nox)
-    ACTION="NOX"
-    ;;
---reset)
-    ACTION="RESET"
-    ;;
-*)
-    echo "Invalid argument: $1"
-    echo "Options: "
-    echo "    --pox: run using POX"
-    echo "    --nox: run using NOX"
-    echo "    --reset: stop running and clear data from previous executions"
-    exit
-    ;;
-esac
-
+SCRIPT_NAME="rftest1"
 LXCDIR=/var/lib/lxc
+MONGODB_CONF=/etc/mongodb.conf
+MONGODB_PORT=27017
+CONTROLLER_PORT=6633
 RF_HOME=..
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
 export PYTHONPATH=$PYTHONPATH:$RF_HOME
@@ -98,73 +78,65 @@ reset() {
 reset 1
 trap "reset 0; exit 0" INT
 
-if [ "$ACTION" != "RESET" ]; then
-    echo_bold "-> Waiting for MongoDB..."
-    wait_port_listen $MONGODB_PORT
+echo_bold "-> Setting up the management bridge (lxcbr0)..."
+ifconfig lxcbr0 192.169.1.1 up
 
-    echo_bold "-> Starting the rfvm1 virtual machine..."
-    # Create the rfclient dir
-    mkdir /var/lib/lxc/rfvm1/rootfs/opt/rfclient
+echo_bold "-> Setting up MongoDB..."
+sed -i "/bind_ip/c\bind_ip = 127.0.0.1,192.169.1.1" $MONGODB_CONF
+service mongodb restart
+wait_port_listen $MONGODB_PORT
 
-    # Copy the rfclient executable
-    cp build/rfclient /var/lib/lxc/rfvm1/rootfs/opt/rfclient/rfclient
+echo_bold "-> Starting the rfvm1 virtual machine..."
+# Create the rfclient dir
+mkdir /var/lib/lxc/rfvm1/rootfs/opt/rfclient
 
-    # We sleep for a few seconds to wait for the interfaces to go up
-    echo "#!/bin/sh" > /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
-    echo "sleep 3" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh    
-    echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
+# Copy the rfclient executable
+cp build/rfclient /var/lib/lxc/rfvm1/rootfs/opt/rfclient/rfclient
 
-    chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
+# We sleep for a few seconds to wait for the interfaces to go up
+echo "#!/bin/sh" > /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
+echo "sleep 3" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh    
+echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
-    lxc-start -n rfvm1 -d
+chmod +x /var/lib/lxc/rfvm1/rootfs/root/run_rfclient.sh
 
-    echo_bold "-> Setting up the management bridge (lxcbr0)..."
-    ifconfig lxcbr0 192.169.1.1 up
+lxc-start -n rfvm1 -d
 
-    echo_bold "-> Starting the controller ($ACTION) and RFPRoxy..."
-    case "$ACTION" in
-    POX)
-        cd pox
-        ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
-        cd - &> /dev/null
-        ;;
-    NOX)
-        cd nox/build/src
-        ./nox_core -i ptcp:$CONTROLLER_PORT rfproxy --verbose="rfproxy:ANY:INFO" &
-        cd - &> /dev/null
-        ;;
-    esac
-    wait_port_listen $CONTROLLER_PORT
+echo_bold "-> Starting the controller and RFPRoxy..."
+cd pox
+./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
+cd -
+wait_port_listen $CONTROLLER_PORT
 
-    echo_bold "-> Starting RFServer..."
-    ./rfserver/rfserver.py rftest/rftest1config.csv &
+echo_bold "-> Starting RFServer..."
+./rfserver/rfserver.py rftest/rftest1config.csv &
 
-    echo_bold "-> Starting the control plane network (dp0 VS)..."
-	ovs-vsctl add-br dp0
-	ovs-vsctl add-port dp0 rfvm1.1
-	ovs-vsctl add-port dp0 rfvm1.2
-	ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
-	ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
-    ifconfig dp0 up
+echo_bold "-> Starting the control plane network (dp0 VS)..."
+ovs-vsctl add-br dp0
+ovs-vsctl add-port dp0 rfvm1.1
+ovs-vsctl add-port dp0 rfvm1.2
+ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
+ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
+ifconfig dp0 up
 
-    echo_bold "-> Starting the sample network..."
-    lxc-start -n b1 -d
-    lxc-start -n b2 -d
-	ovs-vsctl add-br switch1
-	ovs-vsctl add-port switch1 b1.0
-	ovs-vsctl add-port switch1 b2.0
-	ovs-vsctl set Bridge switch1 other-config:datapath-id=0000000000000099
-	ovs-vsctl set-controller switch1 tcp:127.0.0.1:$CONTROLLER_PORT
-    ifconfig switch1 up
+echo_bold "-> Starting the sample network..."
+lxc-start -n b1 -d
+lxc-start -n b2 -d
+ovs-vsctl add-br switch1
+ovs-vsctl add-port switch1 b1.0
+ovs-vsctl add-port switch1 b2.0
+ovs-vsctl set Bridge switch1 other-config:datapath-id=0000000000000099
+ovs-vsctl set-controller switch1 tcp:127.0.0.1:$CONTROLLER_PORT
+ifconfig switch1 up
 
-    echo_bold "---"
-    echo_bold "This test is up and running."
-    echo_bold "Try pinging host b2 from host b1:"
-    echo_bold "  $ sudo lxc-console -n b1"
-    echo_bold "Login and run:"
-    echo_bold "  $ ping 172.31.2.2"
-    echo_bold "You can stop this test by pressing Ctrl+C."
-    echo_bold "---"
-    wait
-fi
+echo_bold "---"
+echo_bold "This test is up and running."
+echo_bold "Try pinging host b2 from host b1:"
+echo_bold "  $ sudo lxc-console -n b1"
+echo_bold "Login and run:"
+echo_bold "  $ ping 172.31.2.2"
+echo_bold "You can stop this test by pressing Ctrl+C."
+echo_bold "---"
+wait
+
 exit 0

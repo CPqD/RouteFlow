@@ -1,36 +1,15 @@
 #!/bin/bash
 
-MONGODB_PORT=27017
-CONTROLLER_PORT=6633
-
 if [ "$EUID" != "0" ]; then
   echo "You must be root to run this script."
   exit 1
 fi
 
-ACTION=""
-case "$1" in
---pox)
-    ACTION="POX"
-    ;;
---nox)
-    ACTION="NOX"
-    ;;
---reset)
-    ACTION="RESET"
-    ;;
-*)
-    echo "Invalid argument: $1"
-    echo "Options: "
-    echo "    --pox: run using POX"
-    echo "    --nox: run using NOX"
-    echo "    --reset: stop running and clear data from previous runs"
-    exit
-    ;;
-esac
-
 SCRIPT_NAME="rftest2"
 LXCDIR=/var/lib/lxc
+MONGODB_CONF=/etc/mongodb.conf
+MONGODB_PORT=27017
+CONTROLLER_PORT=6633
 RF_HOME=..
 export PATH=$PATH:/usr/local/bin:/usr/local/sbin
 export PYTHONPATH=$PYTHONPATH:$RF_HOME
@@ -100,106 +79,98 @@ reset() {
 reset 1
 trap "reset 0; exit 0" INT
 
-if [ "$ACTION" != "RESET" ]; then
-    echo_bold "-> Waiting for MongoDB..."
-    wait_port_listen $MONGODB_PORT
+echo_bold "-> Setting up the management bridge (lxcbr0)..."
+ifconfig lxcbr0 192.169.1.1 up
 
-    echo_bold "-> Configuring the virtual machines..."
-    # Create the rfclient dir
-    mkdir /var/lib/lxc/rfvmA/rootfs/opt/rfclient
-    mkdir /var/lib/lxc/rfvmB/rootfs/opt/rfclient
-    mkdir /var/lib/lxc/rfvmC/rootfs/opt/rfclient
-    mkdir /var/lib/lxc/rfvmD/rootfs/opt/rfclient
+echo_bold "-> Setting up MongoDB..."
+sed -i "/bind_ip/c\bind_ip = 127.0.0.1,192.169.1.1" $MONGODB_CONF
+service mongodb restart
+wait_port_listen $MONGODB_PORT
 
-    # Copy the rfclient executable
-    cp build/rfclient /var/lib/lxc/rfvmA/rootfs/opt/rfclient/rfclient
-    cp build/rfclient /var/lib/lxc/rfvmB/rootfs/opt/rfclient/rfclient
-    cp build/rfclient /var/lib/lxc/rfvmC/rootfs/opt/rfclient/rfclient
-    cp build/rfclient /var/lib/lxc/rfvmD/rootfs/opt/rfclient/rfclient
+echo_bold "-> Configuring the virtual machines..."
+# Create the rfclient dir
+mkdir /var/lib/lxc/rfvmA/rootfs/opt/rfclient
+mkdir /var/lib/lxc/rfvmB/rootfs/opt/rfclient
+mkdir /var/lib/lxc/rfvmC/rootfs/opt/rfclient
+mkdir /var/lib/lxc/rfvmD/rootfs/opt/rfclient
 
-    # We sleep for a few seconds to wait for the interfaces to go up
-    echo "#!/bin/sh" > /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
-    echo "sleep 3" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
-    echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
-    echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
+# Copy the rfclient executable
+cp build/rfclient /var/lib/lxc/rfvmA/rootfs/opt/rfclient/rfclient
+cp build/rfclient /var/lib/lxc/rfvmB/rootfs/opt/rfclient/rfclient
+cp build/rfclient /var/lib/lxc/rfvmC/rootfs/opt/rfclient/rfclient
+cp build/rfclient /var/lib/lxc/rfvmD/rootfs/opt/rfclient/rfclient
 
-    echo "#!/bin/sh" > /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
-    echo "sleep 3" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
-    echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
-    echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
+# We sleep for a few seconds to wait for the interfaces to go up
+echo "#!/bin/sh" > /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
+echo "sleep 3" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
+echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
+echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
 
-    echo "#!/bin/sh" > /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
-    echo "sleep 3" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
-    echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
-    echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
+echo "#!/bin/sh" > /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
+echo "sleep 3" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
+echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
+echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
 
-    echo "#!/bin/sh" > /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
-    echo "sleep 3" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
-    echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
-    echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
+echo "#!/bin/sh" > /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
+echo "sleep 3" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
+echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
+echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
 
-    chmod +x /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
-    chmod +x /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
-    chmod +x /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
-    chmod +x /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
+echo "#!/bin/sh" > /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
+echo "sleep 3" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
+echo "/etc/init.d/quagga start" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
+echo "/opt/rfclient/rfclient > /var/log/rfclient.log" >> /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
 
-    echo_bold "-> Starting the virtual machines..."
-    lxc-start -n rfvmA -d
-    lxc-start -n rfvmB -d
-    lxc-start -n rfvmC -d
-    lxc-start -n rfvmD -d
+chmod +x /var/lib/lxc/rfvmA/rootfs/root/run_rfclient.sh
+chmod +x /var/lib/lxc/rfvmB/rootfs/root/run_rfclient.sh
+chmod +x /var/lib/lxc/rfvmC/rootfs/root/run_rfclient.sh
+chmod +x /var/lib/lxc/rfvmD/rootfs/root/run_rfclient.sh
 
-    echo_bold "-> Setting up the management bridge (lxcbr0)..."
-    ifconfig lxcbr0 192.169.1.1 up
+echo_bold "-> Starting the virtual machines..."
+lxc-start -n rfvmA -d
+lxc-start -n rfvmB -d
+lxc-start -n rfvmC -d
+lxc-start -n rfvmD -d
 
-    echo_bold "-> Starting the controller ($ACTION) and RFPRoxy..."
-    case "$ACTION" in
-    POX)
-        cd pox
-        ./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
-        cd - &> /dev/null
-        ;;
-    NOX)
-        cd nox/build/src
-        ./nox_core -i ptcp:$CONTROLLER_PORT rfproxy --verbose="rfproxy:ANY:INFO" &
-        cd - &> /dev/null
-        ;;
-    esac
-    wait_port_listen $CONTROLLER_PORT
+echo_bold "-> Starting the controller and RFPRoxy..."
+cd pox
+./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
+cd -
+wait_port_listen $CONTROLLER_PORT
 
-    echo_bold "-> Starting RFServer..."
-    ./rfserver/rfserver.py rftest/rftest2config.csv &
+echo_bold "-> Starting RFServer..."
+./rfserver/rfserver.py rftest/rftest2config.csv &
 
-    echo_bold "-> Starting the control plane network (dp0 VS)..."
-    ovs-vsctl add-br dp0
-    ovs-vsctl add-port dp0 rfvmA.1
-    ovs-vsctl add-port dp0 rfvmA.2
-    ovs-vsctl add-port dp0 rfvmA.3
-    ovs-vsctl add-port dp0 rfvmA.4
-    ovs-vsctl add-port dp0 rfvmB.1
-    ovs-vsctl add-port dp0 rfvmB.2
-    ovs-vsctl add-port dp0 rfvmB.3
-    ovs-vsctl add-port dp0 rfvmC.1
-    ovs-vsctl add-port dp0 rfvmC.2
-    ovs-vsctl add-port dp0 rfvmC.3
-    ovs-vsctl add-port dp0 rfvmD.1
-    ovs-vsctl add-port dp0 rfvmD.2
-    ovs-vsctl add-port dp0 rfvmD.3
-    ovs-vsctl add-port dp0 rfvmD.4
-    ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
-    ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
+echo_bold "-> Starting the control plane network (dp0 VS)..."
+ovs-vsctl add-br dp0
+ovs-vsctl add-port dp0 rfvmA.1
+ovs-vsctl add-port dp0 rfvmA.2
+ovs-vsctl add-port dp0 rfvmA.3
+ovs-vsctl add-port dp0 rfvmA.4
+ovs-vsctl add-port dp0 rfvmB.1
+ovs-vsctl add-port dp0 rfvmB.2
+ovs-vsctl add-port dp0 rfvmB.3
+ovs-vsctl add-port dp0 rfvmC.1
+ovs-vsctl add-port dp0 rfvmC.2
+ovs-vsctl add-port dp0 rfvmC.3
+ovs-vsctl add-port dp0 rfvmD.1
+ovs-vsctl add-port dp0 rfvmD.2
+ovs-vsctl add-port dp0 rfvmD.3
+ovs-vsctl add-port dp0 rfvmD.4
+ovs-vsctl set Bridge dp0 other-config:datapath-id=7266767372667673
+ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
 
-    echo_bold "---"
-    echo_bold "This test is up and running."
-    echo_bold "Start Mininet:"
-    echo_bold "  $ mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo"
-    echo_bold "    --controller=remote --ip=ADDRESS --port=$CONTROLLER_PORT"
-    echo_bold "Replace ADDRESS with the address of this host's interface connected "
-    echo_bold "to the Mininet VM."
-    echo_bold "Then try pinging everything:"
-    echo_bold "  > pingall"
-    echo_bold "You can stop this test by pressing CTRL+C."
-    echo_bold "---"
-    wait
-fi
+echo_bold "---"
+echo_bold "This test is up and running."
+echo_bold "Start Mininet:"
+echo_bold "  $ mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo"
+echo_bold "    --controller=remote --ip=ADDRESS --port=$CONTROLLER_PORT"
+echo_bold "Replace ADDRESS with the address of this host's interface connected "
+echo_bold "to the Mininet VM."
+echo_bold "Then try pinging everything:"
+echo_bold "  > pingall"
+echo_bold "You can stop this test by pressing CTRL+C."
+echo_bold "---"
+wait
+
 exit 0
