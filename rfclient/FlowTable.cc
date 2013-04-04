@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
-#include <netdb.h>
 #include <sys/socket.h>
 #include <time.h>
 
@@ -364,24 +363,15 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 
 void FlowTable::fakeReq(const char *hostAddr, const char *intf) {
     int s;
-    struct arpreq req;
-    struct hostent *hp;
-    struct sockaddr_in *sin;
+    struct sockaddr_in sin;
 
-    memset(&req, 0, sizeof(req));
+    memset(&sin, 0, sizeof(sin));
 
-    sin = (struct sockaddr_in *) &req.arp_pa;
-    sin->sin_family = AF_INET;
-    sin->sin_addr.s_addr = inet_addr(hostAddr);
+    sin.sin_family = AF_INET;
+    sin.sin_addr.s_addr = inet_addr(hostAddr);
 
-    // Cast to eliminate warning. in_addr.s_addr is uint32_t (netinet/in.h:141)
-    if (sin->sin_addr.s_addr == (uint32_t) -1) {
-        if (!(hp = gethostbyname(hostAddr))) {
-            fprintf(stderr, "ARP: %s ", hostAddr);
-            perror(NULL);
-            return;
-        }
-        memcpy(&sin->sin_addr, hp->h_addr, sizeof(sin->sin_addr));
+    if (sin.sin_addr.s_addr == INADDR_NONE) {
+        fprintf(stderr, "Invalid IP address for resolution. Dropping\n");
     }
 
     if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
