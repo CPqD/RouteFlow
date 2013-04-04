@@ -393,16 +393,33 @@ const MACAddress& FlowTable::getGateway(const IPAddress& gateway,
     // The MAC address of the next-hop is required as it is used to re-write
     // the layer 2 header before forwarding the packet.
     for (int tries = 0; tries < 50; tries++) {
-        boost::lock_guard<boost::mutex> lock(hostTableMutex);
-        map<string, HostEntry>::iterator iter;
-        iter = FlowTable::hostTable.find(gateway.toString());
-        if (iter != FlowTable::hostTable.end()) {
-            return (iter->second.hwaddress);
+        const MACAddress& host = findHost(gateway);
+        if (host != FlowTable::MAC_ADDR_NONE) {
+            return host;
         }
 
         FlowTable::fakeReq(gateway.toString().c_str(), iface.name.c_str());
         struct timespec sleep = {0, 20000000}; // 20ms
         nanosleep(&sleep, NULL);
+    }
+
+    return FlowTable::MAC_ADDR_NONE;
+}
+
+/**
+ * Find the MAC Address for the given host in a thread-safe manner.
+ *
+ * This searches the internal hostTable structure for the given host, and
+ * returns its MAC Address. If the host is unresolved, this will return
+ * FlowTable::MAC_ADDR_NONE. Neighbour Discovery is not performed by this
+ * function.
+ */
+const MACAddress& FlowTable::findHost(const IPAddress& host) {
+    boost::lock_guard<boost::mutex> lock(hostTableMutex);
+    map<string, HostEntry>::iterator iter;
+    iter = FlowTable::hostTable.find(host.toString());
+    if (iter != FlowTable::hostTable.end()) {
+        return iter->second.hwaddress;
     }
 
     return FlowTable::MAC_ADDR_NONE;

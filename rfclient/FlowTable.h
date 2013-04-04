@@ -124,6 +124,8 @@ class FlowTable {
         static int getInterface(const char *intf, const char *type,
                                 Interface* iface);
 
+        static const MACAddress& findHost(const IPAddress& host);
+
         static int setEthernet(RouteMod& rm, const Interface& local_iface,
                                const MACAddress& gateway);
         static int setIP(RouteMod& rm, const IPAddress& addr,
