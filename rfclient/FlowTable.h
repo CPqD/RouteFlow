@@ -13,71 +13,11 @@
 #include "types/MACAddress.h"
 #include "defs.h"
 
+#include "Interface.hh"
+#include "RouteEntry.hh"
+#include "HostEntry.hh"
+
 using namespace std;
-
-class Interface {
-    public:
-        uint32_t port;
-        string name;
-        IPAddress address;
-        IPAddress netmask;
-        MACAddress hwaddress;
-        bool active;
-
-        Interface() {
-            this->active = false;
-        }
-
-        Interface& operator=(const Interface& other) {
-            if (this != &other) {
-                this->port = other.port;
-                this->name = other.name;
-                this->address = other.address;
-                this->netmask = other.netmask;
-                this->hwaddress = other.hwaddress;
-                this->active = other.active;
-            }
-            return *this;
-        }
-
-        bool operator==(const Interface& other) const {
-            return
-                (this->port == other.port) and
-                (this->name == other.name) and
-                (this->address == other.address) and
-                (this->netmask == other.netmask) and
-                (this->hwaddress == other.hwaddress) and
-                (this->active == other.active);
-        }
-};
-
-class RouteEntry {
-    public:
-        IPAddress address;
-        IPAddress gateway;
-        IPAddress netmask;
-        Interface interface;
-
-        bool operator==(const RouteEntry& other) const {
-            return (this->address == other.address) and
-                (this->gateway == other.gateway) and
-                (this->netmask == other.netmask) and
-                (this->interface == other.interface);
-        }
-};
-
-class HostEntry {
-    public:
-        IPAddress address;
-        MACAddress hwaddress;
-        Interface interface;
-
-        bool operator==(const HostEntry& other) const {
-            return (this->address == other.address) and
-                (this->hwaddress == other.hwaddress) and
-                (this->interface == other.interface);
-        }
-};
 
 // TODO: recreate this module from scratch without all the static stuff.
 // It is a little bit challenging to devise a decent API due to netlink
