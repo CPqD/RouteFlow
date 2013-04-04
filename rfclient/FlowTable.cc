@@ -94,43 +94,47 @@ void FlowTable::GWResolverCb() {
     while (true) {
         boost::this_thread::interruption_point();
 
-        PendingRoute re;
-        FlowTable::pendingRoutes.wait_and_pop(re);
+        PendingRoute pr;
+        FlowTable::pendingRoutes.wait_and_pop(pr);
 
         RouteEntry* existingEntry = NULL;
-        std::list<RouteEntry>::iterator itRoutes = FlowTable::routeTable.begin();
-        for (; itRoutes != FlowTable::routeTable.end(); itRoutes++) {
-            if (re.second == (*itRoutes)) {
-                existingEntry = &(*itRoutes);
+        std::list<RouteEntry>::iterator iter = FlowTable::routeTable.begin();
+        for (; iter != FlowTable::routeTable.end(); iter++) {
+            if (pr.second == (*iter)) {
+                existingEntry = &(*iter);
                 break;
             }
         }
 
-        if (existingEntry != NULL && re.first == RMT_ADD) {
-            fprintf(stdout, "Received duplicate route addition\n");
+        if (existingEntry != NULL && pr.first == RMT_ADD) {
+            fprintf(stdout, "Received duplicate route addition for route %s\n",
+                    existingEntry->address.toString().c_str());
             continue;
         }
 
-        if (existingEntry == NULL && re.first == RMT_DELETE) {
-            fprintf(stdout, "Received route removal but route cannot be found.\n");
+        if (existingEntry == NULL && pr.first == RMT_DELETE) {
+            fprintf(stdout, "Received route removal for %s but route %s.\n",
+                    pr.second.address.toString().c_str(), "cannot be found");
             continue;
         }
 
-        /* If we can't resolve the gateway, put it to the end of the queue. */
-        const RouteEntry& dst = re.second;
-        if (getGateway(dst.gateway, dst.interface) == FlowTable::MAC_ADDR_NONE) {
-            FlowTable::pendingRoutes.push(re);
+        /* If we can't resolve the gateway, put it to the end of the queue.
+         * Routes with unresolvable gateways will constantly trigger this code,
+         * popping and re-pushing. */
+        const RouteEntry& re = pr.second;
+        if (getGateway(re.gateway, re.interface) == FlowTable::MAC_ADDR_NONE) {
+            FlowTable::pendingRoutes.push(pr);
             continue;
         }
 
-        FlowTable::sendToHw(re.first, re.second);
+        FlowTable::sendToHw(pr.first, pr.second);
 
-        if (re.first == RMT_ADD) {
-            FlowTable::routeTable.push_back(re.second);
-        } else if (re.first == RMT_DELETE) {
-            FlowTable::routeTable.remove(re.second);
+        if (pr.first == RMT_ADD) {
+            FlowTable::routeTable.push_back(pr.second);
+        } else if (pr.first == RMT_DELETE) {
+            FlowTable::routeTable.remove(pr.second);
         } else {
-            fprintf(stderr, "Received unexpected RouteModType (%d)\n", re.first);
+            fprintf(stderr, "Received unexpected RouteModType (%d)\n", pr.first);
         }
     }
 }
