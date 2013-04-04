@@ -40,7 +40,7 @@ class Interface {
             return *this;
         }
 
-        bool operator==(const Interface& other) {
+        bool operator==(const Interface& other) const {
             return
                 (this->port == other.port) and
                 (this->name == other.name) and
@@ -58,7 +58,7 @@ class RouteEntry {
         IPAddress netmask;
         Interface interface;
 
-        bool operator==(const RouteEntry& other) {
+        bool operator==(const RouteEntry& other) const {
             return (this->address == other.address) and
                 (this->gateway == other.gateway) and
                 (this->netmask == other.netmask) and
@@ -71,7 +71,8 @@ class HostEntry {
         IPAddress address;
         MACAddress hwaddress;
         Interface interface;
-        bool operator==(const HostEntry& other) {
+
+        bool operator==(const HostEntry& other) const {
             return (this->address == other.address) and
                 (this->hwaddress == other.hwaddress) and
                 (this->interface == other.interface);
