@@ -13,6 +13,12 @@ from rflib.types.Option import *
 
 log = core.getLogger("rfproxy")
 
+def ofm_match_port(ofm, match, value):
+    ofm.match.wildcards &= ~match;
+
+    if match & OFPFW_IN_PORT:
+        ofm.match.in_port = value
+
 def ofm_match_dl(ofm, match, value):
     ofm.match.wildcards &= ~match;
 
@@ -80,6 +86,8 @@ def create_flow_mod(routemod):
             ofm_match_tp(ofm, OFPFW_TP_SRC, match.get_value(), 0)
         elif match._type == RFMT_TP_DST:
             ofm_match_tp(ofm, OFPFW_TP_DST, 0, match.get_value())
+        elif match._type == RFMT_IN_PORT:
+            ofm_match_port(ofm, OFPFW_IN_PORT, match.get_value())
         elif match.optional():
             log.debug("Dropping unsupported Match (type: %s)" % option._type)
         else:
