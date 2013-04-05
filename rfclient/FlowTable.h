@@ -26,8 +26,6 @@ class FlowTable {
         static void RTPollingCb();
         static void HTPollingCb();
         static void GWResolverCb();
-        static void fakeReq(const char *hostAddr, const char *intf);
-        static const MACAddress& getGateway(const IPAddress&, const Interface&);
 
         static void clear();
         static void interrupt();
@@ -59,11 +57,14 @@ class FlowTable {
         static SyncQueue< std::pair<RouteModType,RouteEntry> > pendingRoutes;
         static list<RouteEntry> routeTable;
         static map<string, HostEntry> hostTable;
+        static map<string, int> pendingNeighbours;
 
         static bool is_port_down(uint32_t port);
         static int getInterface(const char *intf, const char *type,
                                 Interface* iface);
 
+        static int initiateND(const char *hostAddr);
+        static int resolveGateway(const IPAddress&, const Interface&);
         static const MACAddress& findHost(const IPAddress& host);
 
         static int setEthernet(RouteMod& rm, const Interface& local_iface,

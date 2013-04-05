@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
 #include <sys/socket.h>
@@ -47,6 +49,9 @@ SyncQueue<PendingRoute> FlowTable::pendingRoutes;
 list<RouteEntry> FlowTable::routeTable;
 boost::mutex hostTableMutex;
 map<string, HostEntry> FlowTable::hostTable;
+
+boost::mutex ndMutex;
+map<string, int> FlowTable::pendingNeighbours;
 
 // TODO: implement a way to pause the flow table updates when the VM is not
 //       associated with a valid datapath
@@ -121,7 +126,7 @@ void FlowTable::GWResolverCb() {
          * Routes with unresolvable gateways will constantly trigger this code,
          * popping and re-pushing. */
         const RouteEntry& re = pr.second;
-        if (getGateway(re.gateway, re.interface) == FlowTable::MAC_ADDR_NONE) {
+        if (resolveGateway(re.gateway, re.interface) != 1) {
             FlowTable::pendingRoutes.push(pr);
             continue;
         }
@@ -230,8 +235,25 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
     switch (n->nlmsg_type) {
         case RTM_NEWNEIGH: {
             FlowTable::sendToHw(RMT_ADD, hentry);
-            boost::lock_guard<boost::mutex> lock(hostTableMutex);
-            FlowTable::hostTable[hentry.address.toString()] = hentry;
+
+            string host = hentry.address.toString();
+            {
+                // Add to host table
+                boost::lock_guard<boost::mutex> lock(hostTableMutex);
+                FlowTable::hostTable[host] = hentry;
+            }
+            {
+                // If we have been attempting neighbour discovery for this
+                // host, then we can close the associated socket.
+                boost::lock_guard<boost::mutex> lock(ndMutex);
+                map<string, int>::iterator iter = pendingNeighbours.find(host);
+                if (iter != pendingNeighbours.end()) {
+                    if (close(iter->second) == -1) {
+                        perror("pendingNeighbours");
+                    }
+                    pendingNeighbours.erase(host);
+                }
+            }
 
             std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac
                       << std::endl;
@@ -361,8 +383,13 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
     return 0;
 }
 
-void FlowTable::fakeReq(const char *hostAddr, const char *intf) {
-    int s;
+/**
+ * Begins the neighbour discovery process to the specified host.
+ *
+ * Returns an open socket on success, or -1 on error.
+ */
+int FlowTable::initiateND(const char *hostAddr) {
+    int s, flags;
     struct sockaddr_in sin;
 
     memset(&sin, 0, sizeof(sin));
@@ -376,34 +403,51 @@ void FlowTable::fakeReq(const char *hostAddr, const char *intf) {
 
     if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
         perror("socket() failed");
-        return;
+        return -1;
     }
 
-    connect(s, (struct sockaddr *) sin, sizeof(struct sockaddr));
-    close(s);
+    // Prevent the connect() call from blocking
+    flags = fcntl(s, F_GETFL, 0);
+    if (fcntl(s, F_SETFL, flags | O_NONBLOCK) == -1) {
+        perror("fcntl() failed");
+        close(s);
+        return -1;
+    }
+
+    connect(s, (struct sockaddr *)&sin, sizeof(struct sockaddr));
+    return s;
 }
 
-const MACAddress& FlowTable::getGateway(const IPAddress& gateway,
-                                        const Interface& iface) {
+/**
+ * Initiates the gateway resolution process for the given host.
+ *
+ * Returns:
+ *  1 if the host has been resolved,
+ *  0 if address resolution is currently being performed
+ * -1 on error (usually an issue with the socket)
+ */
+int FlowTable::resolveGateway(const IPAddress& gateway,
+                              const Interface& iface) {
     if (is_port_down(iface.port)) {
-        return FlowTable::MAC_ADDR_NONE;
+        return -1;
     }
 
-    // We need to resolve the gateway's IP in order to install a route flow.
-    // The MAC address of the next-hop is required as it is used to re-write
-    // the layer 2 header before forwarding the packet.
-    for (int tries = 0; tries < 50; tries++) {
-        const MACAddress& host = findHost(gateway);
-        if (host != FlowTable::MAC_ADDR_NONE) {
-            return host;
-        }
+    string gateway_str = gateway.toString();
 
-        FlowTable::fakeReq(gateway.toString().c_str(), iface.name.c_str());
-        struct timespec sleep = {0, 20000000}; // 20ms
-        nanosleep(&sleep, NULL);
+    // If we already initiated neighbour discovery for this gateway, return.
+    boost::lock_guard<boost::mutex> lock(ndMutex);
+    if (pendingNeighbours.find(gateway_str) != pendingNeighbours.end()) {
+        return 1;
     }
 
-    return FlowTable::MAC_ADDR_NONE;
+    // Otherwise, we should go ahead and begin the process.
+    int sock = initiateND(gateway_str.c_str());
+    if (sock == -1) {
+        return -1;
+    }
+    FlowTable::pendingNeighbours[gateway_str] = sock;
+
+    return 0;
 }
 
 /**
@@ -469,7 +513,7 @@ int FlowTable::sendToHw(RouteModType mod, const RouteEntry& re) {
         return sendToHw(mod, re.address, re.netmask, re.interface,
                         FlowTable::MAC_ADDR_NONE);
     } else if (mod == RMT_ADD) {
-        const MACAddress& remoteMac = getGateway(re.gateway, re.interface);
+        const MACAddress& remoteMac = findHost(re.gateway);
         if (remoteMac == FlowTable::MAC_ADDR_NONE) {
             fprintf(stderr, "Cannot Resolve %s\n", gateway_str.c_str());
             return -1;
