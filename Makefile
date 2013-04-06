@@ -17,7 +17,7 @@ export CPP := g++
 export CFLAGS := -Wall -W
 export AR := ar
 
-all: build lib app nox
+all: build lib app #nox
 
 build:
 	@mkdir -p $(BUILD_DIR);
@@ -59,7 +59,7 @@ nox: lib
 	make -C $(BUILD_DIR)/nox; \
 	echo "done."
 
-clean: clean-libs clean-apps_obj clean-apps_bin clean-nox
+clean: clean-libs clean-apps_obj clean-apps_bin #clean-nox
 
 clean-nox:
 	@rm -rf $(BUILD_DIR)/nox
