@@ -219,6 +219,9 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             elif operation_id == DC_ICMP:
                 rm.add_match(Match.ETHERTYPE(ETHERTYPE_IP))
                 rm.add_match(Match.NW_PROTO(IPPROTO_ICMP))
+            elif operation_id == DC_ICMPV6:
+                rm.add_match(Match.ETHERTYPE(ETHERTYPE_IPV6))
+                rm.add_match(Match.NW_PROTO(IPPROTO_ICMPV6))
             elif operation_id == DC_BGP_PASSIVE:
                 rm.add_match(Match.ETHERTYPE(ETHERTYPE_IP))
                 rm.add_match(Match.NW_PROTO(IPPROTO_TCP))
@@ -262,6 +265,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
             self.send_datapath_config_message(ct_id, dp_id, DC_RIPV2);
             self.send_datapath_config_message(ct_id, dp_id, DC_ARP);
             self.send_datapath_config_message(ct_id, dp_id, DC_ICMP);
+            self.send_datapath_config_message(ct_id, dp_id, DC_ICMPV6)
             self.send_datapath_config_message(ct_id, dp_id, DC_LDP_PASSIVE);
             self.send_datapath_config_message(ct_id, dp_id, DC_LDP_ACTIVE);
             self.log.info("Configuring datapath (dp_id=%s)" % format_id(dp_id))
