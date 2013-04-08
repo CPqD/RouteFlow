@@ -41,14 +41,14 @@ IPAddress::IPAddress(const int version, const uint8_t* data) {
     memcpy(this->data, data, this->length);
 }
 
-IPAddress::IPAddress(in_addr data) {
+IPAddress::IPAddress(const struct in_addr *data) {
     this->init(IPV4);
-    memcpy(this->data, &data, this->length);
+    memcpy(this->data, data, this->length);
 }
 
-IPAddress::IPAddress(in6_addr data) {
+IPAddress::IPAddress(const struct in6_addr* data) {
     this->init(IPV6);
-    memcpy(this->data, &data, this->length);
+    memcpy(this->data, data, this->length);
 }
 
 IPAddress::IPAddress(const int version, int prefix_len) {
