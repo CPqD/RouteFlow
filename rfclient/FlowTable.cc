@@ -299,16 +299,14 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 
     boost::this_thread::interruption_point();
 
-    if (!((n->nlmsg_type == RTM_NEWROUTE || n->nlmsg_type == RTM_DELROUTE) && rtmsg_ptr->rtm_table == RT_TABLE_MAIN)) {
+    if (!((n->nlmsg_type == RTM_NEWROUTE || n->nlmsg_type == RTM_DELROUTE) &&
+          rtmsg_ptr->rtm_table == RT_TABLE_MAIN)) {
         return 0;
     }
 
-    char net[INET_ADDRSTRLEN];
-    char gw[INET_ADDRSTRLEN];
-    char intf[IF_NAMESIZE + 1];
+    boost::scoped_ptr<RouteEntry> rentry(new RouteEntry());
 
-    memset(net, 0, INET_ADDRSTRLEN);
-    memset(gw, 0, INET_ADDRSTRLEN);
+    char intf[IF_NAMESIZE + 1];
     memset(intf, 0, IF_NAMESIZE + 1);
 
     struct rtattr *rtattr_ptr;
@@ -318,10 +316,16 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
     for (; RTA_OK(rtattr_ptr, rtmsg_len); rtattr_ptr = RTA_NEXT(rtattr_ptr, rtmsg_len)) {
         switch (rtattr_ptr->rta_type) {
         case RTA_DST:
-            inet_ntop(AF_INET, RTA_DATA(rtattr_ptr), net, 128);
+            if (rta_to_ip(rtmsg_ptr->rtm_family, RTA_DATA(rtattr_ptr),
+                          rentry->address) < 0) {
+                return 0;
+            }
             break;
         case RTA_GATEWAY:
-            inet_ntop(AF_INET, RTA_DATA(rtattr_ptr), gw, 128);
+            if (rta_to_ip(rtmsg_ptr->rtm_family, RTA_DATA(rtattr_ptr),
+                          rentry->gateway) < 0) {
+                return 0;
+            }
             break;
         case RTA_OIF:
             if_indextoname(*((int *) RTA_DATA(rtattr_ptr)), (char *) intf);
@@ -348,7 +352,10 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 
                 for (; RTA_OK(attr, attrlen); attr = RTA_NEXT(attr, attrlen))
                     if ((attr->rta_type == RTA_GATEWAY)) {
-                        inet_ntop(AF_INET, RTA_DATA(attr), gw, 128);
+                        if (rta_to_ip(rtmsg_ptr->rtm_family, RTA_DATA(attr),
+                                      rentry->gateway) < 0) {
+                            return 0;
+                        }
                         break;
                     }
             }
@@ -359,45 +366,26 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
         }
     }
 
-    /* Skipping routes to directly attached networks (next-hop field is blank) */
-    {
-        struct in_addr gwAddr;
-        if (inet_aton(gw, &gwAddr) == 0) {
-            fprintf(stderr, "Blank next-hop field. Dropping Route\n");
-            return 0;
-        }
-    }
+    rentry->netmask = IPAddress(IPV4, rtmsg_ptr->rtm_dst_len);
 
-    struct in_addr convmask;
-    convmask.s_addr = htonl(~((1 << (32 - rtmsg_ptr->rtm_dst_len)) - 1));
-    char mask[INET_ADDRSTRLEN];
-    snprintf(mask, sizeof(mask), "%s", inet_ntoa(convmask));
-
-    RouteEntry rentry;
-
-    rentry.address = IPAddress(IPV4, net);
-    rentry.gateway = IPAddress(IPV4, gw);
-    rentry.netmask = IPAddress(IPV4, mask);
-    if (getInterface(intf, "route", &rentry.interface) != 0) {
+    if (getInterface(intf, "route", &rentry->interface) != 0) {
         return 0;
     }
 
-    // Discard if there's no gateway (IPv4-only)
-    if (inet_addr(gw) == INADDR_NONE) {
-        fprintf(stderr, "No gateway specified, dropping route entry\n");
-        return 0;
-    }
+    string net = rentry->address.toString();
+    string mask = rentry->netmask.toString();
+    string gw = rentry->gateway.toString();
 
     switch (n->nlmsg_type) {
         case RTM_NEWROUTE:
             std::cout << "netlink->RTM_NEWROUTE: net=" << net << ", mask="
                       << mask << ", gw=" << gw << std::endl;
-            FlowTable::pendingRoutes.push(PendingRoute(RMT_ADD, rentry));
+            FlowTable::pendingRoutes.push(PendingRoute(RMT_ADD, *rentry));
             break;
         case RTM_DELROUTE:
             std::cout << "netlink->RTM_DELROUTE: net=" << net << ", mask="
                       << mask << ", gw=" << gw << std::endl;
-            FlowTable::pendingRoutes.push(PendingRoute(RMT_DELETE, rentry));
+            FlowTable::pendingRoutes.push(PendingRoute(RMT_DELETE, *rentry));
             break;
     }
 
