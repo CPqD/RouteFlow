@@ -9,6 +9,9 @@ IPAddress::IPAddress(const int version) {
 }
 
 IPAddress::IPAddress(const int version, const char* address) {
+    if (address == NULL) {
+        throw "Invalid IPAddress string!";
+    }
     string saddress(address);
     this->init(version);
     this->data_from_string(address);
@@ -37,16 +40,25 @@ IPAddress::IPAddress(const IPAddress &other) {
 }
 
 IPAddress::IPAddress(const int version, const uint8_t* data) {
+    if (data == NULL) {
+        throw "Invalid IPAddress data!";
+    }
     this->init(version);
     memcpy(this->data, data, this->length);
 }
 
 IPAddress::IPAddress(const struct in_addr *data) {
+    if (data == NULL) {
+        throw "Invalid IPAddress data!";
+    }
     this->init(IPV4);
     memcpy(this->data, data, this->length);
 }
 
 IPAddress::IPAddress(const struct in6_addr* data) {
+    if (data == NULL) {
+        throw "Invalid IPAddress data!";
+    }
     this->init(IPV6);
     memcpy(this->data, data, this->length);
 }
