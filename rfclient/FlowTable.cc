@@ -176,6 +176,24 @@ int FlowTable::getInterface(const char *intf, const char *type,
     return 0;
 }
 
+int rta_to_ip(unsigned char family, const void *ip, IPAddress& result) {
+    if (family == AF_INET) {
+        result = IPAddress(reinterpret_cast<const struct in_addr *>(ip));
+    } else if (family == AF_INET6) {
+        result = IPAddress(reinterpret_cast<const struct in6_addr *>(ip));
+    } else {
+        fprintf(stderr, "Unrecognised nlmsg family");
+        return -1;
+    }
+
+    if (result.toString() == "") {
+        fprintf(stderr, "Blank IP address. Dropping Route\n");
+        return -1;
+    }
+
+    return 0;
+}
+
 int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, void *) {
     struct ndmsg *ndmsg_ptr = (struct ndmsg *) NLMSG_DATA(n);
     struct rtattr *rtattr_ptr;
@@ -197,10 +215,9 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
     }
     */
 
-    char ip[INET_ADDRSTRLEN];
-    char mac[2 * IFHWADDRLEN + 5 + 1];
+    boost::scoped_ptr<HostEntry> hentry(new HostEntry());
 
-    memset(ip, 0, INET_ADDRSTRLEN);
+    char mac[2 * IFHWADDRLEN + 5 + 1];
     memset(mac, 0, 2 * IFHWADDRLEN + 5 + 1);
 
     rtattr_ptr = (struct rtattr *) RTM_RTA(ndmsg_ptr);
@@ -208,12 +225,13 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
 
     for (; RTA_OK(rtattr_ptr, rtmsg_len); rtattr_ptr = RTA_NEXT(rtattr_ptr, rtmsg_len)) {
         switch (rtattr_ptr->rta_type) {
-        case RTA_DST:
-            if (inet_ntop(AF_INET, RTA_DATA(rtattr_ptr), ip, 128) == NULL) {
-                perror("HostTable");
+        case RTA_DST: {
+            if (rta_to_ip(ndmsg_ptr->ndm_family, RTA_DATA(rtattr_ptr),
+                          hentry->address) < 0) {
                 return 0;
             }
             break;
+        }
         case NDA_LLADDR:
             if (strncpy(mac, ether_ntoa(((ether_addr *) RTA_DATA(rtattr_ptr))), sizeof(mac)) == NULL) {
                 perror("HostTable");
@@ -225,11 +243,8 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
         }
     }
 
-    HostEntry hentry;
-
-    hentry.address = IPAddress(IPV4, ip);
-    hentry.hwaddress = MACAddress(mac);
-    if (getInterface(intf, "host", &hentry.interface) != 0) {
+    hentry->hwaddress = MACAddress(mac);
+    if (getInterface(intf, "host", &hentry->interface) != 0) {
         return 0;
     }
 
@@ -240,13 +255,13 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
 
     switch (n->nlmsg_type) {
         case RTM_NEWNEIGH: {
-            FlowTable::sendToHw(RMT_ADD, hentry);
+            FlowTable::sendToHw(RMT_ADD, *hentry);
 
-            string host = hentry.address.toString();
+            string host = hentry->address.toString();
             {
                 // Add to host table
                 boost::lock_guard<boost::mutex> lock(hostTableMutex);
-                FlowTable::hostTable[host] = hentry;
+                FlowTable::hostTable[host] = *hentry;
             }
             {
                 // If we have been attempting neighbour discovery for this
@@ -261,14 +276,14 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
                 }
             }
 
-            std::cout << "netlink->RTM_NEWNEIGH: ip=" << ip << ", mac=" << mac
+            std::cout << "netlink->RTM_NEWNEIGH: ip=" << host << ", mac=" << mac
                       << std::endl;
             break;
         }
         /* TODO: enable this? It is causing serious problems. Why?
         case RTM_DELNEIGH: {
             std::cout << "netlink->RTM_DELNEIGH: ip=" << ip << ", mac=" << mac << std::endl;
-            FlowTable::sendToHw(RMT_DELETE, hentry);
+            FlowTable::sendToHw(RMT_DELETE, *hentry);
             // TODO: delete from hostTable
             boost::lock_guard<boost::mutex> lock(hostTableMutex);
             break;
@@ -515,7 +530,7 @@ int FlowTable::setIP(RouteMod& rm, const IPAddress& addr,
     }
 
     uint16_t priority = DEFAULT_PRIORITY;
-    priority += static_cast<uint16_t>(mask.toCIDRMask());
+    priority += mask.toPrefixLen();
     rm.add_option(Option(RFOT_PRIORITY, priority));
 
     return 0;
