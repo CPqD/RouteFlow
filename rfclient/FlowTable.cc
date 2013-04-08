@@ -396,18 +396,23 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
  */
 int FlowTable::initiateND(const char *hostAddr) {
     int s, flags;
-    struct sockaddr_in sin;
+    struct sockaddr_storage store;
+    struct sockaddr_in *sin = (struct sockaddr_in*)&store;
+    struct sockaddr_in6 *sin6 = (struct sockaddr_in6*)&store;
 
-    memset(&sin, 0, sizeof(sin));
+    memset(&store, 0, sizeof(store));
 
-    sin.sin_family = AF_INET;
-    sin.sin_addr.s_addr = inet_addr(hostAddr);
-
-    if (sin.sin_addr.s_addr == INADDR_NONE) {
-        fprintf(stderr, "Invalid IP address for resolution. Dropping\n");
+    if (inet_pton(AF_INET, hostAddr, &sin->sin_addr) == 1) {
+        store.ss_family = AF_INET;
+    } else if (inet_pton(AF_INET6, hostAddr, &sin6->sin6_addr) == 1) {
+        store.ss_family = AF_INET6;
+    } else {
+        fprintf(stderr, "Invalid IP address \"%s\" for resolution. Dropping\n",
+                hostAddr);
+        return -1;
     }
 
-    if ((s = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+    if ((s = socket(store.ss_family, SOCK_STREAM, 0)) < 0) {
         perror("socket() failed");
         return -1;
     }
@@ -420,7 +425,7 @@ int FlowTable::initiateND(const char *hostAddr) {
         return -1;
     }
 
-    connect(s, (struct sockaddr *)&sin, sizeof(struct sockaddr));
+    connect(s, (struct sockaddr *)&store, sizeof(store));
     return s;
 }
 
