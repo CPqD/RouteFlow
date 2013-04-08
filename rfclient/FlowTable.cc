@@ -17,12 +17,9 @@
 
 using namespace std;
 
-#define FULL_IPV4_MASK ((in_addr){ 0xffffffff })
-#define FULL_CIDR_MASK 32
-#define FULL_IPV6_MASK ((in6_addr){{{ 0xff, 0xff, 0xff, 0xff, \
-                                      0xff, 0xff, 0xff, 0xff, \
-                                      0xff, 0xff, 0xff, 0xff, \
-                                      0xff, 0xff, 0xff, 0xff }}})
+#define FULL_IPV4_PREFIX 32
+#define FULL_IPV6_PREFIX 128
+
 #define EMPTY_MAC_ADDRESS "00:00:00:00:00:00"
 
 const MACAddress FlowTable::MAC_ADDR_NONE(EMPTY_MAC_ADDRESS);
@@ -542,9 +539,9 @@ int FlowTable::sendToHw(RouteModType mod, const HostEntry& he) {
     boost::scoped_ptr<IPAddress> mask;
 
     if (he.address.getVersion() == IPV6) {
-        mask.reset(new IPAddress(FULL_IPV6_MASK));
+        mask.reset(new IPAddress(IPV6, FULL_IPV6_PREFIX));
     } else if (he.address.getVersion() == IPV4) {
-        mask.reset(new IPAddress(FULL_IPV4_MASK));
+        mask.reset(new IPAddress(IPV4, FULL_IPV4_PREFIX));
     } else {
         fprintf(stderr, "Received HostEntry with unsupported IP version\n");
         return -1;
