@@ -126,12 +126,21 @@ void FlowTable::GWResolverCb() {
          * Routes with unresolvable gateways will constantly trigger this code,
          * popping and re-pushing. */
         const RouteEntry& re = pr.second;
-        if (resolveGateway(re.gateway, re.interface) != 1) {
+        if (resolveGateway(re.gateway, re.interface) < 0) {
+            fprintf(stderr, "An error occurred while %s %s/%s.\n",
+                    "attempting to resolve", re.address.toString().c_str(),
+                    re.netmask.toString().c_str());
             FlowTable::pendingRoutes.push(pr);
             continue;
         }
 
-        FlowTable::sendToHw(pr.first, pr.second);
+        if (FlowTable::sendToHw(pr.first, pr.second) < 0) {
+            fprintf(stderr, "An error occurred while pushing route %s/%s.\n",
+                    re.address.toString().c_str(),
+                    re.netmask.toString().c_str());
+            FlowTable::pendingRoutes.push(pr);
+            continue;
+        }
 
         if (pr.first == RMT_ADD) {
             FlowTable::routeTable.push_back(pr.second);
@@ -422,7 +431,6 @@ int FlowTable::initiateND(const char *hostAddr) {
  * Initiates the gateway resolution process for the given host.
  *
  * Returns:
- *  1 if the host has been resolved,
  *  0 if address resolution is currently being performed
  * -1 on error (usually an issue with the socket)
  */
@@ -437,7 +445,7 @@ int FlowTable::resolveGateway(const IPAddress& gateway,
     // If we already initiated neighbour discovery for this gateway, return.
     boost::lock_guard<boost::mutex> lock(ndMutex);
     if (pendingNeighbours.find(gateway_str) != pendingNeighbours.end()) {
-        return 1;
+        return 0;
     }
 
     // Otherwise, we should go ahead and begin the process.
