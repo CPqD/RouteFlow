@@ -61,7 +61,7 @@ class FlowTable {
 
         static bool is_port_down(uint32_t port);
         static int getInterface(const char *intf, const char *type,
-                                Interface* iface);
+                                Interface& iface);
 
         static int initiateND(const char *hostAddr);
         static int resolveGateway(const IPAddress&, const Interface&);

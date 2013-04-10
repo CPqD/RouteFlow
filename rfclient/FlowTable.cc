@@ -157,7 +157,7 @@ void FlowTable::GWResolverCb() {
  * On error, prints to stderr with appropriate message and returns -1.
  */
 int FlowTable::getInterface(const char *intf, const char *type,
-                            Interface* iface) {
+                            Interface& iface) {
     map<string, Interface>::iterator it = interfaces.find(intf);
 
     if (it == interfaces.end()) {
@@ -172,7 +172,7 @@ int FlowTable::getInterface(const char *intf, const char *type,
         return -1;
     }
 
-    *iface = it->second;
+    iface = it->second;
     return 0;
 }
 
@@ -244,7 +244,7 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
     }
 
     hentry->hwaddress = MACAddress(mac);
-    if (getInterface(intf, "host", &hentry->interface) != 0) {
+    if (getInterface(intf, "host", hentry->interface) != 0) {
         return 0;
     }
 
@@ -368,7 +368,7 @@ int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, 
 
     rentry->netmask = IPAddress(IPV4, rtmsg_ptr->rtm_dst_len);
 
-    if (getInterface(intf, "route", &rentry->interface) != 0) {
+    if (getInterface(intf, "route", rentry->interface) != 0) {
         return 0;
     }
 
