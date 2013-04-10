@@ -11,6 +11,7 @@
 #include "RFClient.hh"
 #include "converter.h"
 #include "defs.h"
+#include "FlowTable.h"
 
 #define BUFFER_SIZE 23 /* Mapping packet size. */
 
@@ -280,6 +281,7 @@ int main(int argc, char* argv[]) {
     stringstream ss;
     string id;
     string address = MONGO_ADDRESS;
+
     while ((c = getopt (argc, argv, "n:i:a:")) != -1)
         switch (c) {
             case 'n':

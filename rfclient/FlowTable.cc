@@ -13,6 +13,9 @@
 
 #include "converter.h"
 #include "FlowTable.h"
+#ifdef FPM_ENABLED
+  #include "FPMServer.hh"
+#endif /* FPM_ENABLED */
 
 using namespace std;
 
@@ -29,11 +32,16 @@ int FlowTable::llink = 0;
 int FlowTable::laddr = 0;
 int FlowTable::lroute = 0;
 
-struct rtnl_handle FlowTable::rthNeigh;
-boost::thread FlowTable::HTPolling;
-struct rtnl_handle FlowTable::rth;
-boost::thread FlowTable::RTPolling;
 boost::thread FlowTable::GWResolver;
+boost::thread FlowTable::HTPolling;
+struct rtnl_handle FlowTable::rthNeigh;
+
+#ifdef FPM_ENABLED
+  boost::thread FlowTable::FPMClient;
+#else
+  boost::thread FlowTable::RTPolling;
+  struct rtnl_handle FlowTable::rth;
+#endif /* FPM_ENABLED */
 
 map<string, Interface> FlowTable::interfaces;
 vector<uint32_t>* FlowTable::down_ports;
@@ -56,9 +64,11 @@ void FlowTable::HTPollingCb() {
     rtnl_listen(&rthNeigh, FlowTable::updateHostTable, NULL);
 }
 
+#ifndef FPM_ENABLED
 void FlowTable::RTPollingCb() {
     rtnl_listen(&rth, FlowTable::updateRouteTable, NULL);
 }
+#endif /* FPM_ENABLED */
 
 void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces,
                       IPCMessageService* ipc, vector<uint32_t>* down_ports) {
@@ -67,14 +77,20 @@ void FlowTable::start(uint64_t vm_id, map<string, Interface> interfaces,
     FlowTable::ipc = ipc;
     FlowTable::down_ports = down_ports;
 
+    rtnl_open(&rthNeigh, RTMGRP_NEIGH);
+    HTPolling = boost::thread(&FlowTable::HTPollingCb);
+
+#ifdef FPM_ENABLED
+    std::cout << "FPM interface enabled\n";
+    FPMClient = boost::thread(&FPMServer::start);
+#else
+    std::cout << "Netlink interface enabled\n";
     rtnl_open(&rth, RTMGRP_IPV4_MROUTE | RTMGRP_IPV4_ROUTE
                   | RTMGRP_IPV6_MROUTE | RTMGRP_IPV6_ROUTE);
-    rtnl_open(&rthNeigh, RTMGRP_NEIGH);
-
-    HTPolling = boost::thread(&FlowTable::HTPollingCb);
     RTPolling = boost::thread(&FlowTable::RTPollingCb);
-    GWResolver = boost::thread(&FlowTable::GWResolverCb);
+#endif /* FPM_ENABLED */
 
+    GWResolver = boost::thread(&FlowTable::GWResolverCb);
     GWResolver.join();
 }
 
@@ -86,8 +102,12 @@ void FlowTable::clear() {
 
 void FlowTable::interrupt() {
     HTPolling.interrupt();
-    RTPolling.interrupt();
     GWResolver.interrupt();
+#ifdef FPM_ENABLED
+    FPMClient.interrupt();
+#else
+    RTPolling.interrupt();
+#endif /* FPM_ENABLED */
 }
 
 void FlowTable::GWResolverCb() {
@@ -293,7 +313,14 @@ int FlowTable::updateHostTable(const struct sockaddr_nl *, struct nlmsghdr *n, v
     return 0;
 }
 
-int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n, void *) {
+#ifndef FPM_ENABLED
+int FlowTable::updateRouteTable(const struct sockaddr_nl *, struct nlmsghdr *n,
+                                void *) {
+    return FlowTable::updateRouteTable(n);
+}
+#endif /* FPM_ENABLED */
+
+int FlowTable::updateRouteTable(struct nlmsghdr *n) {
     struct rtmsg *rtmsg_ptr = (struct rtmsg *) NLMSG_DATA(n);
 
     boost::this_thread::interruption_point();
