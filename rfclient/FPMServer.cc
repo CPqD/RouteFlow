@@ -32,8 +32,9 @@
 #include <errno.h>
 #include <assert.h>
 
-#include "FPMServer.hh"
+#include "fpm_lsp.h"
 
+#include "FPMServer.hh"
 #include "FlowTable.h"
 
 typedef struct glob_t_ {
@@ -194,6 +195,11 @@ void FPMServer::process_fpm_msg(fpm_msg_hdr_t *hdr) {
         if (n->nlmsg_type == RTM_NEWROUTE || n->nlmsg_type == RTM_DELROUTE) {
             FlowTable::updateRouteTable(n);
         }
+    } else if (hdr->msg_type == FPM_MSG_TYPE_NHLFE) {
+        nhlfe_msg_t *lsp_msg = (nhlfe_msg_t *) fpm_msg_data(hdr);
+        FlowTable::updateNHLFE(lsp_msg);
+    } else if (hdr->msg_type == FPM_MSG_TYPE_FTN) {
+        warn_msg("FTN not yet implemented");
     } else {
         warn_msg("Unknown fpm message type %u", hdr->msg_type);
     }

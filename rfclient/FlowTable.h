@@ -9,6 +9,7 @@
 #include "SyncQueue.h"
 
 #include "fpm.h"
+#include "fpm_lsp.h"
 
 #include "ipc/IPC.h"
 #include "ipc/RFProtocol.h"

@@ -611,3 +611,77 @@ int FlowTable::sendToHw(RouteModType mod, const IPAddress& addr,
     FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, rm);
     return 0;
 }
+
+#ifdef FPM_ENABLED
+/*
+ * Add or remove a Push, Pop or Swap operation matching on a label only
+ * For matching on IP, update FTN (not yet implemented) is needed
+ *
+ * TODO: If an error occurs here, the NHLFE is silently dropped. Fix this.
+ */
+void FlowTable::updateNHLFE(nhlfe_msg_t *nhlfe_msg) {
+    RouteMod msg;
+
+    if (nhlfe_msg->table_operation == ADD_LSP) {
+        msg.set_mod(RMT_ADD);
+    } else if (nhlfe_msg->table_operation == REMOVE_LSP) {
+        msg.set_mod(RMT_DELETE);
+    } else {
+        std::cerr << "Unrecognised NHLFE table operation" << std::endl;
+        return;
+    }
+    msg.set_id(FlowTable::vm_id);
+
+    // We need the next-hop IP to determine which interface to use.
+    int version = nhlfe_msg->ip_version;
+    uint8_t* ip_data = reinterpret_cast<uint8_t*>(&nhlfe_msg->next_hop_ip);
+    IPAddress gwIP(version, ip_data);
+
+    // Get our interface for packet egress.
+    Interface iface;
+    map<string, HostEntry>::iterator iter;
+    iter = FlowTable::hostTable.find(gwIP.toString());
+    if (iter == FlowTable::hostTable.end()) {
+        std::cerr << "Failed to locate interface for LSP" << std::endl;
+        return;
+    } else {
+        iface = iter->second.interface;
+    }
+
+    if (is_port_down(iface.port)) {
+        std::cerr << "Cannot send route via inactive interface" << std::endl;
+        return;
+    }
+
+    // Get the MAC address corresponding to our gateway.
+    const MACAddress& gwMAC = findHost(gwIP);
+    if (gwMAC == FlowTable::MAC_ADDR_NONE) {
+        std::cerr << "Failed to resolve gwMAC IP for NHLFE" << std::endl;
+        return;
+    }
+
+    if (setEthernet(msg, iface, gwMAC) != 0) {
+        return;
+    }
+
+    // Match on in_label only - matching on IP is the domain of FTN not NHLFE
+    msg.add_match(Match(RFMT_MPLS, nhlfe_msg->in_label));
+
+    if (nhlfe_msg->nhlfe_operation == PUSH) {
+        msg.add_action(Action(RFAT_PUSH_MPLS, ntohl(nhlfe_msg->out_label)));
+    } else if (nhlfe_msg->nhlfe_operation == POP) {
+        msg.add_action(Action(RFAT_POP_MPLS, (uint32_t)0));
+    } else if (nhlfe_msg->nhlfe_operation == SWAP) {
+        msg.add_action(Action(RFAT_SWAP_MPLS, ntohl(nhlfe_msg->out_label)));
+    } else {
+        std::cerr << "Unknown lsp_operation" << std::endl;
+        return;
+    }
+
+    msg.add_action(Action(RFAT_OUTPUT, iface.port));
+
+    FlowTable::ipc->send(RFCLIENT_RFSERVER_CHANNEL, RFSERVER_ID, msg);
+
+    return;
+}
+#endif /* FPM_ENABLED */

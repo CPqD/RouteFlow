@@ -133,6 +133,24 @@ typedef enum fpm_msg_type_e_ {
    * message.
    */
   FPM_MSG_TYPE_NETLINK = 1,
+
+  /*
+   * Indicates that the payload is a next hop label forwarding entry (NHLFE)
+   * in lsp.h (nhlfe_msg_t)
+   *
+   */
+
+  FPM_MSG_TYPE_NHLFE = 2,
+
+  /*
+   * Indicates that the payload is a FTN (Forwarding Equivalent Class to NHLFE)
+   * defined in lsp.h ftn_msg_t
+   *
+   * i.e maps IP to MPLS label
+   *
+   */
+
+  FPM_MSG_TYPE_FTN = 3,
 } fpm_msg_type_e;
 
 /*
