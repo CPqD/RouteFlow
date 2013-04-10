@@ -54,6 +54,7 @@ if (level <= log_level) {     \
     fprintf(stderr, "\n");      \
 }
 
+#define info_msg(format...) log(1, format)
 #define warn_msg(format...) log(0, format)
 #define err_msg(format...) log(-1, format)
 #define trace log
@@ -182,6 +183,21 @@ FPMServer::read_fpm_msg(char *buf, size_t buf_len) {
     }
 }
 
+void FPMServer::print_nhlfe(const nhlfe_msg_t *msg) {
+    const char *op = (msg->table_operation == ADD_LSP)? "ADD_NHLFE" :
+                     (msg->table_operation == REMOVE_LSP)? "REMOVE_NHLFE" :
+                     "UNKNOWN";
+    const char *type = (msg->nhlfe_operation == PUSH)? "PUSH" :
+                       (msg->nhlfe_operation == POP)? "POP" :
+                       (msg->nhlfe_operation == SWAP)? "SWAP" :
+                       "UNKNOWN";
+    const uint8_t *data = reinterpret_cast<const uint8_t*>(&msg->next_hop_ip);
+    IPAddress ip(msg->ip_version, data);
+
+    info_msg("fpm->%s %s %s %d %d", op, ip.toString().c_str(), type,
+             ntohl(msg->in_label), ntohl(msg->out_label));
+}
+
 /*
  * process_fpm_msg
  */
@@ -197,6 +213,7 @@ void FPMServer::process_fpm_msg(fpm_msg_hdr_t *hdr) {
         }
     } else if (hdr->msg_type == FPM_MSG_TYPE_NHLFE) {
         nhlfe_msg_t *lsp_msg = (nhlfe_msg_t *) fpm_msg_data(hdr);
+        print_nhlfe(lsp_msg);
         FlowTable::updateNHLFE(lsp_msg);
     } else if (hdr->msg_type == FPM_MSG_TYPE_FTN) {
         warn_msg("FTN not yet implemented");
