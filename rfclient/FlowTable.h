@@ -9,6 +9,7 @@
 #include "SyncQueue.h"
 
 #include "ipc/IPC.h"
+#include "ipc/RFProtocol.h"
 #include "types/IPAddress.h"
 #include "types/MACAddress.h"
 #include "defs.h"

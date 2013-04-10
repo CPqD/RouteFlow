@@ -11,7 +11,6 @@
 #include <cstring>
 #include <iostream>
 
-#include "ipc/RFProtocol.h"
 #include "converter.h"
 #include "FlowTable.h"
 
