@@ -152,45 +152,4 @@ If you want to know more or need to contact us regarding the project for anythin
 * Google Groups [mailing list](http://groups.google.com/group/routeflow-discuss?hl=en_US)
 
 
-# Known Bugs
-* RouteFlow: when all datapaths go down and come back after a short while, 
-  bogus routes are installed on them caused by delayed updates from RFClients.
-
-* rfweb: an update cycle is needed to show the images in the network view in some browsers
-
-* See also: [Issues](https://github.com/CPqD/RouteFlow/issues) in Github
-
-
-# TODO (and features expected in upcoming versions)
-* Tests and instructions for other virtualization environments
-
-* Hooks into Quagga Zebra to reflect link up/down events and extract additional route / label information
-
-* Let the RFServer order the RFClient to set the VM's non-administrative interfaces to the same MAC Address
-
-* Create a verbose mode for RFServer
-
-* Configuration arguments for RFServer
-
-* Port RFProxy to Trema, Floodlight
-
-* Add TTL-decrement action (if supported by the datapath devices)
-
-* Explore integration opportunities with FlowVisor
-
-* Libvirt: Virtualization-independence to accomodate alternative virtualization environments via unified virtualization API provided by libvirt (provide on-demand start-up of VMs via libvirt upon interactions (e.g. CLI) with RFServer)
-
-Routing Protocol Optimizations
-* Separate topology discovery and maintenance from state distribution
-* Dynamic virtual topology maintenance, with selective routing protocol messages delivery to the Datapath (e.g., HELLOs).
-* Improve the scenario where routing protocol messages are kept in the virtual domain and topology is mantained through a  Topology Discovery controller application.
-* Hooks into Quagga Zebra to reflect link up/down events
-
-Resiliency & Scalability:
-* Physically distribute the virtualization environment via mutliple OVS providing the connectivity of the virtual control network
-* Improve resiliency: Have a "stand-by" environment to take over in case of failure of the master RFServer / Virtualized Control Plane
-
-* For smaller changes, see TODO markings in the files.
-
-
-_RouteFlow - Copyright (c) 2012 CPqD_
+_RouteFlow - Copyright (c) 2011-2013 CPqD_
