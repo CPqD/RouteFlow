@@ -4,6 +4,8 @@
 import sys
 import logging
 import binascii
+import threading
+import time
 
 from bson.binary import Binary
 
@@ -37,7 +39,9 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
 
         self.ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS,
                                                    MONGO_DB_NAME,
-                                                   RFSERVER_ID)
+                                                   RFSERVER_ID,
+                                                   threading.Thread,
+                                                   time.sleep)
         self.ipc.listen(RFCLIENT_RFSERVER_CHANNEL, self, self, False)
         self.ipc.listen(RFSERVER_RFPROXY_CHANNEL, self, self, True)
 

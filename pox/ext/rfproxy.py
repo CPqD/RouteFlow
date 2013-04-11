@@ -1,5 +1,7 @@
 import struct
 import logging
+import threading
+import time
 
 from pox.core import core
 from pox.openflow.libopenflow_01 import *
@@ -62,7 +64,8 @@ netmask_prefix = lambda a: sum([bin(int(x)).count("1") for x in a.split(".", 4)]
 
 # TODO: add proper support for ID
 ID = 0
-ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, str(ID))
+ipc = MongoIPC.MongoIPCMessageService(MONGO_ADDRESS, MONGO_DB_NAME, str(ID),
+                                      threading.Thread, time.sleep)
 table = Table()
 
 # Logging
