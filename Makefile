@@ -55,18 +55,14 @@ rfclient: lib
 nox: lib
 	echo "Building NOX with rfproxy..."
 	cd $(RFC_DIR); \
-	./boot.sh; \
-	mkdir build; \
-	cd build; \
 	export CPP=; \
-	../configure --enable-ndebug; \
-	make -C $(RFC_DIR)/build; \
+	make -C $(BUILD_DIR)/nox; \
 	echo "done."
 
 clean: clean-libs clean-apps_obj clean-apps_bin clean-nox
 
 clean-nox:
-	@rm -rf $(RFC_DIR)/build
+	@rm -rf $(BUILD_DIR)/nox
 	@rm -rf $(RFC_DIR)/autom4te.cache
 	@rm -f $(RFC_DIR)/aclocal.m4
 	@rm -f $(RFC_DIR)/config.h*

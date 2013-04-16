@@ -1,0 +1,15 @@
+--- /usr/lib/python2.6/dist-packages/twisted/internet/base.py	2013-02-24 16:36:02.220213377 -0800
++++ /usr/lib/python2.6/dist-packages/twisted/internet/base.py	2013-02-24 16:37:57.080213413 -0800
+@@ -1175,5 +1175,12 @@
+                 log.msg('Main loop terminated.')
+ 
+ 
++    def _handleSigchld(self, signum, frame, _threadSupport=platform.supportsThreads()):
++        from twisted.internet.process import reapAllProcesses
++        if _threadSupport:
++            self.callFromThread(reapAllProcesses)
++        else:
++            self.callLater(0, reapAllProcesses)
++
+ 
+ __all__ = []
