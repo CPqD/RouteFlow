@@ -142,8 +142,7 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                     action_output.set_value(entry.dp_port)
                     rm.actions[i] = action_output.to_dict()
 
-                ct_option = Option.CT_ID(entry.ct_id)
-                rm.add_option(ct_option)
+                rm.add_option(Option.CT_ID(entry.ct_id))
 
                 for entry in self.rftable.get_entries(vm_id=vm_id):
                     if action_output.get_value() != entry.dp_port:
