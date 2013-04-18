@@ -360,6 +360,8 @@ def genPy(messages, fname):
     g.addLine("import bson")    
     g.addLine("import pymongo as mongo")
     g.blankLine()
+    for tlv in ["Match","Action","Option"]:
+        g.addLine("from rflib.types.{0} import {0}".format(tlv))
     g.addLine("from MongoIPC import MongoIPCMessage")
     
     g.blankLine()

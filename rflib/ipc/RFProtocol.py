@@ -1,6 +1,9 @@
 import bson
 import pymongo as mongo
 
+from rflib.types.Match import Match
+from rflib.types.Action import Action
+from rflib.types.Option import Option
 from MongoIPC import MongoIPCMessage
 
 PORT_REGISTER = 0
