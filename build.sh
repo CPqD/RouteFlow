@@ -54,7 +54,7 @@ usage() {
 }
 
 verlte() {
-    [ "$1" = `echo -e "$1\n$2" | sort -V | head -n1` ]
+    [ "$1" != `echo -e "$1\n$2" | sort -V | head -n1` ]
 }
 
 verlt() {
@@ -70,7 +70,7 @@ get_versions() {
     # We need particular versions of our dependencies. If Ubuntu does not have
     # them in the repositories, then we need to fetch/build them.
     if (echo "$text" | grep -q "Ubuntu"); then
-        version=`echo $text | grep "Release" | cut -f2`
+        version=`lsb_release -a 2>/dev/null | grep "Release" | cut -f2`
         verlt $version "13.04" && MONGO_VERSION="2.0.9"
         verlt $version "12.04" && OVS_VERSION="1.4.6"
 
