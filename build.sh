@@ -18,7 +18,7 @@ APT_OPTS="-y"
 ROUTEFLOW_GIT="git@github.com:joestringer/RouteFlow.git"
 DEPENDENCIES="build-essential git-core libboost-dev libboost-dev \
     libboost-program-options-dev libboost-thread-dev \
-    libboost-filesystem-dev iproute-dev python-pymongo"
+    libboost-filesystem-dev iproute-dev"
 
 usage() {
     echo "usage:$0 [-hcqvdsgiu] [-m MONGO_VERSION] [-o OVS_VERSION]" \
@@ -165,6 +165,7 @@ main() {
     fi
 
     print_status "Fetching dependencies"
+    $DO pip install "pymongo"
     pkg_install "$DEPENDENCIES"
     get_ovs "$OVS_VERSION"
     get_mongo "$MONGO_VERSION"
