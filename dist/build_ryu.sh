@@ -18,7 +18,7 @@ get_ryu() {
         $DO pip install ryu || fail "Failed to fetch ryu controller"
     fi
 
-    fetch "ryu-" "rfproxy" $RFROXY_GIT $RYU_BRANCH ||
+    fetch "ryu-" "rfproxy" $RYU_GIT $RYU_BRANCH ||
         fail "Couldn't fetch ryu-rfproxy"
     $DO cd -
 }
