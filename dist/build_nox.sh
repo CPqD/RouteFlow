@@ -35,12 +35,13 @@ get_nox() {
             $DO ./boot.sh
         fi
         $DO mkdir -p ../build/nox
+        $DO cd ../build/nox
         if [ ! -e "Makefile" ]; then
-            $DO ./configure --enable-ndebug ||
+            $DO ../../nox-rfproxy/configure --enable-ndebug ||
                 fail "Couldn't configure NOX"
         fi
 
-        $DO make -C ../build/nox/ || fail "Couldn't build NOX"
-        $DO cd -
+        $DO make || fail "Couldn't build NOX"
+        $DO cd ../..
     fi
 }
