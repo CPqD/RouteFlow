@@ -71,8 +71,12 @@ get_versions() {
     # them in the repositories, then we need to fetch/build them.
     if (echo "$text" | grep -q "Ubuntu"); then
         version=`lsb_release -a 2>/dev/null | grep "Release" | cut -f2`
-        verlt $version "13.04" && MONGO_VERSION="2.0.9"
-        verlt $version "12.04" && OVS_VERSION="1.4.6"
+
+        # Versions prior to Ubuntu 12.04 don't supply MongoDB-2.0 and OVS-1.4.
+        if (verlt $version "12.04"); then
+            MONGO_VERSION="2.0.9"
+            OVS_VERSION="1.4.6"
+        fi
 
         if (verlt $version "12.04"); then
             return
