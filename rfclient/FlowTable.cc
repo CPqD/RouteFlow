@@ -139,7 +139,8 @@ void FlowTable::GWResolverCb() {
         }
 
         const RouteEntry& re = pr.second;
-        if (findHost(re.address) == FlowTable::MAC_ADDR_NONE) {
+        if (pr.first != RMT_DELETE &&
+                findHost(re.address) == FlowTable::MAC_ADDR_NONE) {
             /* Host is unresolved. Attempt to resolve it. */
             if (resolveGateway(re.gateway, re.interface) < 0) {
                 /* If we can't resolve the gateway, put it to the end of the
