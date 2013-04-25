@@ -1,6 +1,6 @@
 #!/bin/sh
 
-RYU_GIT="git@github.com:joestringer/ryu-rfproxy.git"
+RYU_GIT="https://github.com/joestringer/ryu-rfproxy.git"
 RYU_BRANCH="origin/master"
 
 get_ryu() {

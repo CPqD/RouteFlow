@@ -1,6 +1,6 @@
 #!/bin/sh
 
-NOX_GIT="git@github.com:joestringer/nox-rfproxy.git"
+NOX_GIT="https://github.com/joestringer/nox-rfproxy.git"
 NOX_BRANCH="origin/master"
 NOX_DEPS="linux-headers-generic autoconf automake libtool \
     libboost-test-dev libssl-dev libpcap-dev python-twisted \
