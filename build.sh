@@ -35,8 +35,8 @@ usage() {
     echo "  -v    Verbose output"
     echo;
     echo "Build options:"
-    echo "  -d    Install binary versions of dependencies"
-    echo "  -s    Build release versions of dependencies (default)"
+    echo "  -d    Install binary versions of dependencies (default)"
+    echo "  -s    Build release versions of dependencies"
     echo "  -g    Build git versions of dependencies"
     echo "  -u    Update (rebuild) dependencies even if they have been built"
     echo;
