@@ -75,10 +75,11 @@ def create_flow_mod(routemod):
     for match in routemod.get_matches():
         match = Match.from_dict(match)
         if match._type == RFMT_IPV4:
+            addr = str(match.get_value()[0])
+            prefix = get_cidr_prefix(inet_aton(match.get_value()[1]))
             ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
-            nmprefix = get_cidr_prefix(inet_aton(match.get_value()[1]))
-            ofm_match_nw(ofm, OFPFW_NW_DST_MASK, 0, 0, 0, str(match.get_value()[0]))
-            ofm.match.wildcards &= ~parseCIDR(str(match.get_value()[0]) + "/" + str(nmprefix))[1]
+            ofm_match_nw(ofm, OFPFW_NW_DST_MASK, 0, 0, 0, addr)
+            ofm.match.wildcards &= ~parseCIDR(str(addr) + "/" + str(prefix))[1]
             ofm.match.set_nw_dst(match.get_value()[0])
         elif match._type == RFMT_ETHERNET:
             ofm_match_dl(ofm, OFPFW_DL_DST, match.get_value())
@@ -101,12 +102,15 @@ def create_flow_mod(routemod):
 
     for action in routemod.get_actions():
         action = Action.from_dict(action)
+        value = action.get_value()
         if action._type == RFAT_OUTPUT:
-            ofm.actions.append(ofp_action_output(port = (action.get_value() & 0xFFFF)))
+            ofm.actions.append(ofp_action_output(port=(value & 0xFFFF)))
         elif action._type == RFAT_SET_ETH_SRC:
-            ofm.actions.append(ofp_action_dl_addr(type=OFPAT_SET_DL_SRC, dl_addr=EthAddr(action.get_value())))
+            ofm.actions.append(ofp_action_dl_addr(type=OFPAT_SET_DL_SRC,
+                                                  dl_addr=EthAddr(value)))
         elif action._type == RFAT_SET_ETH_DST:
-            ofm.actions.append(ofp_action_dl_addr(type=OFPAT_SET_DL_DST, dl_addr=EthAddr(action.get_value())))
+            ofm.actions.append(ofp_action_dl_addr(type=OFPAT_SET_DL_DST,
+                                                  dl_addr=EthAddr(value)))
         elif action.optional():
             log.debug("Dropping unsupported Action (type: %s)" % option._type)
         else:
