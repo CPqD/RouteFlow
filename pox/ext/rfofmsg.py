@@ -98,7 +98,7 @@ def create_flow_mod(routemod):
     for action in routemod.get_actions():
         action = Action.from_dict(action)
         if action._type == RFAT_OUTPUT:
-            ofm.actions.append(ofp_action_output(port = action.get_value()))
+            ofm.actions.append(ofp_action_output(port = (action.get_value() & 0xFFFF)))
         elif action._type == RFAT_SET_ETH_SRC:
             ofm.actions.append(ofp_action_dl_addr(type=OFPAT_SET_DL_SRC, dl_addr=EthAddr(action.get_value())))
         elif action._type == RFAT_SET_ETH_DST:
