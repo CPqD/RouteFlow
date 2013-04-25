@@ -13,12 +13,13 @@ CONTROLLERS=""
 DO="echo"
 SUPER="$DO sudo"
 APT_OPTS="-y"
+PIP_OPTS=""
 
 # TODO: Set to upstream URL when this script is merged
 ROUTEFLOW_GIT="git@github.com:joestringer/RouteFlow.git"
 DEPENDENCIES="build-essential git-core libboost-dev libboost-dev \
     libboost-program-options-dev libboost-thread-dev \
-    libboost-filesystem-dev iproute-dev"
+    libboost-filesystem-dev iproute-dev python-dev python-pip"
 
 usage() {
     echo "usage:$0 [-hcqvdsgiu] [-m MONGO_VERSION] [-o OVS_VERSION]" \
@@ -110,6 +111,7 @@ parse_opts() {
 
     if [ $QUIET -eq 1 ]; then
         APT_OPTS="${APT_OPTS} -qq"
+        PIP_OPTS="-q"
     fi
 }
 
@@ -169,8 +171,8 @@ main() {
     fi
 
     print_status "Fetching dependencies"
-    $DO pip install "pymongo"
     pkg_install "$DEPENDENCIES"
+    $SUPER pip install "pymongo"
     get_ovs "$OVS_VERSION"
     get_mongo "$MONGO_VERSION"
 
