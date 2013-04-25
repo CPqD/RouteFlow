@@ -1,0 +1,64 @@
+"""Custom topology example
+
+author: Marcelo Nascimento (marcelon@cpqd.com.br)
+
+Four switches connected in mesh topology plus a host for each switch:
+
+       h1 --- sA ---- sB --- h2
+               |  \    |
+               |   \   |
+	       |    \  | 
+               |     \ |
+       h3 --- sC ---- sD --- h4
+
+Adding the 'topos' dict with a key/value pair to generate our newly defined
+topology enables one to pass in '--topo=mytopo' from the command line.
+"""
+
+from mininet.topo import Topo, Node
+
+class RFTopo( Topo ):
+    "RouteFlow Demo Setup"
+
+    def __init__( self, enable_all = True ):
+        "Create custom topo."
+
+        # Add default members to class.
+        super( RFTopo, self ).__init__()
+
+        # Set Node IDs for hosts and switches
+        h1 = 1
+        h2 = 2
+        h3 = 3
+        h4 = 4
+        sA = 5
+        sB = 6
+        sC = 7
+        sD = 8
+
+        # Add nodes
+        self.add_node( h1, Node( is_switch=False ) )
+        self.add_node( h2, Node( is_switch=False ) )
+        self.add_node( h3, Node( is_switch=False ) )
+        self.add_node( h4, Node( is_switch=False ) )
+        self.add_node( sA, Node( is_switch=True ) )
+        self.add_node( sB, Node( is_switch=True ) )
+        self.add_node( sC, Node( is_switch=True ) )
+        self.add_node( sD, Node( is_switch=True ) )
+
+        # Add edges
+        self.add_edge( h1, sA )
+        self.add_edge( h2, sB )
+        self.add_edge( h3, sC )
+        self.add_edge( h4, sD )
+        self.add_edge( sA, sB )
+        self.add_edge( sB, sD )
+        self.add_edge( sD, sC )
+        self.add_edge( sC, sA )
+        self.add_edge( sA, sD )
+
+        # Consider all switches and hosts 'on'
+        self.enable_all()
+
+
+topos = { 'rftopo': ( lambda: RFTopo() ) }
