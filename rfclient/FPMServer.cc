@@ -205,6 +205,12 @@ void FPMServer::process_fpm_msg(fpm_msg_hdr_t *hdr) {
     trace(1, "FPM message - Type: %d, Length %d", hdr->msg_type,
             ntohs(hdr->msg_len));
 
+    /**
+     * Note: NHLFE and FTN are not standardised in Quagga 0.9.22. These are
+     * subject to change, and correspond to the FIMSIM application found here:
+     *
+     * http://github.com/ofisher/FIMSIM
+     */
     if (hdr->msg_type == FPM_MSG_TYPE_NETLINK) {
         struct nlmsghdr *n = (nlmsghdr *) fpm_msg_data(hdr);
 
