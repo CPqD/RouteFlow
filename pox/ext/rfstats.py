@@ -13,6 +13,8 @@ import pymongo
 UPDATE_INTERVAL = 5
 topology_timer = None
 
+log = core.getLogger("rfproxy")
+
 def rf_id(id):
     return "{:#016x}".format(id)
 
@@ -109,16 +111,19 @@ def timer_func():
     topology = core.components['topology']
     for switch in topology.getEntitiesOfType(Switch):
         if switch.connected:
-            # OFPST_DESC
-            req = ofp_stats_request(type=OFPST_DESC)
-            switch.send(req)
-            # OFPST_FLOW
-            req = ofp_stats_request(body=ofp_flow_stats_request())
-            switch.send(req)
-            # OFPST_AGGREGATE
-            req = ofp_stats_request(body=ofp_aggregate_stats_request())
-            switch.send(req)
-        
+            try:
+                # OFPST_DESC
+                req = ofp_stats_request(type=OFPST_DESC)
+                switch.send(req)
+                # OFPST_FLOW
+                req = ofp_stats_request(body=ofp_flow_stats_request())
+                switch.send(req)
+                # OFPST_AGGREGATE
+                req = ofp_stats_request(body=ofp_aggregate_stats_request())
+                switch.send(req)
+            except:
+                log.info("Failed to send stats request to switch")
+
     # Write out the statistics we currently have
     f = open("../rfweb/data/routeflow.json", "w")
     f.write(json.dumps(db.db, sort_keys=True, indent=4))
