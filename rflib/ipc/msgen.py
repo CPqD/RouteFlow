@@ -33,7 +33,8 @@ defaultValues = {
 }
 
 exportType = {
-"i8": "to_string<uint8_t>({0})",
+# Cast prevents C++ stringstreams from interpreting uint8_t as char
+"i8": "to_string<uint16_t>({0})",
 "i32": "to_string<uint32_t>({0})",
 "i64": "to_string<uint64_t>({0})",
 "bool": "{0}",
@@ -46,7 +47,7 @@ exportType = {
 }
 
 importType = {
-"i8": "{0}.Int()",
+"i8": "string_to<uint8_t>({0}.String())",
 "i32": "string_to<uint32_t>({0}.String())",
 "i64": "string_to<uint64_t>({0}.String())",
 "bool": "{0}.Bool()",

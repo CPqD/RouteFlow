@@ -571,7 +571,7 @@ void RouteMod::add_option(const Option& option) {
 
 void RouteMod::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
-    set_mod(obj["mod"].Int());
+    set_mod(string_to<uint8_t>(obj["mod"].String()));
     set_id(string_to<uint64_t>(obj["id"].String()));
     set_matches(MatchList::to_vector(obj["matches"].Array()));
     set_actions(ActionList::to_vector(obj["actions"].Array()));
@@ -580,7 +580,7 @@ void RouteMod::from_BSON(const char* data) {
 
 const char* RouteMod::to_BSON() {
     mongo::BSONObjBuilder _b;
-    _b.append("mod", to_string<uint8_t>(get_mod()));
+    _b.append("mod", to_string<uint16_t>(get_mod()));
     _b.append("id", to_string<uint64_t>(get_id()));
     _b.appendArray("matches", MatchList::to_BSON(get_matches()));
     _b.appendArray("actions", ActionList::to_BSON(get_actions()));
@@ -594,7 +594,7 @@ const char* RouteMod::to_BSON() {
 string RouteMod::str() {
     stringstream ss;
     ss << "RouteMod" << endl;
-    ss << "  mod: " << to_string<uint8_t>(get_mod()) << endl;
+    ss << "  mod: " << to_string<uint16_t>(get_mod()) << endl;
     ss << "  id: " << to_string<uint64_t>(get_id()) << endl;
     ss << "  matches: " << MatchList::to_BSON(get_matches()) << endl;
     ss << "  actions: " << ActionList::to_BSON(get_actions()) << endl;
