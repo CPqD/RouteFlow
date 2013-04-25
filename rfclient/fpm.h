@@ -87,6 +87,8 @@
  * table(s) when it reconnects.
  */
 
+#include <assert.h>
+
 #define FPM_DEFAULT_PORT 2620
 
 /*
