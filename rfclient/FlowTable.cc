@@ -117,22 +117,22 @@ void FlowTable::GWResolverCb() {
         PendingRoute pr;
         FlowTable::pendingRoutes.wait_and_pop(pr);
 
-        RouteEntry* existingEntry = NULL;
+        bool existingEntry = false;
         std::list<RouteEntry>::iterator iter = FlowTable::routeTable.begin();
         for (; iter != FlowTable::routeTable.end(); iter++) {
-            if (pr.second == (*iter)) {
-                existingEntry = &(*iter);
+            if (pr.second == *iter) {
+                existingEntry = true;
                 break;
             }
         }
 
-        if (existingEntry != NULL && pr.first == RMT_ADD) {
+        if (existingEntry && pr.first == RMT_ADD) {
             fprintf(stdout, "Received duplicate route addition for route %s\n",
-                    existingEntry->address.toString().c_str());
+                    pr.second.address.toString().c_str());
             continue;
         }
 
-        if (existingEntry == NULL && pr.first == RMT_DELETE) {
+        if (!existingEntry && pr.first == RMT_DELETE) {
             fprintf(stdout, "Received route removal for %s but route %s.\n",
                     pr.second.address.toString().c_str(), "cannot be found");
             continue;
