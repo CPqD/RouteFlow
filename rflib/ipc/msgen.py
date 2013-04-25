@@ -80,7 +80,7 @@ pyDefaultValues = {
 }
 
 pyExportType = {
-"i8": "{0}",
+"i8": "str({0})",
 "i32": "str({0})",
 "i64": "str({0})",
 "bool": "bool({0})",

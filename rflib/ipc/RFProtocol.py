@@ -577,7 +577,7 @@ class RouteMod(MongoIPCMessage):
 
     def to_dict(self):
         data = {}
-        data["mod"] = self.get_mod()
+        data["mod"] = str(self.get_mod())
         data["id"] = str(self.get_id())
         data["matches"] = self.get_matches()
         data["actions"] = self.get_actions()
