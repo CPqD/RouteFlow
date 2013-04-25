@@ -147,5 +147,4 @@ If you want to know more or need to contact us regarding the project for anythin
 
 * Google Groups [mailing list](http://groups.google.com/group/routeflow-discuss?hl=en_US)
 
-
-_RouteFlow - Copyright (c) 2011-2013 CPqD_
+_RouteFlow - Copyright (c) 2012 CPqD_
