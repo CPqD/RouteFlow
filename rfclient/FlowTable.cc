@@ -138,16 +138,19 @@ void FlowTable::GWResolverCb() {
             continue;
         }
 
-        /* If we can't resolve the gateway, put it to the end of the queue.
-         * Routes with unresolvable gateways will constantly trigger this code,
-         * popping and re-pushing. */
         const RouteEntry& re = pr.second;
-        if (resolveGateway(re.gateway, re.interface) < 0) {
-            fprintf(stderr, "An error occurred while %s %s/%s.\n",
-                    "attempting to resolve", re.address.toString().c_str(),
-                    re.netmask.toString().c_str());
-            FlowTable::pendingRoutes.push(pr);
-            continue;
+        if (findHost(re.address) == FlowTable::MAC_ADDR_NONE) {
+            /* Host is unresolved. Attempt to resolve it. */
+            if (resolveGateway(re.gateway, re.interface) < 0) {
+                /* If we can't resolve the gateway, put it to the end of the
+                 * queue. Routes with unresolvable gateways will constantly
+                 * loop through this code, popping and re-pushing. */
+                fprintf(stderr, "An error occurred while %s %s/%s.\n",
+                        "attempting to resolve", re.address.toString().c_str(),
+                        re.netmask.toString().c_str());
+                FlowTable::pendingRoutes.push(pr);
+                continue;
+            }
         }
 
         if (FlowTable::sendToHw(pr.first, pr.second) < 0) {
