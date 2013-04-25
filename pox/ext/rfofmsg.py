@@ -52,6 +52,13 @@ def ofm_match_tp(ofm, match, src, dst):
     if match & OFPFW_TP_DST: # TCP/UDP destination port.
         ofm.match.tp_dst = dst
 
+def get_cidr_prefix(mask):
+    ''' Convert arbitrary netmask into a CIDR prefix for OpenFlow 1.0'''
+    prefix = bin(int(binascii.b2a_hex(mask), 16))[2:].find('0')
+    if prefix == -1:
+        prefix = 32
+    return prefix
+
 def create_flow_mod(routemod):
     ofm = ofp_flow_mod()
 
@@ -69,10 +76,7 @@ def create_flow_mod(routemod):
         match = Match.from_dict(match)
         if match._type == RFMT_IPV4:
             ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
-            # OpenFlow 1.0 doesn't support arbitrary netmasks, so
-            # TODO calculate netmask CIDR prefix better than below...
-            nmprefix = bin(int(binascii.b2a_hex(inet_aton(match.get_value()[1])), 16))[2:].find('0')
-            nmprefix = 32 if nmprefix == -1 else nmprefix
+            nmprefix = get_cidr_prefix(inet_aton(match.get_value()[1]))
             ofm_match_nw(ofm, OFPFW_NW_DST_MASK, 0, 0, 0, str(match.get_value()[0]))
             ofm.match.wildcards &= ~parseCIDR(str(match.get_value()[0]) + "/" + str(nmprefix))[1]
             ofm.match.set_nw_dst(match.get_value()[0])
