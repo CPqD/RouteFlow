@@ -57,10 +57,18 @@ reset() {
     ovs-vsctl emer-reset &> /dev/null;
 
     echo_bold "-> Stopping and resetting LXC VMs...";
-    lxc-shutdown -n rfvmA;
-    lxc-shutdown -n rfvmB;
-    lxc-shutdown -n rfvmC;
-    lxc-shutdown -n rfvmD;
+    for vm in "rfvmA" "rfvmB" "rfvmC" "rfvmD"
+    do
+        lxc-shutdown -n "$vm";
+        while true
+        do
+            if lxc-info -q -n "$vm" | grep -q "STOPPED"; then
+                break;
+            fi
+            echo -n .
+            sleep 1
+        done
+    done
 
     echo_bold "-> Deleting (previous) run data...";
     mongo db --eval "
