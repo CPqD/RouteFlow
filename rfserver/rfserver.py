@@ -388,6 +388,8 @@ class RFServer(RFProtocolFactory, IPC.IPCMessageProcessor):
                            (format_id(dp_id), dp_port))
 
     def reset_vm_port(self, vm_id, vm_port):
+        if vm_id is None:
+            return
         self.ipc.send(RFCLIENT_RFSERVER_CHANNEL, str(vm_id),
                       PortConfig(vm_id=vm_id, vm_port=vm_port, operation_id=1))
         self.log.info("Resetting client port (vm_id=%s, vm_port=%i)" %
