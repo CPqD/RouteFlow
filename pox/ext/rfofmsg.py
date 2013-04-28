@@ -78,9 +78,7 @@ def create_flow_mod(routemod):
             addr = str(match.get_value()[0])
             prefix = get_cidr_prefix(inet_aton(match.get_value()[1]))
             ofm_match_dl(ofm, OFPFW_DL_TYPE, ETHERTYPE_IP)
-            ofm_match_nw(ofm, OFPFW_NW_DST_MASK, 0, 0, 0, addr)
-            ofm.match.wildcards &= ~parseCIDR(str(addr) + "/" + str(prefix))[1]
-            ofm.match.set_nw_dst(match.get_value()[0])
+            ofm.match.set_nw_dst(str(addr) + "/" + str(prefix))
         elif match._type == RFMT_ETHERNET:
             ofm_match_dl(ofm, OFPFW_DL_DST, match.get_value())
         elif match._type == RFMT_ETHERTYPE:
