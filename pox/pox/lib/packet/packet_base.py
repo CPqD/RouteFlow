@@ -98,13 +98,48 @@ class packet_base (object):
         return len(self.pack())
 
     def __str__(self):
-        return "%s: Undefined representation" % self.__class__.__name__
+        if hasattr(self, "_to_str"):
+          try:
+            return self._to_str()
+          except Exception as e:
+            #import traceback
+            #traceback.print_exc()
+            lg.debug("str(%s): %s" % (self.__class__.__name__, e))
+          return "[%s:Bad representation]" % (self.__class__.__name__,)
+        return "[%s l:%i%s]" % (self.__class__.__name__, len(self),
+            "" if self.next else " *")
+
+    def dump(self):
+        p = self
+        m = []
+        while p is not None:
+          if not isinstance(p, packet_base):
+            if isinstance(p, bytes):
+              if len(p) == 0:
+                m.append("[0 bytes]")
+                break
+              s = ''
+              for t in range(min(len(p), 5)):
+                s += "%02x " % (ord(p[t]),)
+              if len(p) > 5: s += "..."
+              s = s.rstrip()
+              m.append("[%s bytes: " % (len(p),) + s + "]")
+              break
+            try:
+              l = len(p)
+              m.append("[%s l:%i]" % (p.__class__.__name__, l))
+            except:
+              m.append("[%s]" % (p.__class__.__name__,))
+            break
+          m.append(str(p))
+          p = p.next
+        return "".join(m)
 
     def find(self, proto):
         """
         Find the specified protocol layer based on its class type or name.
         """
-        if not isinstance(proto, str):
+        if not isinstance(proto, basestring):
             proto = proto.__name__
         if self.__class__.__name__ == proto and self.parsed:
             return self

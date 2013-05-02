@@ -7,8 +7,6 @@ class RFProtocolFactory(IPC.IPCMessageFactory):
             return PortRegister()
         if type_ == PORT_CONFIG:
             return PortConfig()
-        if type_ == DATAPATH_CONFIG:
-            return DatapathConfig()
         if type_ == DATAPATH_PORT_REGISTER:
             return DatapathPortRegister()
         if type_ == DATAPATH_DOWN:

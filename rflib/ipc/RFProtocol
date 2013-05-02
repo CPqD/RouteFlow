@@ -8,11 +8,6 @@ PortConfig
     i32 vm_port
     i32 operation_id
 
-DatapathConfig
-    i64 ct_id
-    i64 dp_id
-    i32 operation_id
-
 DatapathPortRegister
     i64 ct_id
     i64 dp_id

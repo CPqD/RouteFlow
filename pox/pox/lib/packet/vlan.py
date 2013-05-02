@@ -62,11 +62,9 @@ class vlan(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = "vlan={0} pcp={1} ether={2}".format(self.id, self.pcp,
-                                                ethtype_to_str(self.eth_type))
-        if self.next is None:
-            return s
-        return s + "|" + str(self.next)
+        s = "[VLAN vlan={0} pcp={1} ether={2}]".format(self.id, self.pcp,
+            ethtype_to_str(self.eth_type))
+        return s
 
     def parse(self, raw):
         assert isinstance(raw, bytes)
@@ -80,21 +78,31 @@ class vlan(packet_base):
         (pcpid, self.eth_type) = struct.unpack("!HH", raw[:vlan.MIN_LEN])
 
         self.pcp = pcpid >> 13
-        self.c   = pcpid  & 0x1000
+        self.cfi = pcpid  & 0x1000
         self.id  = pcpid  & 0x0fff
 
         self.parsed = True
 
-        # Don't know what to do about a VLAN'd VLAN...
-        assert self.eth_type != 0x8100
+        self.next = ethernet.parse_next(self,self.eth_type,raw,vlan.MIN_LEN)
 
-        if self.eth_type in ethernet.type_parsers:
-            self.next = ethernet.type_parsers[self.eth_type]\
-             (raw=raw[vlan.MIN_LEN:],prev=self)
+    @property
+    def effective_ethertype (self):
+      return ethernet._get_effective_ethertype(self)
 
-    def hdr(self, payload):
+    @property
+    def type (self):
+        """
+        This is just an alias for eth_type.
+
+        It's annoying that the ethertype on an ethernet packet is in the
+        'type' attribute, and for vlan it's in the 'eth_type' attribute.
+        We should probably normalize this. For now, we at least have this.
+        """
+        return self.eth_type
+
+    def hdr (self, payload):
         pcpid  = self.pcp << 13
-        pcpid |= self.c   << 12
+        pcpid |= self.cfi << 12
         pcpid |= self.id
         buf = struct.pack("!HH", pcpid, self.eth_type)
         return buf

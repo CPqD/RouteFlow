@@ -142,7 +142,7 @@ lxc-start -n rfvmD -d
 
 echo_bold "-> Starting the controller and RFPRoxy..."
 cd pox
-./pox.py --no-cli log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
+./pox.py log.level --=INFO topology openflow.topology openflow.discovery rfproxy rfstats &
 cd -
 wait_port_listen $CONTROLLER_PORT
 
@@ -171,12 +171,12 @@ ovs-vsctl set-controller dp0 tcp:127.0.0.1:$CONTROLLER_PORT
 echo_bold "---"
 echo_bold "This test is up and running."
 echo_bold "Start Mininet:"
-echo_bold "  $ mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo"
-echo_bold "    --controller=remote --ip=ADDRESS --port=$CONTROLLER_PORT"
-echo_bold "Replace ADDRESS with the address of this host's interface connected "
-echo_bold "to the Mininet VM."
+echo_bold "  $ sudo mn --custom mininet/custom/topo-4sw-4host.py --topo=rftest2"
+echo_bold "    --controller=remote,ip=[host address],port=6633 --pre=ipconf"
+echo_bold "Replace [host address] with the address of this host's interface "
+echo_bold "connected to the Mininet VM."
 echo_bold "Then try pinging everything:"
-echo_bold "  > pingall"
+echo_bold "  mininet> pingall"
 echo_bold "You can stop this test by pressing CTRL+C."
 echo_bold "---"
 wait

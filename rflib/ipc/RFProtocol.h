@@ -14,7 +14,6 @@
 enum {
 	PORT_REGISTER,
 	PORT_CONFIG,
-	DATAPATH_CONFIG,
 	DATAPATH_PORT_REGISTER,
 	DATAPATH_DOWN,
 	VIRTUAL_PLANE_MAP,
@@ -69,31 +68,6 @@ class PortConfig : public IPCMessage {
     private:
         uint64_t vm_id;
         uint32_t vm_port;
-        uint32_t operation_id;
-};
-
-class DatapathConfig : public IPCMessage {
-    public:
-        DatapathConfig();
-        DatapathConfig(uint64_t ct_id, uint64_t dp_id, uint32_t operation_id);
-
-        uint64_t get_ct_id();
-        void set_ct_id(uint64_t ct_id);
-
-        uint64_t get_dp_id();
-        void set_dp_id(uint64_t dp_id);
-
-        uint32_t get_operation_id();
-        void set_operation_id(uint32_t operation_id);
-
-        virtual int get_type();
-        virtual void from_BSON(const char* data);
-        virtual const char* to_BSON();
-        virtual string str();
-
-    private:
-        uint64_t ct_id;
-        uint64_t dp_id;
         uint32_t operation_id;
 };
 

@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012,2013 James McCauley
 # Copyright 2008 (C) Nicira, Inc.
 #
 # This file is part of POX.
@@ -35,9 +35,10 @@ ETHER_ANY            = EthAddr(b"\x00\x00\x00\x00\x00\x00")
 ETHER_BROADCAST      = EthAddr(b"\xff\xff\xff\xff\xff\xff")
 BRIDGE_GROUP_ADDRESS = EthAddr(b"\x01\x80\xC2\x00\x00\x00")
 LLDP_MULTICAST       = EthAddr(b"\x01\x80\xc2\x00\x00\x0e")
-PAE_MULTICAST        = EthAddr(b'\x01\x80\xc2\x00\x00\x03') # 802.1x Port Access Entity
+PAE_MULTICAST        = EthAddr(b'\x01\x80\xc2\x00\x00\x03') # 802.1x Port
+                                                            #  Access Entity
 NDP_MULTICAST        = EthAddr(b'\x01\x23\x20\x00\x00\x01') # Nicira discovery
-                                                   # multicast
+                                                            #  multicast
 
 class ethernet(packet_base):
   "Ethernet packet struct"
@@ -46,14 +47,28 @@ class ethernet(packet_base):
 
   MIN_LEN = 14
 
-  IP_TYPE   = 0x0800
-  ARP_TYPE  = 0x0806
-  RARP_TYPE = 0x8035
-  VLAN_TYPE = 0x8100
-  LLDP_TYPE = 0x88cc
-  PAE_TYPE  = 0x888e           # 802.1x Port Access Entity
+  IP_TYPE    = 0x0800
+  ARP_TYPE   = 0x0806
+  RARP_TYPE  = 0x8035
+  VLAN_TYPE  = 0x8100
+  LLDP_TYPE  = 0x88cc
+  PAE_TYPE   = 0x888e           # 802.1x Port Access Entity
   MPLS_UNICAST_TYPE = 0x8847
   MPLS_MULTICAST_TYPE = 0x8848
+  IPV6_TYPE  = 0x86dd
+  PPP_TYPE   = 0x880b
+  LWAPP_TYPE = 0x88bb
+  GSMP_TYPE  = 0x880c
+  IPX_TYPE   = 0x8137
+  IPX_TYPE   = 0x8137
+  WOL_TYPE   = 0x0842
+  TRILL_TYPE = 0x22f3
+  JUMBO_TYPE = 0x8870
+  SCSI_TYPE  = 0x889a
+  ATA_TYPE   = 0x88a2
+  QINQ_TYPE  = 0x9100
+
+  INVALID_TYPE = 0xffff
 
   type_parsers = {}
 
@@ -75,11 +90,14 @@ class ethernet(packet_base):
       from mpls import mpls
       ethernet.type_parsers[ethernet.MPLS_UNICAST_TYPE] = mpls
       ethernet.type_parsers[ethernet.MPLS_MULTICAST_TYPE] = mpls
+      from llc import llc
+      ethernet._llc = llc
 
     self.prev = prev
 
     self.dst  = ETHER_ANY
     self.src  = ETHER_ANY
+
     self.type = 0
     self.next = b''
 
@@ -93,7 +111,8 @@ class ethernet(packet_base):
     self.raw = raw
     alen = len(raw)
     if alen < ethernet.MIN_LEN:
-      self.msg('warning eth packet data too short to parse header: data len %u' % alen)
+      self.msg('warning eth packet data too short to parse header: data len %u'
+               % (alen,))
       return
 
     self.dst = EthAddr(raw[:6])
@@ -103,28 +122,50 @@ class ethernet(packet_base):
     self.hdr_len = ethernet.MIN_LEN
     self.payload_len = alen - self.hdr_len
 
-    #TODO: support SNAP/LLC frames
-    if self.type in ethernet.type_parsers:
-      self.next = ethernet.type_parsers[self.type](raw[ethernet.MIN_LEN:], self)
-    else:
-      self.next = raw[ethernet.MIN_LEN:]
-
+    self.next = ethernet.parse_next(self, self.type, raw, ethernet.MIN_LEN)
     self.parsed = True
+
+  @staticmethod
+  def parse_next (prev, typelen, raw, offset=0, allow_llc=True):
+    parser = ethernet.type_parsers.get(typelen)
+    if parser is not None:
+      return parser(raw[offset:], prev)
+    elif typelen < 1536 and allow_llc:
+      return ethernet._llc(raw[offset:], prev)
+    else:
+      return raw[offset:]
 
   @staticmethod
   def getNameForType (ethertype):
     """ Returns a string name for a numeric ethertype """
     return ethtype_to_str(ethertype)
 
-  def __str__(self):
-    s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self.dst)),':',
+  @property
+  def effective_ethertype (self):
+    return self._get_effective_ethertype(self)
+
+  @staticmethod
+  def _get_effective_ethertype (self):
+    """
+    Get the "effective" ethertype of a packet.
+
+    This means that if the payload is something like a VLAN or SNAP header,
+    we want the type from that deeper header.  This is kind of ugly here in
+    the packet library, but it should make user code somewhat simpler.
+    """
+    if not self.parsed:
+      return ethernet.INVALID_TYPE
+    if self.type == ethernet.VLAN_TYPE or type(self.payload) == ethernet._llc:
+      try:
+        return self.payload.effective_ethertype
+      except:
+        return ethernet.INVALID_TYPE
+    return self.type
+
+  def _to_str(self):
+    s = ''.join(('[',str(EthAddr(self.src)),'>',str(EthAddr(self.dst)),' ',
                 ethernet.getNameForType(self.type),']'))
-    if self.next is None:
-      return s
-    elif isinstance(type(self.next), bytes):
-      return s + '|<' + str(len(self.next)) + ' bytes>'
-    else:
-      return s + "|" + str(self.next)
+    return s
 
   def hdr(self, payload):
     dst = self.dst

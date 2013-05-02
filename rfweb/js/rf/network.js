@@ -144,16 +144,16 @@ function show_info(node, data) {
                 "actions": prettify_actions(flow.actions),
                 "priority": flow.priority,
                 "packet_byte_count": flow.packet_count + "/" + flow.byte_count,
-                "style": i % 2,
             }
             rows.push(values);
         }
         
         rows.sort(function(a, b) { return compare_objects(a, b, "priority"); });
         rows.reverse();
-        for (var i in rows)
+        for (var i in rows) {
+            rows[i].style = i % 2;
             table += apply_template(rowtemplate, rows[i]);
-            
+        }
 	    table += "</table>";
     }
 

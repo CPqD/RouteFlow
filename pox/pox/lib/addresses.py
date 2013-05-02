@@ -19,6 +19,7 @@
 Classes for addresses of various types.
 """
 
+from __future__ import print_function
 import struct
 import socket
 
@@ -79,38 +80,30 @@ class EthAddr (object):
   def __init__ (self, addr):
     """
     Understands Ethernet address is various forms.  Hex strings, raw byte
-    strings, long integers, etc.
+    strings, etc.
     """
     # Always stores as a 6 character string
-    if isinstance(addr, int) or isinstance(addr, long):
-      addr = long(addr)
-      # Store the long as an array of 6 bytes
-      # Struct puts the least significant byte at [0] though!
-      # And Murphy puts the least significant byte at [-1]
-      # So we pack ourselves one byte at a time
-      val = []
-      for _ in range(6):
-        # This may not be machine-independent...
-        val.insert(0, struct.pack("B", (addr & 0xFF)))
-        addr >>= 8
-      self._value = ''.join(val)
-    elif isinstance(addr, bytes) or isinstance(addr, unicode):
-      if len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
+    if isinstance(addr, bytes) or isinstance(addr, basestring):
+      if len(addr) == 6:
+        # raw
+        pass
+      elif len(addr) == 17 or len(addr) == 12 or addr.count(':') == 5:
         # hex
         if len(addr) == 17:
           if addr[2::3] != ':::::' and addr[2::3] != '-----':
             raise RuntimeError("Bad format for ethernet address")
-          # TODOC: I have no clue what this is doing
+          # Address of form xx:xx:xx:xx:xx:xx
+          # Pick out the hex digits only
           addr = ''.join((addr[x*3:x*3+2] for x in xrange(0,6)))
         elif len(addr) == 12:
           pass
         else:
+          # Assume it's hex digits but they may not all be in two-digit
+          # groupings (e.g., xx:x:x:xx:x:x). This actually comes up.
           addr = ''.join(["%02x" % (int(x,16),) for x in addr.split(":")])
-        # TODOC: I have no clue what this is doing
+        # We should now have 12 hex digits (xxxxxxxxxxxx).
+        # Convert to 6 raw bytes.
         addr = b''.join((chr(int(addr[x*2:x*2+2], 16)) for x in range(0,6)))
-      elif len(addr) == 6:
-        # raw
-        pass
       else:
         raise RuntimeError("Expected ethernet address string to be 6 raw bytes or some hex")
       self._value = addr
@@ -135,6 +128,10 @@ class EthAddr (object):
     	and (ord(self._value[3]) == 0x00)
     	and (ord(self._value[4]) == 0x00)
     	and (ord(self._value[5]) <= 0x0F))
+
+  @property
+  def is_bridge_filtered (self):
+    return self.isBridgeFiltered()
 
   def isGlobal (self):
     """
@@ -172,22 +169,6 @@ class EthAddr (object):
     """
     return self._value
 
-  def toInt (self):
-    '''
-    Returns the address as an (unsigned) integer
-    '''
-    value = 0
-    # Struct puts the least significant (bit|byte) leftmost, 
-    # but Murphy puts least significant (bit|byte) rightmost
-    # So we unpack ourselves, one byte at a time
-    # most-significant byte is leftmost (self._value[0])
-    for i in range(len(self._value)):
-      byte_shift = 5-i
-      byte = self._value[i]
-      byte_value = struct.unpack("B", byte)[0]
-      value += (byte_value << (8*byte_shift))
-    return value
-
   def toTuple (self):
     """
     Returns a 6-entry long tuple where each entry is the numeric value
@@ -195,13 +176,14 @@ class EthAddr (object):
     """
     return tuple((ord(x) for x in self._value))
 
-  def toStr (self, separator = ':', resolveNames  = False): #TODO: show OUI info from packet lib
+  def toStr (self, separator = ':', resolveNames  = False):
     """
     Returns the address as string consisting of 12 hex chars separated
     by separator.
     If resolveNames is True, it may return company names based on
     the OUI. (Currently unimplemented)
     """
+    #TODO: show OUI info from packet lib ?
     return separator.join(('%02x' % (ord(x),) for x in self._value))
 
   def __str__ (self):
@@ -252,7 +234,7 @@ class IPAddr (object):
     """
 
     # Always stores as a signed network-order int
-    if isinstance(addr, str) or isinstance(addr, bytes):
+    if isinstance(addr, basestring) or isinstance(addr, bytes):
       if len(addr) != 4:
         # dotted quad
         self._value = struct.unpack('i', socket.inet_aton(addr))[0]
@@ -262,7 +244,8 @@ class IPAddr (object):
       self._value = addr._value
     elif isinstance(addr, int) or isinstance(addr, long):
       addr = addr & 0xffFFffFF # unsigned long
-      self._value = struct.unpack("!i", struct.pack(('!' if networkOrder else '') + "I", addr))[0]
+      self._value = struct.unpack("!i",
+          struct.pack(('!' if networkOrder else '') + "I", addr))[0]
     else:
       raise RuntimeError("Unexpected IP address format")
 
@@ -304,20 +287,20 @@ class IPAddr (object):
     """
     Returns True if this network is in the specified network.
     network is a dotted quad (with or without a CIDR or normal style
-    netmask, which can also be specified separately via the netmask parameter),
-    or it can be a tuple of (address,wild-bits) like that returned by
-    parseCIDR().
+    netmask, which can also be specified separately via the netmask
+    parameter), or it can be a tuple of (address,network-bits) like that
+    returned by parse_cidr().
     """
     if type(network) is not tuple:
       if netmask is not None:
         network += "/" + str(netmask)
-      n,b = parseCIDR(network)
+      n,b = parse_cidr(network)
     else:
       n,b = network
       if type(n) is not IPAddr:
         n = IPAddr(n)
 
-    return (self.toUnsigned() & ~((1 << b)-1)) == n.toUnsigned()
+    return (self.toUnsigned() & ~((1 << (32-b))-1)) == n.toUnsigned()
 
   def __str__ (self):
     return self.toStr()
@@ -327,7 +310,7 @@ class IPAddr (object):
     try:
       if not isinstance(other, IPAddr):
         other = IPAddr(other)
-      return cmp(self._value, other._value)
+      return cmp(self.toUnsigned(), other.toUnsigned())
     except:
       return -other.__cmp__(self)
 
@@ -346,28 +329,58 @@ class IPAddr (object):
     object.__setattr__(self, a, v)
 
 
+def netmask_to_cidr (dq):
+  """
+  Takes a netmask as either an IPAddr or a string, and returns the number
+  of network bits.  e.g., 255.255.255.0 -> 24
+  Raise exception if subnet mask is not CIDR-compatible.
+  """
+  if isinstance(dq, basestring):
+    dq = IPAddr(dq)
+  v = dq.toUnsigned(networkOrder=False)
+  c = 0
+  while v & 0x80000000:
+    c += 1
+    v <<= 1
+  v = v & 0xffFFffFF
+  if v != 0:
+    raise RuntimeError("Netmask %s is not CIDR-compatible" % (dq,))
+  return c
 
-def parseCIDR (addr, infer=True):
+
+def cidr_to_netmask (bits):
+  """
+  Takes a number of network bits, and returns the corresponding netmask
+  as an IPAddr.  e.g., 24 -> 255.255.255.0
+  """
+  v = (1 << bits) - 1
+  v = v << (32-bits)
+  return IPAddr(v, networkOrder = False)
+
+
+def parse_cidr (addr, infer=True, allow_host=False):
   """
   Takes a CIDR address or plain dotted-quad, and returns a tuple of address
-  and wildcard bits (suitable for a flow_mod).
-  Can infer the wildcard bits based on network classes if infer=True.
+  and count-of-network-bits.
+  Can infer the network bits based on network classes if infer=True.
   Can also take a string in the form 'address/netmask', as long as the
   netmask is representable in CIDR.
+
+  FIXME: This function is badly named.
   """
   def check (r0, r1):
     a = r0.toUnsigned()
     b = r1
-    if a & ((1<<b)-1):
-      raise RuntimeError("Host part of CIDR address not compatible with " +
-                         "network part")
-    return (r0,r1)
+    if (not allow_host) and (a & ((1<<b)-1)):
+      raise RuntimeError("Host part of CIDR address is not zero (%s)"
+                         % (addr,))
+    return (r0,32-r1)
   addr = addr.split('/', 2)
   if len(addr) == 1:
     if infer is False:
-      return (IPAddr(addr[0]), 0)
+      return check(IPAddr(addr[0]), 0)
     addr = IPAddr(addr[0])
-    b = inferNetMask(addr)
+    b = 32-infer_netmask(addr)
     m = (1<<b)-1
     if (addr.toUnsigned() & m) == 0:
       # All bits in wildcarded part are 0, so we'll use the wildcard
@@ -392,50 +405,52 @@ def parseCIDR (addr, infer=True):
   assert wild >= 0 and wild <= 32
   return check(IPAddr(addr[0]), wild)
 
-def inferNetMask (addr):
+
+def infer_netmask (addr):
   """
-  Uses network classes to guess the number of wildcard bits, and returns
-  that number in flow_mod-friendly format.
+  Uses network classes to guess the number of network bits
   """
   addr = addr.toUnsigned()
   if addr == 0:
     # Special case -- default network
-    return 32 # all bits wildcarded
+    return 32-32 # all bits wildcarded
   if (addr & (1 << 31)) == 0:
     # Class A
-    return 24
+    return 32-24
   if (addr & (3 << 30)) == 2 << 30:
     # Class B
-    return 16
+    return 32-16
   if (addr & (7 << 29)) == 6 << 29:
     # Class C
-    return 8
+    return 32-8
   if (addr & (15 << 28)) == 14 << 28:
     # Class D (Multicast)
-    return 0 # exact match
+    return 32-0 # exact match
   # Must be a Class E (Experimental)
-    return 0
+    return 32-0
+
 
 IP_ANY = IPAddr("0.0.0.0")
-IP_BROADCAST = IPAddr("255.255.25.255")
+IP_BROADCAST = IPAddr("255.255.255.255")
 
 
 if __name__ == '__main__':
   # A couple sanity checks
+  #TODO: move to tests
   import code
   a = IPAddr('255.0.0.1')
   for v in [('255.0.0.1',True), (0xff000001, True), (0x010000ff, False)]:
-    print "== " + str(v) + " ======================="
+    print("== " + str(v) + " =======================")
     a = IPAddr(v[0],v[1])
-    print a._value,-16777215
-    #print hex(a._value),'ff000001'
-    print str(a),'255.0.0.1'
-    print hex(a.toUnsigned()),'010000ff'
-    print hex(a.toUnsigned(networkOrder=True)),'ff000001'
-    print a.toSigned(),16777471
-    print a.toSigned(networkOrder=True),-16777215
-    print "----"
-    #print [parseCIDR(x)[1]==8 for x in
-    #       ["192.168.101.0","192.168.102.0/24","1.1.168.103/255.255.255.0"]]
+    print(a._value,-16777215)
+    #print(hex(a._value),'ff000001')
+    print(str(a),'255.0.0.1')
+    print(hex(a.toUnsigned()),'010000ff')
+    print(hex(a.toUnsigned(networkOrder=True)),'ff000001')
+    print(a.toSigned(),16777471)
+    print(a.toSigned(networkOrder=True),-16777215)
+    print("----")
+    print([parse_cidr(x)[1]==24 for x in
+           ["192.168.101.0","192.168.102.0/24","1.1.168.103/255.255.255.0"]])
   code.interact(local=locals())
 

@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011,2012 James McCauley
 #
 # This file is part of POX.
 #
@@ -26,17 +26,21 @@ import pox
 import pox.lib.util
 from pox.lib.revent.revent import EventMixin
 import datetime
+import time
 from pox.lib.socketcapture import CaptureSocket
 import pox.openflow.debug
-from pox.openflow.util import make_type_to_class_table
-from pox.openflow.connection_arbiter import *
-
+from pox.openflow.util import make_type_to_unpacker_table
 from pox.openflow import *
 
 log = core.getLogger()
 
 import socket
 import select
+
+# List where the index is an OpenFlow message type (OFPT_xxx), and
+# the values are unpack functions that unpack the wire format of that
+# type into a message object.
+unpackers = make_type_to_unpacker_table()
 
 try:
   PIPE_BUF = select.PIPE_BUF
@@ -66,25 +70,35 @@ def handle_HELLO (con, msg): #S
 
   # Send a features request
   msg = of.ofp_features_request()
-  con.send(msg.pack())
+  con.send(msg)
+
+def handle_ECHO_REPLY (con, msg):
+  #con.msg("Got echo reply")
+  pass
 
 def handle_ECHO_REQUEST (con, msg): #S
   reply = msg
   
   reply.header_type = of.OFPT_ECHO_REPLY
-  con.send(reply.pack())
+  con.send(reply)
 
 def handle_FLOW_REMOVED (con, msg): #A
-  con.ofnexus.raiseEventNoErrors(FlowRemoved, con, msg)
-  con.raiseEventNoErrors(FlowRemoved, con, msg)
+  e = con.ofnexus.raiseEventNoErrors(FlowRemoved, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(FlowRemoved, con, msg)
 
 def handle_FEATURES_REPLY (con, msg):
   connecting = con.connect_time == None
   con.features = msg
+  con.original_ports._ports = set(msg.ports)
+  con.ports._reset()
   con.dpid = msg.datapath_id
 
   if not connecting:
     con.ofnexus._connect(con)
+    e = con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
+    if e is None or e.halt != True:
+      con.raiseEventNoErrors(FeaturesReceived, con, msg)
     return
 
   nexus = core.OpenFlowConnectionArbiter.getNexus(con)
@@ -105,16 +119,17 @@ def handle_FEATURES_REPLY (con, msg):
   def finish_connecting (event):
     if event.xid != barrier.xid:
       con.dpid = None
-      con.err("Failed connect for " + pox.lib.util.dpidToStr(
-              msg.datapath_id))
+      con.err("failed connect")
       con.disconnect()
     else:
-      con.info("Connected to " + pox.lib.util.dpidToStr(msg.datapath_id))
-      import time
+      con.info("connected")
       con.connect_time = time.time()
-      #for p in msg.ports: print(p.show())
-      con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
-      con.raiseEventNoErrors(ConnectionUp, con, msg)
+      e = con.ofnexus.raiseEventNoErrors(ConnectionUp, con, msg)
+      if e is None or e.halt != True:
+        con.raiseEventNoErrors(ConnectionUp, con, msg)
+      e = con.ofnexus.raiseEventNoErrors(FeaturesReceived, con, msg)
+      if e is None or e.halt != True:
+        con.raiseEventNoErrors(FeaturesReceived, con, msg)
     con.removeListeners(listeners)
   listeners.append(con.addListener(BarrierIn, finish_connecting))
 
@@ -130,101 +145,103 @@ def handle_FEATURES_REPLY (con, msg):
   #TODO: Add a timeout for finish_connecting
 
   if con.ofnexus.miss_send_len is not None:
-    con.send(of.ofp_switch_config(miss_send_len =
+    con.send(of.ofp_set_config(miss_send_len =
                                   con.ofnexus.miss_send_len))
   if con.ofnexus.clear_flows_on_connect:
-    con.send(of.ofp_flow_mod(match=of.ofp_match(), command=of.OFPFC_DELETE))
+    con.send(of.ofp_flow_mod(match=of.ofp_match(),command=of.OFPFC_DELETE))
 
   con.send(barrier)
 
+  """
+  # Hack for old versions of cbench
+  class C (object):
+    xid = barrier.xid
+  finish_connecting(C())
+  """
 
 def handle_STATS_REPLY (con, msg):
-  con.ofnexus.raiseEventNoErrors(RawStatsReply, con, msg)
-  con.raiseEventNoErrors(RawStatsReply, con, msg)
+  e = con.ofnexus.raiseEventNoErrors(RawStatsReply, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(RawStatsReply, con, msg)
   con._incoming_stats_reply(msg)
 
 def handle_PORT_STATUS (con, msg): #A
-  con.ofnexus.raiseEventNoErrors(PortStatus, con, msg)
-  con.raiseEventNoErrors(PortStatus, con, msg)
+  if msg.reason == of.OFPPR_DELETE:
+    con.ports._forget(msg.desc)
+  else:
+    con.ports._update(msg.desc)
+  e = con.ofnexus.raiseEventNoErrors(PortStatus, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(PortStatus, con, msg)
 
 def handle_PACKET_IN (con, msg): #A
-  con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
-  con.raiseEventNoErrors(PacketIn, con, msg)
-#  if PacketIn in con.ofnexus._eventMixin_handlers:
-#    p = ethernet(msg.data)
-#    con.ofnexus.raiseEventNoErrors(PacketIn(con, msg, p))
+  e = con.ofnexus.raiseEventNoErrors(PacketIn, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(PacketIn, con, msg)
 
 def handle_ERROR_MSG (con, msg): #A
-  log.error(str(con) + " OpenFlow Error:\n" +
-            msg.show(str(con) + " Error: ").strip())
-  con.ofnexus.raiseEventNoErrors(ErrorIn, con, msg)
-  con.raiseEventNoErrors(ErrorIn, con, msg)
+  err = ErrorIn(con, msg)
+  e = con.ofnexus.raiseEventNoErrors(err)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(err)
+  if err.should_log:
+    log.error(str(con) + " OpenFlow Error:\n" +
+              msg.show(str(con) + " Error: ").strip())
 
 def handle_BARRIER (con, msg):
-  con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
-  con.raiseEventNoErrors(BarrierIn, con, msg)
-
-#TODO: def handle_VENDOR (con, msg): #S
-
-
-def _processStatsBody (body, obj):
-  r = []
-  t = obj.__class__
-  remaining = len(body)
-  while remaining:
-    obj = t()
-    body = obj.unpack(body)
-    assert len(body) < remaining # Should have read something
-    remaining = len(body)
-    r.append(obj)
-  return r
+  e = con.ofnexus.raiseEventNoErrors(BarrierIn, con, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(BarrierIn, con, msg)
 
 # handlers for stats replies
 def handle_OFPST_DESC (con, parts):
-  msg = of.ofp_desc_stats()
-  msg.unpack(parts[0].body)
-  con.ofnexus.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
-  con.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
+  msg = parts[0].body
+  e = con.ofnexus.raiseEventNoErrors(SwitchDescReceived,con,parts[0],msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(SwitchDescReceived, con, parts[0], msg)
 
 def handle_OFPST_FLOW (con, parts):
   msg = []
   for part in parts:
-    msg += _processStatsBody(part.body, of.ofp_flow_stats())
-  con.ofnexus.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
-  con.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
+    msg.extend(part.body)
+  e = con.ofnexus.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(FlowStatsReceived, con, parts, msg)
 
 def handle_OFPST_AGGREGATE (con, parts):
-  msg = of.ofp_aggregate_stats_reply()
-  msg.unpack(parts[0].body)
-  con.ofnexus.raiseEventNoErrors(AggregateFlowStatsReceived, con,
-                                 parts[0], msg)
-  con.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
+  msg = parts[0].body
+  e = con.ofnexus.raiseEventNoErrors(AggregateFlowStatsReceived, con,
+                                     parts[0], msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(AggregateFlowStatsReceived, con, parts[0], msg)
 
 def handle_OFPST_TABLE (con, parts):
   msg = []
   for part in parts:
-    msg += _processStatsBody(part.body, of.ofp_table_stats())
-  con.ofnexus.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
-  con.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
+    msg.extend(part.body)
+  e = con.ofnexus.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(TableStatsReceived, con, parts, msg)
 
 def handle_OFPST_PORT (con, parts):
   msg = []
   for part in parts:
-    msg += _processStatsBody(part.body, of.ofp_port_stats())
-  con.ofnexus.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
-  con.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
+    msg.extend(part.body)
+  e = con.ofnexus.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(PortStatsReceived, con, parts, msg)
 
 def handle_OFPST_QUEUE (con, parts):
   msg = []
   for part in parts:
-    msg += _processStatsBody(part.body, of.ofp_queue_stats())
-  con.ofnexus.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
-  con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
+    msg.extend(part.body)
+  e = con.ofnexus.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
+  if e is None or e.halt != True:
+    con.raiseEventNoErrors(QueueStatsReceived, con, parts, msg)
 
+def handle_VENDOR (con, msg):
+  log.info("Vendor msg: " + str(msg))
 
-# A list, where the index is an OFPT, and the value is a libopenflow
-# class for that type
-classes = []
 
 # A list, where the index is an OFPT, and the value is a function to
 # call for that type
@@ -235,6 +252,7 @@ handlers = []
 handlerMap = {
   of.OFPT_HELLO : handle_HELLO,
   of.OFPT_ECHO_REQUEST : handle_ECHO_REQUEST,
+  of.OFPT_ECHO_REPLY : handle_ECHO_REPLY,
   of.OFPT_PACKET_IN : handle_PACKET_IN,
   of.OFPT_FEATURES_REPLY : handle_FEATURES_REPLY,
   of.OFPT_PORT_STATUS : handle_PORT_STATUS,
@@ -242,6 +260,7 @@ handlerMap = {
   of.OFPT_BARRIER_REPLY : handle_BARRIER,
   of.OFPT_STATS_REPLY : handle_STATS_REPLY,
   of.OFPT_FLOW_REMOVED : handle_FLOW_REMOVED,
+  of.OFPT_VENDOR : handle_VENDOR,
 }
 
 statsHandlerMap = {
@@ -444,6 +463,108 @@ class OFCaptureSocket (CaptureSocket):
       l = len(self._sbuf)
 
 
+class PortCollection (object):
+  """
+  Keeps track of lists of ports and provides nice indexing.
+
+  NOTE: It's possible this could be simpler by inheriting from UserDict,
+        but I couldn't swear without looking at UserDict in some detail,
+        so I just implemented a lot of stuff by hand.
+  """
+  def __init__ (self):
+    self._ports = set()
+    self._masks = set()
+    self._chain = None
+
+  def _reset (self):
+    self._ports.clear()
+    self._masks.clear()
+
+  def _forget (self, port_no):
+    self._masks.add(port_no)
+    self._ports = set([p for p in self._ports if p.port_no != port_no])
+
+  def _update (self, port):
+    self._masks.discard(port.port_no)
+    self._ports = set([p for p in self._ports if p.port_no != port.port_no])
+    self._ports.add(port)
+
+  def __str__ (self):
+    if len(self) == 0:
+      return "<Ports: Empty>"
+    l = ["%s:%i"%(p.name,p.port_no) for p in sorted(self.values())]
+    return "<Ports: %s>" % (", ".join(l),)
+
+  def __len__ (self):
+    return len(self.keys())
+
+  def __getitem__ (self, index):
+    if isinstance(index, (int,long)):
+      for p in self._ports:
+        if p.port_no == index:
+          return p
+    elif isinstance(index, EthAddr):
+      for p in self._ports:
+        if p.hw_addr == index:
+          return p
+    else:
+      for p in self.port:
+        if p.name == index:
+          return p
+    if self._chain:
+      p = self._chain[index]
+      if p.port_no not in self._masks:
+        return p
+
+    raise IndexError("No key %s" % (index,))
+
+  def keys (self):
+    if self._chain:
+      k = set(self._chain.keys())
+      k.difference_update(self._masks)
+    else:
+      k = set()
+    k.update([p.port_no for p in self._ports])
+    return list(k)
+
+  def __iter__ (self):
+    return iter(self.keys())
+
+  def iterkeys (self):
+    return iter(self.keys())
+
+  def __contains__ (self, index):
+    try:
+      self[index]
+      return True
+    except Exception:
+      pass
+    return False
+
+  def values (self):
+    return [self[k] for k in self.keys()]
+
+  def items (self):
+    return [(k,self[k]) for k in self.keys()]
+
+  def iterkeys (self):
+    return iter(self.keys())
+  def itervalues (self):
+    return iter(self.values())
+  def iteritems (self):
+    return iter(self.items())
+  def has_key (self, k):
+    return k in self
+  def get (self, k, default=None):
+    try:
+      return self[k]
+    except IndexError:
+      return default
+  def copy (self):
+    r = PortCollection()
+    r._ports = set(self.values())
+
+
 class Connection (EventMixin):
   """
   A Connection object represents a single TCP session with an
@@ -496,8 +617,13 @@ class Connection (EventMixin):
     self.features = None
     self.disconnected = False
     self.connect_time = None
+    self.idle_time = time.time()
 
     self.send(of.ofp_hello())
+
+    self.original_ports = PortCollection()
+    self.ports = PortCollection()
+    self.ports._chain = self.original_ports
 
     #TODO: set a time that makes sure we actually establish a connection by
     #      some timeout
@@ -506,41 +632,29 @@ class Connection (EventMixin):
     return self.sock.fileno()
 
   def close (self):
-    if not self.disconnected:
-      self.info("closing connection")
-    else:
-      #self.msg("closing connection")
-      pass
-    try:
-      self.sock.shutdown(socket.SHUT_RDWR)
-    except:
-      pass
+    self.disconnect('closed')
     try:
       self.sock.close()
     except:
       pass
 
-  def disconnect (self):
+  def disconnect (self, msg = 'disconnected'):
     """
     disconnect this Connection (usually not invoked manually).
     """
+    already = False
     if self.disconnected:
-      self.err("already disconnected!")
-    self.msg("disconnecting")
+      self.msg("already disconnected")
+      already = True
+    self.info(msg)
     self.disconnected = True
     try:
       self.ofnexus._disconnect(self.dpid)
     except:
       pass
-    """
-    try:
-      if self.dpid != None:
-        self.ofnexus.raiseEvent(ConnectionDown(self))
-    except:
-      self.err("ConnectionDown event caused exception")
-    """
-    if self.dpid != None:
-      self.ofnexus.raiseEventNoErrors(ConnectionDown(self))
+    if self.dpid is not None and not already:
+      self.ofnexus.raiseEventNoErrors(ConnectionDown, self)
+      self.raiseEventNoErrors(ConnectionDown, self)
 
     try:
       #deferredSender.kill(self)
@@ -559,17 +673,18 @@ class Connection (EventMixin):
 
   def send (self, data):
     """
-    Send raw data to the switch.
+    Send data to the switch.
 
-    Generally, data is a bytes object.  If not, we check if it has a pack()
-    method and call it (hoping the result will be a bytes object).  This
-    way, you can just pass one of the OpenFlow objects from the OpenFlow
-    library to it and get the expected result, for example.
+    Data should probably either be raw bytes in OpenFlow wire format, or
+    an OpenFlow controller-to-switch message object from libopenflow.
     """
     if self.disconnected: return
     if type(data) is not bytes:
-      if hasattr(data, 'pack'):
-        data = data.pack()
+      # There's actually no reason the data has to be an instance of
+      # ofp_header, but this check is likely to catch a lot of bugs,
+      # so we check it anyway.
+      assert isinstance(data, of.ofp_header)
+      data = data.pack()
 
     if deferredSender.sending:
       log.debug("deferred sender is sending!")
@@ -601,22 +716,34 @@ class Connection (EventMixin):
     if len(d) == 0:
       return False
     self.buf += d
-    l = len(self.buf)
-    while l > 4:
-      if ord(self.buf[0]) != of.OFP_VERSION:
-        log.warning("Bad OpenFlow version (" + str(ord(self.buf[0])) +
-                    ") on connection " + str(self))
-        return False
-      # OpenFlow parsing occurs here:
-      ofp_type = ord(self.buf[1])
-      packet_length = ord(self.buf[2]) << 8 | ord(self.buf[3])
-      if packet_length > l: break
-      msg = classes[ofp_type]()
-      # msg.unpack implicitly only examines its own bytes, and not trailing
-      # bytes 
-      msg.unpack(self.buf)
-      self.buf = self.buf[packet_length:]
-      l = len(self.buf)
+    buf_len = len(self.buf)
+
+
+    offset = 0
+    while buf_len - offset >= 8: # 8 bytes is minimum OF message size
+      # We pull the first four bytes of the OpenFlow header off by hand
+      # (using ord) to find the version/length/type so that we can
+      # correctly call libopenflow to unpack it.
+
+      ofp_type = ord(self.buf[offset+1])
+
+      if ord(self.buf[offset]) != of.OFP_VERSION:
+        if ofp_type == of.OFPT_HELLO:
+          # We let this through and hope the other side switches down.
+          pass
+        else:
+          log.warning("Bad OpenFlow version (0x%02x) on connection %s"
+                      % (ord(self.buf[offset]), self))
+          return False # Throw connection away
+
+      msg_length = ord(self.buf[offset+2]) << 8 | ord(self.buf[offset+3])
+
+      if buf_len - offset < msg_length: break
+
+      new_offset,msg = unpackers[ofp_type](self.buf, offset)
+      assert new_offset - offset == msg_length
+      offset = new_offset
+
       try:
         h = handlers[ofp_type]
         h(self, msg)
@@ -625,13 +752,16 @@ class Connection (EventMixin):
                       "%s %s", self,self,
                       ("\n" + str(self) + " ").join(str(msg).split('\n')))
         continue
+
+    if offset != 0:
+      self.buf = self.buf[offset:]
+
     return True
 
   def _incoming_stats_reply (self, ofp):
     # This assumes that you don't receive multiple stats replies
     # to different requests out of order/interspersed.
-    more = (ofp.flags & 1) != 0
-    if more:
+    if not ofp.is_last_reply:
       if ofp.type not in [of.OFPST_FLOW, of.OFPST_TABLE,
                                 of.OFPST_PORT, of.OFPST_QUEUE]:
         log.error("Don't know how to aggregate stats message of type " +
@@ -653,7 +783,7 @@ class Connection (EventMixin):
     else:
       self._previous_stats = [ofp]
 
-    if not more:
+    if ofp.is_last_reply:
       handler = statsHandlerMap.get(self._previous_stats[0].type, None)
       s = self._previous_stats
       self._previous_stats = []
@@ -664,7 +794,12 @@ class Connection (EventMixin):
       handler(self, s)
 
   def __str__ (self):
-    return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
+    #return "[Con " + str(self.ID) + "/" + str(self.dpid) + "]"
+    if self.dpid is None:
+      d = str(self.dpid)
+    else:
+      d = pox.lib.util.dpidToStr(self.dpid)
+    return "[%s %i]" % (d, self.ID)
 
 
 def wrap_socket (new_sock):
@@ -708,7 +843,7 @@ class OpenFlow_01_Task (Task):
     listener.listen(16)
     sockets.append(listener)
 
-    log.debug("Listening for connections on %s:%s" %
+    log.debug("Listening on %s:%s" %
               (self.address, self.port))
 
     con = None
@@ -718,15 +853,7 @@ class OpenFlow_01_Task (Task):
           con = None
           rlist, wlist, elist = yield Select(sockets, [], sockets, 5)
           if len(rlist) == 0 and len(wlist) == 0 and len(elist) == 0:
-            """
-            try:
-              timer_callback()
-            except:
-              print "[Timer]", sys.exc_info
-            continue
-            """
             if not core.running: break
-            pass
 
           for con in elist:
             if con is listener:
@@ -741,6 +868,7 @@ class OpenFlow_01_Task (Task):
               except:
                 pass
 
+          timestamp = time.time()
           for con in rlist:
             if con is listener:
               new_sock = listener.accept()[0]
@@ -753,6 +881,7 @@ class OpenFlow_01_Task (Task):
               sockets.append( newcon )
               #print str(newcon) + " connected"
             else:
+              con.idle_time = timestamp
               if con.read() is False:
                 con.close()
                 sockets.remove(con)
@@ -784,12 +913,13 @@ class OpenFlow_01_Task (Task):
 
     #pox.core.quit()
 
-classes.extend( make_type_to_class_table())
 
-handlers.extend([None] * (1 + sorted(handlerMap.keys(), reverse=True)[0]))
-for h in handlerMap:
-  handlers[h] = handlerMap[h]
-  #print handlerMap[h]
+def _set_handlers ():
+  handlers.extend([None] * (1 + sorted(handlerMap.keys(),reverse=True)[0]))
+  for h in handlerMap:
+    handlers[h] = handlerMap[h]
+    #print handlerMap[h]
+_set_handlers()
 
 
 def launch (port = 6633, address = "0.0.0.0"):

@@ -1,3 +1,20 @@
+# Copyright 2011 James McCauley
+#
+# This file is part of POX.
+#
+# POX is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# POX is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with POX.  If not, see <http://www.gnu.org/licenses/>.
+
 import logging
 from logging.handlers import *
 
@@ -45,10 +62,13 @@ def launch (__INSTANCE__ = None, **kw):
   logging.Formatter instance for all loggers created with that invocation
   of the log module.  If no loggers are created with this instantiation,
   it is used for the default logger.
+  If a --format is specified, you can also specify a --datefmt="<str>"
+  where the string is a strftime format string for date/time stamps.
   """
 
   if 'format' in kw:
-    formatter = logging.Formatter(kw['format'])
+    df = kw.pop("datefmt", None)
+    formatter = logging.Formatter(kw['format'], datefmt=df)
     del kw['format']
     if len(kw) == 0:
       # Use for the default logger...

@@ -6,14 +6,15 @@ from rflib.types.Action import Action
 from rflib.types.Option import Option
 from MongoIPC import MongoIPCMessage
 
+format_id = lambda dp_id: hex(dp_id).rstrip('L')
+
 PORT_REGISTER = 0
 PORT_CONFIG = 1
-DATAPATH_CONFIG = 2
-DATAPATH_PORT_REGISTER = 3
-DATAPATH_DOWN = 4
-VIRTUAL_PLANE_MAP = 5
-DATA_PLANE_MAP = 6
-ROUTE_MOD = 7
+DATAPATH_PORT_REGISTER = 2
+DATAPATH_DOWN = 3
+VIRTUAL_PLANE_MAP = 4
+DATA_PLANE_MAP = 5
+ROUTE_MOD = 6
 
 class PortRegister(MongoIPCMessage):
     def __init__(self, vm_id=None, vm_port=None, hwaddress=None):
@@ -75,7 +76,7 @@ class PortRegister(MongoIPCMessage):
 
     def __str__(self):
         s = "PortRegister\n"
-        s += "  vm_id: " + str(self.get_vm_id()) + "\n"
+        s += "  vm_id: " + format_id(self.get_vm_id()) + "\n"
         s += "  vm_port: " + str(self.get_vm_port()) + "\n"
         s += "  hwaddress: " + str(self.get_hwaddress()) + "\n"
         return s
@@ -140,73 +141,8 @@ class PortConfig(MongoIPCMessage):
 
     def __str__(self):
         s = "PortConfig\n"
-        s += "  vm_id: " + str(self.get_vm_id()) + "\n"
+        s += "  vm_id: " + format_id(self.get_vm_id()) + "\n"
         s += "  vm_port: " + str(self.get_vm_port()) + "\n"
-        s += "  operation_id: " + str(self.get_operation_id()) + "\n"
-        return s
-
-class DatapathConfig(MongoIPCMessage):
-    def __init__(self, ct_id=None, dp_id=None, operation_id=None):
-        self.set_ct_id(ct_id)
-        self.set_dp_id(dp_id)
-        self.set_operation_id(operation_id)
-
-    def get_type(self):
-        return DATAPATH_CONFIG
-
-    def get_ct_id(self):
-        return self.ct_id
-
-    def set_ct_id(self, ct_id):
-        ct_id = 0 if ct_id is None else ct_id
-        try:
-            self.ct_id = int(ct_id)
-        except:
-            self.ct_id = 0
-
-    def get_dp_id(self):
-        return self.dp_id
-
-    def set_dp_id(self, dp_id):
-        dp_id = 0 if dp_id is None else dp_id
-        try:
-            self.dp_id = int(dp_id)
-        except:
-            self.dp_id = 0
-
-    def get_operation_id(self):
-        return self.operation_id
-
-    def set_operation_id(self, operation_id):
-        operation_id = 0 if operation_id is None else operation_id
-        try:
-            self.operation_id = int(operation_id)
-        except:
-            self.operation_id = 0
-
-    def from_dict(self, data):
-        self.set_ct_id(data["ct_id"])
-        self.set_dp_id(data["dp_id"])
-        self.set_operation_id(data["operation_id"])
-
-    def to_dict(self):
-        data = {}
-        data["ct_id"] = str(self.get_ct_id())
-        data["dp_id"] = str(self.get_dp_id())
-        data["operation_id"] = str(self.get_operation_id())
-        return data
-
-    def from_bson(self, data):
-        data = bson.BSON.decode(data)
-        self.from_dict(data)
-
-    def to_bson(self):
-        return bson.BSON.encode(self.get_dict())
-
-    def __str__(self):
-        s = "DatapathConfig\n"
-        s += "  ct_id: " + str(self.get_ct_id()) + "\n"
-        s += "  dp_id: " + str(self.get_dp_id()) + "\n"
         s += "  operation_id: " + str(self.get_operation_id()) + "\n"
         return s
 
@@ -270,8 +206,8 @@ class DatapathPortRegister(MongoIPCMessage):
 
     def __str__(self):
         s = "DatapathPortRegister\n"
-        s += "  ct_id: " + str(self.get_ct_id()) + "\n"
-        s += "  dp_id: " + str(self.get_dp_id()) + "\n"
+        s += "  ct_id: " + format_id(self.get_ct_id()) + "\n"
+        s += "  dp_id: " + format_id(self.get_dp_id()) + "\n"
         s += "  dp_port: " + str(self.get_dp_port()) + "\n"
         return s
 
@@ -322,8 +258,8 @@ class DatapathDown(MongoIPCMessage):
 
     def __str__(self):
         s = "DatapathDown\n"
-        s += "  ct_id: " + str(self.get_ct_id()) + "\n"
-        s += "  dp_id: " + str(self.get_dp_id()) + "\n"
+        s += "  ct_id: " + format_id(self.get_ct_id()) + "\n"
+        s += "  dp_id: " + format_id(self.get_dp_id()) + "\n"
         return s
 
 class VirtualPlaneMap(MongoIPCMessage):
@@ -399,9 +335,9 @@ class VirtualPlaneMap(MongoIPCMessage):
 
     def __str__(self):
         s = "VirtualPlaneMap\n"
-        s += "  vm_id: " + str(self.get_vm_id()) + "\n"
+        s += "  vm_id: " + format_id(self.get_vm_id()) + "\n"
         s += "  vm_port: " + str(self.get_vm_port()) + "\n"
-        s += "  vs_id: " + str(self.get_vs_id()) + "\n"
+        s += "  vs_id: " + format_id(self.get_vs_id()) + "\n"
         s += "  vs_port: " + str(self.get_vs_port()) + "\n"
         return s
 
@@ -491,10 +427,10 @@ class DataPlaneMap(MongoIPCMessage):
 
     def __str__(self):
         s = "DataPlaneMap\n"
-        s += "  ct_id: " + str(self.get_ct_id()) + "\n"
-        s += "  dp_id: " + str(self.get_dp_id()) + "\n"
+        s += "  ct_id: " + format_id(self.get_ct_id()) + "\n"
+        s += "  dp_id: " + format_id(self.get_dp_id()) + "\n"
         s += "  dp_port: " + str(self.get_dp_port()) + "\n"
-        s += "  vs_id: " + str(self.get_vs_id()) + "\n"
+        s += "  vs_id: " + format_id(self.get_vs_id()) + "\n"
         s += "  vs_port: " + str(self.get_vs_port()) + "\n"
         return s
 
@@ -594,7 +530,7 @@ class RouteMod(MongoIPCMessage):
     def __str__(self):
         s = "RouteMod\n"
         s += "  mod: " + str(self.get_mod()) + "\n"
-        s += "  id: " + str(self.get_id()) + "\n"
+        s += "  id: " + format_id(self.get_id()) + "\n"
         s += "  matches:\n"
         for match in self.get_matches():
             s += "    " + str(Match.from_dict(match)) + "\n"

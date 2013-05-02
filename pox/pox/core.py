@@ -1,4 +1,4 @@
-# Copyright 2011 James McCauley
+# Copyright 2011-2013 James McCauley
 #
 # This file is part of POX.
 #
@@ -22,6 +22,8 @@ class (an instance of which is available as pox.core.core).
 This includes things like component rendezvous, logging, system status
 (up and down events), etc.
 """
+
+from __future__ import print_function
 
 # Set up initial log state
 import logging
@@ -67,6 +69,9 @@ def getLogger (name=None, moreFrames=0):
           del n[-1]
           name = '.'.join(n)
 
+    if name.startswith("ext."):
+      name = name.split("ext.",1)[1]
+
     if name.endswith(".__init__"):
       name = name.rsplit(".__init__",1)[0]
 
@@ -103,6 +108,7 @@ def getLogger (name=None, moreFrames=0):
   return l
 
 
+# Working around something (don't remember what)
 log = (lambda : getLogger())()
 
 from pox.lib.revent import *
@@ -184,14 +190,22 @@ class POXCore (EventMixin):
     self.running = True
     self.components = {}
 
-    self.version = (0,0,0)
-    print "{0} / Copyright 2011 James McCauley".format(self.version_string)
+    self.version = (0,1,0)
+    self.version_name = "betta"
+    print(self.banner)
 
     self.scheduler = recoco.Scheduler(daemon=True)
 
+    self._waiters = [] # List of waiting components
+
+  @property
+  def banner (self):
+    return "{0} / Copyright 2011-2013 James McCauley, et al.".format(
+     self.version_string)
+
   @property
   def version_string (self):
-    return "POX " + '.'.join(map(str, self.version))
+    return "POX %s (%s)" % ('.'.join(map(str,self.version)),self.version_name)
 
   def callDelayed (_self, _seconds, _func, *args, **kw):
     """
@@ -244,6 +258,14 @@ class POXCore (EventMixin):
     """
     Shut down POX.
     """
+    import threading
+    if threading.current_thread() is self.scheduler._thread:
+      t = threading.Thread(target=self._quit)
+      t.start()
+    else:
+      self._quit()
+
+  def _quit (self):
     if self.running:
       self.running = False
       log.info("Going down...")
@@ -260,19 +282,60 @@ class POXCore (EventMixin):
       self.raiseEvent(DownEvent())
       log.info("Down.")
 
+  def _get_python_version (self):
+    try:
+      import platform
+      return "{impl} ({vers}/{build})".format(
+       impl=platform.python_implementation(),
+       vers=platform.python_version(),
+       build=platform.python_build()[1].replace("  "," "))
+    except:
+      return "Unknown Python"
+
+  def _get_platform_info (self):
+    try:
+      import platform
+      return platform.platform().split("\n")[0]
+    except:
+      return "Unknown Platform"
+
   def goUp (self):
     log.debug(self.version_string + " going up...")
 
-    import platform
-    py = "{impl} ({vers}/{build})".format(
-     impl=platform.python_implementation(),
-     vers=platform.python_version(),
-     build=platform.python_build()[1].replace("  "," "))
-    log.debug("Running on " + py)
+    log.debug("Running on " + self._get_python_version())
+    log.debug("Platform is " + self._get_platform_info())
+    try:
+      import platform
+      vers = '.'.join(platform.python_version().split(".")[:2])
+    except:
+      vers = 'an unknown version'
+    if vers != "2.7":
+      l = logging.getLogger("version")
+      if not l.isEnabledFor(logging.WARNING):
+        l.setLevel(logging.WARNING)
+      l.warn("POX requires Python 2.7. You're running %s.", vers)
+      l.warn("If you run into problems, try using Python 2.7 or PyPy.")
 
     self.raiseEvent(GoingUpEvent())
-    log.info(self.version_string + " is up.")
+
     self.raiseEvent(UpEvent())
+
+    if len(self._waiters):
+      waiting_for = set()
+      for entry in self._waiters:
+        _, name, components, _, _ = entry
+        components = [c for c in components if not self.hasComponent(c)]
+        waiting_for.update(components)
+        log.debug("%s still waiting for: %s"
+                  % (name, " ".join(components)))
+      names = set([n for _,n,_,_,_ in self._waiters])
+
+      #log.info("%i things still waiting on %i components"
+      #         % (names, waiting_for))
+      log.warn("Still waiting on %i component(s)" % (len(waiting_for),))
+
+    if self.running:
+      log.info(self.version_string + " is up.")
 
   def hasComponent (self, name):
     """
@@ -297,49 +360,170 @@ class POXCore (EventMixin):
     self.register(name, obj)
     return obj
 
-  def register (self, name, component):
+  def register (self, name, component=None):
     """
     Makes the object "component" available as pox.core.core.name.
+
+    If only one argument is specified, the given argument is registered
+    using its class name as the name.
     """
     #TODO: weak references?
+    if component is None:
+      component = name
+      name = component.__class__.__name__
+      if hasattr(component, '_core_name'):
+        # Default overridden
+        name = component._core_name
+
     if name in self.components:
       log.warn("Warning: Registered '%s' multipled times" % (name,))
     self.components[name] = component
     self.raiseEventNoErrors(ComponentRegistered, name, component)
+    self._try_waiters()
     
-  def listenToDependencies(self, sink, components):
+  def call_when_ready (self, callback, components=[], name=None, args=(),
+                       kw={}):
     """
-    If a component depends on having other components
-    registered with core before it can boot, it can use this method to 
-    check for registration, and listen to events on those dependencies.
-    
-    Note that event handlers named with the _handle* pattern in the sink must
-    include the name of the desired source as a prefix. For example, if topology is a
-    dependency, a handler for topology's SwitchJoin event must be labeled:
-       def _handle_topology_SwitchJoin(...)
-    
-    sink - the component waiting on dependencies
-    components - a list of dependent component names
-    
-    Returns whether all of the desired components are registered.
+    Calls a callback when components are ready.
     """
-    if components == None or len(components) == 0:
-      return True
-  
-    got = set()
-    for c in components:
-      if self.hasComponent(c):
-        setattr(sink, c, getattr(self, c))
-        sink.listenTo(getattr(self, c), prefix=c)
-        got.add(c)
+    if isinstance(components, basestring):
+      components = [components]
+    elif isinstance(components, set):
+      components = list(components)
+    else:
+      try:
+        _ = components[0]
+        components = list(components)
+      except:
+        components = [components]
+    if name is None:
+      #TODO: Use inspect here instead
+      name = getattr(callback, 'func_name')
+      if name is None:
+        name = str(callback)
       else:
-        setattr(sink, c, None)
-    for c in got:
-      components.remove(c)
-    if len(components) == 0:
-      log.debug(sink.__class__.__name__ + " ready")
-      return True
-    return False
+        name += "()"
+        if hasattr(callback, 'im_class'):
+          name = getattr(callback.im_class,'__name__', '') + '.' + name
+      if hasattr(callback, '__module__'):
+        # Is this a good idea?  If not here, we should do it in the
+        # exception printing in try_waiter().
+        name += " in " + callback.__module__
+    entry = (callback, name, components, args, kw)
+    self._waiters.append(entry)
+    self._try_waiter(entry)
+
+  def _try_waiter (self, entry):
+    """
+    Tries a waiting callback.
+
+    Calls the callback, removes from _waiters, and returns True if
+    all are satisfied.
+    """
+    if entry not in self._waiters:
+      # Already handled
+      return
+    callback, name, components, args_, kw_ = entry
+    for c in components:
+      if not self.hasComponent(c):
+        return False
+    self._waiters.remove(entry)
+    try:
+      if callback is not None:
+        callback(*args_,**kw_)
+    except:
+      import traceback
+      msg = "Exception while trying to notify " + name
+      import inspect
+      try:
+        msg += " at " + inspect.getfile(callback)
+        msg += ":" + str(inspect.getsourcelines(callback)[1])
+      except:
+        pass
+      log.exception(msg)
+    return True
+
+  def _try_waiters (self):
+    """
+    Tries to satisfy all component-waiting callbacks
+    """
+    changed = True
+    
+    while changed:
+      changed = False
+      for entry in list(self._waiters):
+        if self._try_waiter(entry):
+          changed = True
+
+  def listen_to_dependencies (self, sink, components=None, attrs=True,
+                              short_attrs=False, listen_args={}):
+    """
+    Look through *sink* for handlers named like _handle_component_event.
+    Use that to build a list of components, and append any components
+    explicitly specified by *components*.
+
+    listen_args is a dict of "component_name"={"arg_name":"arg_value",...},
+    allowing you to specify additional arguments to addListeners().
+
+    When all the referenced components are registered, do the following:
+    1) Set up all the event listeners
+    2) Call "_all_dependencies_met" on *sink* if it exists
+    3) If attrs=True, set attributes on *sink* for each component
+       (e.g, sink._openflow_ would be set to core.openflow)
+    
+    For example, if topology is a dependency, a handler for topology's
+    SwitchJoin event must be defined as so:
+       def _handle_topology_SwitchJoin (self, ...):
+
+    *NOTE*: The semantics of this function changed somewhat in the
+            Summer 2012 milestone, though its intention remains the same.
+    """
+    if components is None:
+      components = set()
+    elif isinstance(components, basestring):
+      components = set([components])
+    else:
+      components = set(components)
+
+    for c in dir(sink):
+      if not c.startswith("_handle_"): continue
+      if c.count("_") < 3: continue
+      c = '_'.join(c.split("_")[2:-1])
+      components.add(c)
+
+    if None in listen_args:
+      # This means add it to all...
+      args = listen_args.pop(None)
+      for k,v in args.iteritems():
+        for c in components:
+          if c not in listen_args:
+            listen_args[c] = {}
+          if k not in listen_args[c]:
+            listen_args[c][k] = v
+
+    if set(listen_args).difference(components):
+      log.error("Specified listen_args for missing component(s): %s" %
+                (" ".join(set(listen_args).difference(components)),))
+
+    def done (sink, components, attrs, short_attrs):
+      if attrs or short_attrs:
+        for c in components:
+          if short_attrs:
+            attrname = c
+          else:
+            attrname = '_%s_' % (c,)
+          setattr(sink, attrname, getattr(self, c))
+      for c in components:
+        if hasattr(getattr(self, c), "_eventMixin_events"):
+          kwargs = {"prefix":c}
+          kwargs.update(listen_args.get(c, {}))
+          getattr(self, c).addListeners(sink, **kwargs)
+      getattr(sink, "_all_dependencies_met", lambda : None)()
+
+
+    self.call_when_ready(done, components, name=sink.__class__.__name__,
+                         args=(sink,components,attrs,short_attrs))
+
 
   def __getattr__ (self, name):
     if name not in self.components:

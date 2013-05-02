@@ -364,8 +364,10 @@ def genPy(messages, fname):
     for tlv in ["Match","Action","Option"]:
         g.addLine("from rflib.types.{0} import {0}".format(tlv))
     g.addLine("from MongoIPC import MongoIPCMessage")
-    
     g.blankLine()
+    g.addLine("format_id = lambda dp_id: hex(dp_id).rstrip('L')")
+    g.blankLine()
+    
     v = 0
     for name, msg in messages:
         g.addLine("{0} = {1}".format(convmsgtype(name), v))
@@ -457,6 +459,8 @@ def genPy(messages, fname):
                 g.increaseIndent()
                 g.addLine("s += \"    \" + str({0}.from_dict({1})) + \"\\n\"".format(pyTypesMap[t[:-2]], t[:-2]))
                 g.decreaseIndent()
+            elif t == "i64":
+                g.addLine("s += \"  {0}: \" + format_id({1}) + \"\\n\"".format(f, value))
             else:
                 g.addLine("s += \"  {0}: \" + str({1}) + \"\\n\"".format(f, value))
         g.addLine("return s")

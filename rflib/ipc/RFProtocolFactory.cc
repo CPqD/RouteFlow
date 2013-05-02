@@ -6,8 +6,6 @@ IPCMessage* RFProtocolFactory::buildForType(int type) {
             return new PortRegister();
         case PORT_CONFIG:
             return new PortConfig();
-        case DATAPATH_CONFIG:
-            return new DatapathConfig();
         case DATAPATH_PORT_REGISTER:
             return new DatapathPortRegister();
         case DATAPATH_DOWN:

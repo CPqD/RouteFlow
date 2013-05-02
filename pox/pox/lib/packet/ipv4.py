@@ -47,13 +47,11 @@ from packet_utils       import *
 from tcp import *
 from udp import *
 from icmp import *
+from igmp import *
 
 from packet_base import packet_base
 
-from pox.lib.addresses import IPAddr
-
-IP_ANY = IPAddr("0.0.0.0")
-IP_BROADCAST = IPAddr("255.255.255.255")
+from pox.lib.addresses import IPAddr, IP_ANY, IP_BROADCAST
 
 class ipv4(packet_base):
     "IP packet struct"
@@ -64,6 +62,7 @@ class ipv4(packet_base):
     ICMP_PROTOCOL = 1
     TCP_PROTOCOL  = 6
     UDP_PROTOCOL  = 17
+    IGMP_PROTOCOL = 2
 
     DF_FLAG = 0x02
     MF_FLAG = 0x01
@@ -96,14 +95,13 @@ class ipv4(packet_base):
         self._init(kw)
 
     def __str__(self):
-        s = ''.join(('(','[v:'+str(self.v),'hl:'+str(self.hl),\
-                         'l:', str(self.iplen),'t:', \
-                         str(self.ttl), ']', ipproto_to_str(self.protocol), \
-                         ' cs:', '%x' %self.csum, '[',str(self.srcip), \
-                         '>', str(self.dstip),'])'))
-        if self.next == None:
-            return s
-        return ''.join((s, str(self.next)))
+        s = "[IP+%s %s>%s (cs:%02x v:%s hl:%s l:%s t:%s)]" % (
+            ipproto_to_str(self.protocol),
+            self.srcip, self.dstip,
+            self.csum,
+            self.v, self.hl, self.iplen, self.ttl)
+
+        return s
 
     def parse(self, raw):
         assert isinstance(raw, bytes)
@@ -124,7 +122,7 @@ class ipv4(packet_base):
         self.frag  = self.frag & 0x1fff
 
         if self.v != ipv4.IPv4:
-            self.msg('ip parse) warning IP version %u not IPv4' % self.v)
+            self.msg('(ip parse) warning IP version %u not IPv4' % self.v)
             return
         elif self.hl < 5:
             self.msg('(ip parse) warning IP header %u longer than len %u' \
@@ -154,6 +152,8 @@ class ipv4(packet_base):
             self.next = tcp(raw=raw[self.hl*4:length], prev=self)
         elif self.protocol == ipv4.ICMP_PROTOCOL:
             self.next = icmp(raw=raw[self.hl*4:length], prev=self)
+        elif self.protocol == ipv4.IGMP_PROTOCOL:
+            self.next = igmp(raw=raw[self.hl*4:length], prev=self)
         elif dlen < self.iplen:
             self.msg('(ip parse) warning IP packet data shorter than IP len: %u < %u' % (dlen, self.iplen))
         else:

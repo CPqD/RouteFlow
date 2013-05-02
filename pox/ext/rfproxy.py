@@ -110,7 +110,6 @@ def on_datapath_up(event):
         if port <= OFPP_MAX:
             msg = DatapathPortRegister(ct_id=ID, dp_id=dp_id, dp_port=port)
             ipc.send(RFSERVER_RFPROXY_CHANNEL, RFSERVER_ID, msg)
-
             log.info("Registering datapath port (dp_id=%s, dp_port=%d)",
                      format_id(dp_id), port)
 

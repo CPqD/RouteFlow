@@ -93,7 +93,7 @@ class StatsDB:
         flowlist = []
         for flow in flows:
             flowlist.append({
-            "length": flow.length,
+            "length": len(flow),
             "table_id": flow.table_id,
             "match": StatsDB.create_match_dict(flow.match),
             "duration_sec": flow.duration_sec,
