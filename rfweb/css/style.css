@@ -20,6 +20,11 @@ Tips/Details font: #363636
 Shadow: #cccccc
 */
 
+@media all and (min-width: 1280px) {
+    * {
+        line-height: 1.5em;
+    }
+}
 
 .header, .section_title {
     background-color: #2271af;
@@ -46,14 +51,10 @@ Shadow: #cccccc
     color: #363636;
 }
 
-.message_content, .tips {
+.tips {
     border: 1px solid #fad42e;
     background-color: #fbec88;
     color: #363636
-}
-
-#messages_control {
-    border-right: 1px solid #F2F2F2;
 }
 
 #links a {
@@ -90,8 +91,15 @@ body {
     display: none;
 }
 
+.message_content_area {
+    border: 1px solid #fad42e;
+    background-color: #fbec88;
+    color: #363636
+}
+
 .message_content {
     padding-left: 10px;
+    font-family: monospace;
 }
 
 /* Main */
@@ -247,17 +255,24 @@ ul.switchdesc {
     background-color: #7276AB;
 }
 
-/* RFMessages */
+/* Messages */
 #messages_control {
     padding-right: 10px;
     display: inline-block;
 }
 
-#channels {
-    display: inline-block;
+#messages_control {
+    float: right;
 }
-#channels .section {
+
+.channel {
     display: inline-block;
+    margin-right: 16px;
+    width: 480px;
+}
+
+.channel_table {
+    width: 100%;
 }
 
 /* RFTable */

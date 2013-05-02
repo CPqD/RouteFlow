@@ -124,31 +124,36 @@ function show_info(node, data) {
 	    // Build the bottom flow table
 	    table = "<table>" +
 	        "<tr class='header'>" +
-		        "<td>#</td>" +
 		        "<td>Match</td>" +
 		        "<td>Actions</td>" +
-		        "<td>Packets</td>" +
-		        "<td>Bytes</td>" +
+		        "<td>Priority</td>" +
+		        "<td>Packet/byte count</td>" +
 	        "</tr>";
         var rowtemplate = "<tr class=\"bg\{style}\">"
-        rowtemplate += "<td>{flow}</td>"
         rowtemplate += "<td>{match}</td>"
         rowtemplate += "<td>{actions}</td>"
-        rowtemplate += "<td>{packet_count}</td>"
-        rowtemplate += "<td>{byte_count}</td>"
+        rowtemplate += "<td>{priority}</td>"
+        rowtemplate += "<td>{packet_byte_count}</td>"
         rowtemplate += "</tr>"
+        
+        var rows = [];
         for (var i in data.flows) {
             flow = data.flows[i];
             var values = {
-                "flow": i,
                 "match": prettify_match(flow.match),
                 "actions": prettify_actions(flow.actions),
-                "packet_count": flow.packet_count,
-                "byte_count": flow.byte_count,
+                "priority": flow.priority,
+                "packet_byte_count": flow.packet_count + "/" + flow.byte_count,
                 "style": i % 2,
             }
-            table += apply_template(rowtemplate, values);
+            rows.push(values);
         }
+        
+        rows.sort(function(a, b) { return compare_objects(a, b, "priority"); });
+        rows.reverse();
+        for (var i in rows)
+            table += apply_template(rowtemplate, rows[i]);
+            
 	    table += "</table>";
     }
 
@@ -164,7 +169,9 @@ function prettify_match(match) {
         if (m != "wildcards")
             string += m + ": " + flow.match[m] + ", "
     }
-    return string.replace(new RegExp(", $"), "");
+    if (string == "")
+        string = "All";
+    return rstrip(string, ", ");
 }
 
 function prettify_actions(actions) {
@@ -207,7 +214,6 @@ function prettify_actions(actions) {
 
         // ofp_action_dl_addr
         else if (action == "ofp_action_dl_addr") {
-
             action = "";
             var params_list = get_params_list(params);
             params = ""
@@ -230,8 +236,10 @@ function prettify_actions(actions) {
         }
 
         // append action
-        string += action + "(" + rstrip(params, ", ") + ")" + ", ";
+        string += action.toUpperCase() + "(" + rstrip(params, ", ") + ")" + ", ";
     }
+    if (string == "")
+        string = "DROP";
     return rstrip(string, ", ");
 }
 
@@ -404,8 +412,8 @@ function network_update() {
 }
 
 function network_init() {
-    network_start_updating();
     network_update();
+    network_start_updating();
 }
 
 function network_stop() {

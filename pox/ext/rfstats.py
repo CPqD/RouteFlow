@@ -63,13 +63,24 @@ class StatsDB:
 
     @staticmethod
     def create_match_dict(match):
-        # TODO: do not depend on POX behavior
-        match = match.show().strip("\n").split("\n")
-        return dict([attr.split(": ") for attr in match])
-
+        # TODO: do this properly and not depending on POX behavior
+        match = match.show().strip("\n").split("\n")            
+        result = dict([attr.split(": ") for attr in match])
+        try:
+            w = result["wildcards"]
+            p = w[w.find("nw_dst"):]
+            s = p.find("(") + 2 # Strip (/
+            e = p.find(")")
+            netmask = int(p[s:e])
+        except:
+            netmask = 0
+        if netmask != 0 and "nw_dst" in result:
+            result["nw_dst"] = result["nw_dst"] + "/" + str(netmask)
+        return result
+        
     @staticmethod
     def create_actions_list(actions):
-        # TODO: do not depend on POX behavior
+        # TODO: do this properly and not depending on POX behavior
         actionlist = []
         for action in actions:
             string = action.__class__.__name__ + "["

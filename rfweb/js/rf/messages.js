@@ -1,112 +1,78 @@
 RFCLIENT_RFSERVER = 0
 RFSERVER_RFPROXY = 1
 
-types = {
-    0: {
-        "name": "PortRegister",
-        "show": true,
-        "channel": RFCLIENT_RFSERVER,
-    },
+channels = [
+    {"id": RFCLIENT_RFSERVER,
+     "name": "rfclient<->rfserver",
+     "html_id": "rfclient_rfserver",
+     "messages": {
+        0: {"name": "PortRegister", "show": true},
+        1: {"name": "PortConfig", "show": true},
+        6: {"name": "RouteMod", "show": false},        
+    }},
     
-    1: {
-        "name": "PortConfig",
-        "show": true,
-        "channel": RFCLIENT_RFSERVER,
-    },
-    
-    2: {
-        "name": "DatapathConfig",
-        "show": false,
-        "channel": RFSERVER_RFPROXY,
-    },
-    
-    3: {
-        "name": "RouteInfo",
-        "show": false,
-        "channel": RFCLIENT_RFSERVER,
-    },
-    
-    4: {
-        "name": "FlowMod",
-        "show": false,
-        "channel": RFSERVER_RFPROXY,
-    },
-    
-    5: {
-        "name": "DatapathPortRegister",
-        "show": true,
-        "channel": RFSERVER_RFPROXY,
-    },
-    
-    6: {
-        "name": "DatapathDown",
-        "show": true,
-        "channel": RFSERVER_RFPROXY,
-    },
-    
-    7: {
-        "name": "PortMap",
-        "show": true,
-        "channel": RFSERVER_RFPROXY,
-    },
-}
+    {"id": RFSERVER_RFPROXY,
+     "name": "rfserver<->rfproxy",
+     "html_id": "rfserver_rfproxy",
+     "messages": {
+        2: {"name": "DatapathPortRegister", "show": true},
+        3: {"name": "DatapathDown", "show": true},
+        4: {"name": "VirtualPlaneMap", "show": true},
+        5: {"name": "DataPlaneMap", "show": true},
+        6: {"name": "RouteMod", "show": false},       
+    }}, 
+];
 
 rowtemplate = "<tr class=\"row bg\{style}\">"
 rowtemplate += "<td class=\"expand_control\" id=\"msg_{id}_expand\" onclick=\"toggle('msg_{id}')\"><span class=\"ui-icon ui-icon-triangle-1-e\">Details</span></td>";
+rowtemplate += "<td>{from}</td>"
 rowtemplate += "<td>{to}</td>"
-rowtemplate += "<td>{status}</td>"
 rowtemplate += "<td>{type}</td>"
+rowtemplate += "<td>{status}</td>"
 rowtemplate += "<tr id=\"msg_{id}_content\" class=\"hidden_msg_content\">"
 rowtemplate += "<td></td>"
-rowtemplate += "<td class=\"message_content\" colspan=\"3\">"
+rowtemplate += "<td class=\"message_content_area\" colspan=\"4\">"
 rowtemplate += "{content}"
 rowtemplate += "</td>"
 rowtemplate += "</tr>"
 rowtemplate += "</tr>"
 
-cbtemplate = "<input type=\"checkbox\" name=\"types\" {checked} value=\"{value}\">{name}<br />"
+cbtemplate = "<input type=\"checkbox\" name=\"{type}\" {checked} value=\"{value}\">{name}<br />"
 
-function process_message(i, msgprefix, msg) {
-    msg["id"] = msgprefix + i;
-    msg["type"] = types[msg["type"]].name;
+function process_message(i, channel, msg) {
+    msg.id = channel.html_id + "_msg_" + i;
     
-    var to = toHex(parseInt(msg["to"]), 64);
-    if (to != "")
-        msg["to"] = to;
-        
-    if (msg["read"])
-        msg["status"] = "read"
-    else
-        msg["status"] = "unread"
-        
-    var content = "";
-    for (var attr in msg["content"]) {
-        if (attr.match(/_id$/))
-            content += attr + ": " + toHex(parseInt(msg["content"][attr]), 64) + "<br />";
-        else
-            content += attr + ": " + msg["content"][attr] + "<br />";
-    }
-    msg["content"] = content;
-    msg["style"] = i % 2;
+    msg.type = channel.messages[msg.type].name;
+
+    msg.status = "read";
+    if (!msg.read)
+        msg.status = "unread";
+    msg.content = "<pre class='message_content'>" + msg.content + "</pre>";
+
+    msg.style = i % 2;
 }
 
-function update_table(table, msgprefix) {
-    var msgtypes = $('input[name=types]:checked').map(function() {
-        return this.value;
-    }).get();
-    
-    var request = table.replace("_", "<->");
-    request += "?types=" + msgtypes;
+function update_table(channel) {
+    var table = channel.html_id;
+    var msgprefix = table + "_type";
     
     var table = $("#" + table);
     table.html("");
     
+    var msgtypes = $('input[name=' + msgprefix + ']:checked').map(function() {
+        return this.value;
+    }).get();
+    if (msgtypes != "")
+        var request = channel.name + "?types=" + msgtypes;
+    else
+        return;
+        
     $.ajax({
         url: "messages/" + request,
         dataType: 'json',
         success: function (data) {
             for (var i in data) {
-                process_message(i, msgprefix, data[i]);
+                process_message(i, channel, data[i]);
                 table.html(table.html() + apply_template(rowtemplate, data[i]));
             }
         }
@@ -114,8 +80,8 @@ function update_table(table, msgprefix) {
 }
 
 function update() {
-    update_table("rfclient_rfserver", "ss");
-    update_table("rfserver_rfproxy", "sc");
+    for (var i in channels)
+        update_table(channels[i]);
 }
 
 function toggle(id) {
@@ -132,30 +98,31 @@ function toggle(id) {
 }
 
 function start() {
-    var rfclient_rfserver_filters = $("#rfclient_rfserver_filters");
-    var rfserver_rfproxy_filters = $("#rfserver_rfproxy_filters");
-    var filters;
-    for (type in types) {
-        if (types[type].channel == RFCLIENT_RFSERVER)
-            filters = rfclient_rfserver_filters;
-        else if (types[type].channel == RFSERVER_RFPROXY)
-            filters = rfserver_rfproxy_filters;
-        else
-            continue;
+    for (var i in channels) {
+        var channel = channels[i];
+        var element = $("#" + channel.html_id + "_filters");
+        var input_name = channel.html_id + "_type";
         
-        var checked = "";
-        if (types[type].show)
-            checked = "checked=\"checked\"";
-        
-        filters.html(filters.html() + apply_template(cbtemplate, {"value": type, "name": types[type].name, "checked": checked}));
+        for (var msg_id in channel.messages) {
+            var message = channel.messages[msg_id];
+            var checked = "";
+            if (message.show)
+                checked = "checked=\"checked\"";
+            
+            element.html(element.html() + apply_template(cbtemplate,
+                                                         {"value": msg_id,
+                                                         "name": message.name,
+                                                         "type": input_name,
+                                                         "checked": checked}));
+        }
+
+        $('input[name=' + input_name + ']').click(function() { update(); });
     }
-    
-    $('input[name=types]').click(function() { update(); });
 }
 
 function messages_init() {
 	start();
-	update(); 
+	update();
 }
 
 function messages_stop() {

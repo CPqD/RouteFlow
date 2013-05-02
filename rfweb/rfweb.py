@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-# WARNING: this web application is terrible and should not be used for anything
-# other than testing RouteFlow.
-# TODO: make a decent web application.
+# WARNING: this web application is just a toy and should not be used for 
+# production purposes.
+
+# TODO: make a more serious and configurable web application. It could even be
+# based on this one.
 
 from cgi import parse_qs, escape
 import json
@@ -13,6 +15,19 @@ import pymongo
 import bson.json_util
 import os
 import os.path
+
+import sys
+sys.path.append("../")
+
+import rflib.defs as defs
+import rflib.ipc.MongoIPC as MongoIPC
+from rflib.ipc.RFProtocolFactory import RFProtocolFactory
+
+ 
+def usage():
+    print('Usage: %s <channel>\n' % sys.argv[0])
+    print('channel: "rfclient" or "rfproxy"')
+    sys.exit(1)
 
 PLAIN = 0
 HTML = 1
@@ -47,6 +62,33 @@ exts = {
 
 db_conn = None
 
+# Convert a possible ID string to hex.
+# This differs from defs.format_id because it only tries to convert if the value
+# can be represented as an integer
+def format_id(value):
+    try:
+        value = int(value)
+        return defs.format_id(value)
+    except ValueError, TypeError:
+        return value
+    
+# TODO: make this function generate pretty output for any given message.
+# An alternative would be changing the auto-generated IPC message code to 
+# generate prettier messages itself, but it's a longer task.
+factory = RFProtocolFactory()
+def prettify_message(envelope):
+    result = {}
+
+    result[MongoIPC.FROM_FIELD] = format_id(envelope[MongoIPC.FROM_FIELD])    
+    result[MongoIPC.TO_FIELD] = format_id(envelope[MongoIPC.TO_FIELD])
+    result[MongoIPC.READ_FIELD] = envelope[MongoIPC.READ_FIELD]
+    result[MongoIPC.TYPE_FIELD] = envelope[MongoIPC.TYPE_FIELD]
+    
+    msg = MongoIPC.take_from_envelope(envelope, factory)
+    result[MongoIPC.CONTENT_FIELD] = str(msg)
+
+    return result
+    
 def messages(env, conn):
     channel = shift_path_info(env)
     if channel != None and channel != "":
@@ -62,8 +104,11 @@ def messages(env, conn):
         query = {}
         if "limit" in request:
             limit = request["limit"][0]
+            
         if "types" in request:
             types = request["types"][0]
+            if types == "":
+                return (200, json.dumps({}, default=bson.json_util.default), JSON)
             query["$or"] = []
             for type_ in types.split(","):
                 try:
@@ -72,8 +117,8 @@ def messages(env, conn):
                     continue
                 query["$or"].append({"type": value})
 
-        for doc in table.find(query, limit=limit, sort=[("$natural", pymongo.DESCENDING)]):
-            messages.append(doc)
+        for envelope in table.find(query, limit=limit, sort=[("$natural", pymongo.DESCENDING)]):
+            messages.append(prettify_message(envelope))
 
         return (200, json.dumps(messages, default=bson.json_util.default), JSON)
 
@@ -99,11 +144,25 @@ def topology(env, conn):
         del element["data"]
         elements_list.append(element)
     return (200, json.dumps(elements_list, default=bson.json_util.default), JSON)
+    
+def pretiffy_rftable_entry(entry):
+    result = {}
         
+    # TODO: these field names should be defined somewhere else
+    result["vm_id"] = format_id(entry["vm_id"])
+    result["vm_port"] = int(entry["vm_port"])
+    result["dp_id"] = format_id(entry["dp_id"])
+    result["dp_port"] = int(entry["dp_port"])
+    result["vs_id"] = format_id(entry["vs_id"])
+    result["vs_port"] = int(entry["vs_port"])
+    result["ct_id"] = format_id(entry["ct_id"])
+    
+    return result
+    
 def rftable(env, conn):
     entries = []
     for doc in conn.db.rftable.find():
-        entries.append(doc)
+        entries.append(pretiffy_rftable_entry(doc))
     return (200, json.dumps(entries, default=bson.json_util.default), JSON)
 
 
@@ -118,6 +177,7 @@ def application(env, start_response):
     global db_conn
     if db_conn is None:
         try:
+            # TODO: use defs.py
             db_conn = pymongo.Connection("localhost", 27017)
         except:
             db_conn = None

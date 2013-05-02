@@ -7,6 +7,7 @@
                 <tr class="header">
                     <td>VM ID</td>
                     <td>VM port</td>
+                    <td>CT ID</td>
                     <td>DP ID</td>
                     <td>DP port</td>
                     <td>VS ID</td>
@@ -21,14 +22,16 @@
             <p>The table shows the current associations of VMs and datapaths in the RouteFlow network.</p>
             <p>We can have the following types of entries:</p>
             <ul>
-            <li><strong>(VM ID, VM port, -, -, -, -)</strong><br />
+            <li><strong>(VM ID, VM port, -, -, -, -, -)</strong><br />
             Represents a registered and idle VM port.</li>
-            <li><strong>(-, -, DP ID, DP port, -, -)</strong><br />
-            Represents a registered and idle DP port.</li>
-            <li><strong>(VM ID, VM port, DP ID, DP port, -, -)</strong><br />
-            Represents an associated but unmapped entry. This means that RouteFlow is waiting for a mapping message from the VM in order to know how it's connected to the RouteFlow virtual switch.</li>
-            <li><strong>(VM ID, VM port, DP ID, DP port, VS ID, VS port)</strong><br />
-            Represents a fully associated and active entry. This means that RouteFlow can redirect routing packets correctly between the datapath and the VM using its virtual switch (RFVS).
+            <li><strong>(-, -, CT ID, DP ID, DP port, -, -)</strong><br />
+            Represents a registered and idle DP port in a controller.</li>
+            <li><strong>(VM ID, VM port, CT ID, DP ID, DP port, -, -)</strong><br />
+            Represents an associated but unmapped entry. 
+            This means that RouteFlow is waiting for a mapping message from the VM to the controller in order to know how it's connected to the RouteFlow virtual switch.</li>
+            <li><strong>(VM ID, VM port, CT ID, DP ID, DP port, VS ID, VS port)</strong><br />
+            Represents a fully associated and active entry. 
+            This means that RouteFlow can redirect routing packets correctly between the datapath and the VM using its virtual switch (RFVS).
             </ul>
         </div>
     </div>

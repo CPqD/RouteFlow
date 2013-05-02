@@ -29,3 +29,8 @@ function apply_template(template, data) {
     }
     return code;
 }
+
+function compare_objects(a, b, key) {
+    return a[key] < b[key] ? -1 :
+           a[key] > b[key] ?  1 : 0; 
+}
