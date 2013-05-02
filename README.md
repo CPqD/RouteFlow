@@ -96,31 +96,29 @@ $ sudo lxc-console -n b1
 # ping 172.31.2.2
 ```
 
-For more details on this test, see its [explanation](https://github.com/CPqD/RouteFlow/wiki/Tutorial-1:-rftest1).
+For more details on this test, see its [tutorial](https://github.com/CPqD/RouteFlow/wiki/Tutorial-1:-rftest1).
 
 ### rftest2
-This test should be run with a [Mininet](http://yuba.stanford.edu/foswiki/bin/view/OpenFlow/Mininet) simulated network.
+This test should be run with a [Mininet](http://mininet.org/) simulated network.
+In the steps below, replace [guest address] with the IP address you use to access your Mininet VM.
+The same applies to [host address], that should be the address to access the host from inside the VM.
 
 1. Run:
 ```
-$ sudo ./rftest2 --pox
+$ sudo ./rftest2
 ```
 
 2. Once you have a Mininet VM up and running, copy the network topology files in rftest to the VM:
 ```
-$ scp topo-4sw-4host.py openflow@[Mininet address]:/home/openflow/mininet/custom
-$ scp ipconf openflow@[Mininet address]:/home/openflow/
+$ scp topo-4sw-4host.py mininet@[guest address]:/home/mininet/mininet/custom
+$ scp ipconf mininet@[guest address]:/home/mininet
 ```
 
 3. Then start the network:
 ```
-$ sudo mn --custom ~/mininet/custom/topo-4sw-4host.py --topo=rftopo" \
-   --controller=remote --ip=[Controller address] --port=6633"
+$ sudo mn --custom mininet/custom/topo-4sw-4host.py --topo=rftest2 --controller=remote,ip=[host address],port=6633 --pre=ipconf
 ```
-Inside Mininet, load the address configuration:
-```
-mininet> source ipconf
-```
+
 Wait for the network to converge (it should take a few seconds), and try to ping:
 ```
 mininet> pingall
@@ -128,7 +126,7 @@ mininet> pingall
 mininet> h2 ping h3
 ```
 
-For more details on this test, see its [explanation](http://sites.google.com/site/routeflow/documents/tutorial2-four-routers-with-ospf) (it's a bit dated).
+For more details on this test, see its [tutorial](https://github.com/CPqD/RouteFlow/wiki/Tutorial-2:-rftest2).
 
 
 ## Now what?
