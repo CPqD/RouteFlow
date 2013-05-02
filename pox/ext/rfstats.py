@@ -135,11 +135,6 @@ def timer_func():
             except:
                 log.info("Failed to send stats request to switch")
 
-    # Write out the statistics we currently have
-    f = open("../rfweb/data/routeflow.json", "w")
-    f.write(json.dumps(db.db, sort_keys=True, indent=4))
-    f.close()
-
 def handle_switch_desc(event):
     dp_id = rf_id(event.connection.dpid)
     db.update(dp_id, "switch", desc=StatsDB.create_desc_stats_dict(event.stats))

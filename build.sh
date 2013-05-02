@@ -15,7 +15,6 @@ SUPER="$DO sudo"
 APT_OPTS="-y"
 PIP_OPTS=""
 
-# TODO: Set to upstream URL when this script is merged
 ROUTEFLOW_GIT="https://github.com/CPqD/RouteFlow.git"
 DEPENDENCIES="build-essential git-core libboost-dev libboost-dev \
     libboost-program-options-dev libboost-thread-dev \

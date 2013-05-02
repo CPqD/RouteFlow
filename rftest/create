@@ -13,10 +13,11 @@ apt-get -y --force-yes install lxc
 mkdir -p $LXCDIR
 lxc-create -t ubuntu -n base
 
+chroot $LXCDIR/base/rootfs apt-get update
 # !!!
 # ADD THE PACKETS YOU NEED TO INSTALL HERE
 # !!!
-chroot $LXCDIR/base/rootfs apt-get -y --force-yes install quagga libboost-thread1.46.1 libboost-system1.46.1 libboost-filesystem1.46.1 libboost-program-options1.46.1 rsyslog vlan tcpdump
+chroot $LXCDIR/base/rootfs apt-get -y --force-yes install quagga libboost-thread-dev libboost-system-dev libboost-filesystem-dev libboost-program-options-dev rsyslog vlan tcpdump
 # !!!
 
 # Clone the base container to make other containers based on config

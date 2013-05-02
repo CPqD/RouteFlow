@@ -1,64 +1,59 @@
-"""Custom topology example
+""" rftest2 topology
 
-author: Marcelo Nascimento (marcelon@cpqd.com.br)
+authors: Marcelo Nascimento (marcelon@cpqd.com.br)
+         Allan Vidal (allanv@cqpd.com.br)
 
 Four switches connected in mesh topology plus a host for each switch:
 
        h1 --- sA ---- sB --- h2
                |  \    |
                |   \   |
-	       |    \  | 
+               |    \  |
                |     \ |
        h3 --- sC ---- sD --- h4
 
-Adding the 'topos' dict with a key/value pair to generate our newly defined
-topology enables one to pass in '--topo=mytopo' from the command line.
 """
 
-from mininet.topo import Topo, Node
+from mininet.topo import Topo
 
-class RFTopo( Topo ):
+class rftest2(Topo):
     "RouteFlow Demo Setup"
 
     def __init__( self, enable_all = True ):
         "Create custom topo."
 
-        # Add default members to class.
-        super( RFTopo, self ).__init__()
+        Topo.__init__( self )
 
-        # Set Node IDs for hosts and switches
-        h1 = 1
-        h2 = 2
-        h3 = 3
-        h4 = 4
-        sA = 5
-        sB = 6
-        sC = 7
-        sD = 8
+        h1 = self.addHost("h1",
+                          ip="172.31.1.100/24",
+                          defaultRoute="gw 172.31.1.1")
 
-        # Add nodes
-        self.add_node( h1, Node( is_switch=False ) )
-        self.add_node( h2, Node( is_switch=False ) )
-        self.add_node( h3, Node( is_switch=False ) )
-        self.add_node( h4, Node( is_switch=False ) )
-        self.add_node( sA, Node( is_switch=True ) )
-        self.add_node( sB, Node( is_switch=True ) )
-        self.add_node( sC, Node( is_switch=True ) )
-        self.add_node( sD, Node( is_switch=True ) )
+        h2 = self.addHost("h2",
+                          ip="172.31.2.100/24",
+                          defaultRoute="gw 172.31.2.1")
 
-        # Add edges
-        self.add_edge( h1, sA )
-        self.add_edge( h2, sB )
-        self.add_edge( h3, sC )
-        self.add_edge( h4, sD )
-        self.add_edge( sA, sB )
-        self.add_edge( sB, sD )
-        self.add_edge( sD, sC )
-        self.add_edge( sC, sA )
-        self.add_edge( sA, sD )
+        h3 = self.addHost("h3",
+                          ip="172.31.3.100/24",
+                          defaultRoute="gw 172.31.3.1")
 
-        # Consider all switches and hosts 'on'
-        self.enable_all()
+        h4 = self.addHost("h4",
+                          ip="172.31.4.100/24",
+                          defaultRoute="gw 172.31.4.1")
+
+        sA = self.addSwitch("s5")
+        sB = self.addSwitch("s6")
+        sC = self.addSwitch("s7")
+        sD = self.addSwitch("s8")
+
+        self.addLink(h1, sA)
+        self.addLink(h2, sB)
+        self.addLink(h3, sC)
+        self.addLink(h4, sD)
+        self.addLink(sA, sB)
+        self.addLink(sB, sD)
+        self.addLink(sD, sC)
+        self.addLink(sC, sA)
+        self.addLink(sA, sD)
 
 
-topos = { 'rftopo': ( lambda: RFTopo() ) }
+topos = { 'rftest2': ( lambda: rftest2() ) }
