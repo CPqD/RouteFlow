@@ -13,6 +13,9 @@
 // 1 MB for the capped collection
 #define CC_SIZE 1048576
 
+// Handle a maximum of 10 messages at a time
+#define PENDINGLIMIT 10
+
 mongo::BSONObj putInEnvelope(const string &from, const string &to, IPCMessage &msg);
 IPCMessage* takeFromEnvelope(mongo::BSONObj envelope, IPCMessageFactory *factory);
 
@@ -32,6 +35,7 @@ class MongoIPCMessageService : public IPCMessageService {
         string db;
         string address;
         mongo::DBClientConnection producerConnection;
+        boost::mutex ipcMutex;
         void listenWorker(const string &channelId, IPCMessageFactory *factory, IPCMessageProcessor *processor);
         void createChannel(mongo::DBClientConnection &con, const string &ns);
         void connect(mongo::DBClientConnection &connection, const string &address);

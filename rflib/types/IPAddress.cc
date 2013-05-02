@@ -9,6 +9,9 @@ IPAddress::IPAddress(const int version) {
 }
 
 IPAddress::IPAddress(const int version, const char* address) {
+    if (address == NULL) {
+        throw "Invalid IPAddress string!";
+    }
     string saddress(address);
     this->init(version);
     this->data_from_string(address);
@@ -37,18 +40,43 @@ IPAddress::IPAddress(const IPAddress &other) {
 }
 
 IPAddress::IPAddress(const int version, const uint8_t* data) {
+    if (data == NULL) {
+        throw "Invalid IPAddress data!";
+    }
     this->init(version);
     memcpy(this->data, data, this->length);
 }
 
-IPAddress::IPAddress(in_addr data) {
+IPAddress::IPAddress(const struct in_addr *data) {
+    if (data == NULL) {
+        throw "Invalid IPAddress data!";
+    }
     this->init(IPV4);
-    memcpy(this->data, &data, this->length);
+    memcpy(this->data, data, this->length);
 }
 
-IPAddress::IPAddress(in6_addr data) {
+IPAddress::IPAddress(const struct in6_addr* data) {
+    if (data == NULL) {
+        throw "Invalid IPAddress data!";
+    }
     this->init(IPV6);
-    memcpy(this->data, &data, this->length);
+    memcpy(this->data, data, this->length);
+}
+
+IPAddress::IPAddress(const int version, int prefix_len) {
+    this->init(version);
+
+    for (size_t i = 0; i < this->length; i++) {
+        if (prefix_len >= 8){
+            this->data[i] = 0xff;
+            prefix_len -= 8;
+        } else if (prefix_len == 0) {
+            this->data[i] = 0;
+        } else {
+            this->data[i] = ((1 << prefix_len) - 1 ) << (8 - prefix_len);
+            prefix_len = 0;
+        }
+    }
 }
 
 IPAddress::~IPAddress() {
@@ -123,29 +151,45 @@ string IPAddress::toString() const {
     return result;
 }
 
-uint32_t IPAddress::toCIDRMask() const {
-    uint32_t mask = this->toUint32();
+int IPAddress::toPrefixLen() const {
+	int n = 0;
 
-	uint8_t n = 0;
-	for (uint8_t i = 0; i < 32; i++) {
-		if (((mask >> i) & 0x1) == 0x1) {
-			n++;
-		}
-	}
+    // Count the number of set bits starting from the MSB.
+    for (size_t i = 0; i < this->length; i++){
+        if (data[i] == 0xff){
+            n += 8;
+        } else {
+            for (int mask_bit = 1 << 7; data[i] & mask_bit; mask_bit >>= 1) {
+                n++;
+            }
+            break;
+        }
+    }
 
 	return n;
+}
+
+int IPAddress::toCIDRMask() const {
+    return this->toPrefixLen();
 }
 
 int IPAddress::getVersion() const {
     return this->version;
 }
 
+size_t IPAddress::getLength() const {
+    return this->length;
+}
+
 void IPAddress::init(const int version) {
     this->version = version;
-    if (this->version == IPV4)
+    if (this->version == IPV4) {
         this->length = 4;
-    else if (this->version == IPV6)
+    } else if (this->version == IPV6) {
         this->length = 16;
+    } else {
+        throw "Constructing IPAddress with invalid version!";
+    }
     this->data = new uint8_t[this->length];
 }
 

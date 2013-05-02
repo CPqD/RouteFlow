@@ -6,6 +6,8 @@ RFSERVER_RFPROXY_CHANNEL = "rfserver<->rfproxy"
 
 RFTABLE_NAME = "rftable"
 RFCONFIG_NAME = "rfconfig"
+RFISL_NAME = "rfisl"
+RFISLCONF_NAME = "rfislconf"
 
 RFSERVER_ID = "rfserver"
 RFPROXY_ID = "rfproxy"
@@ -37,6 +39,7 @@ DC_ARP = 7			# ARP protocol
 DC_ICMP = 8			# ICMP protocol
 DC_LDP_PASSIVE = 9		# LDP protocol
 DC_LDP_ACTIVE = 10		# LDP protocol
+DC_ICMPV6 = 11			# ICMPv6 protocol
 DC_ALL = 255			# Send all traffic to the controller
 
 RMT_ADD = 0			# Add flow to datapath
@@ -49,13 +52,27 @@ PC_RESET = 1
 # Format 12-digit hex ID
 format_id = lambda dp_id: hex(dp_id).rstrip("L")
 
+netmask_prefix = lambda a: sum([bin(int(x)).count("1") for x in a.split(".", 4)])
+cidr_to_mask = lambda a: ((1 << a) - 1) << (32 - a)
+
 ETHERTYPE_IP = 0x0800
 ETHERTYPE_ARP = 0x0806
+ETHERTYPE_IPV6 = 0x86DD
 IPPROTO_ICMP = 0x01
 IPPROTO_TCP = 0x06
 IPPROTO_UDP = 0x11
 IPPROTO_OSPF = 0x59
+IPPROTO_ICMPV6 = 0x3A
+IPADDR_RIPv2 = '224.0.0.9'
+IPV4_MASK_EXACT = '255.255.255.255'
+IPV6_MASK_EXACT = 'FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF:FFFF'
 TPORT_BGP = 0x00B3
 TPORT_LDP = 0x286
 
-OFPP_CONTROLLER = 65533
+OFPP_CONTROLLER = 0xFFFFFFFD
+
+PRIORITY_BAND = 0xA
+PRIORITY_LOWEST = 0x0000
+PRIORITY_LOW = 0x4010
+PRIORITY_HIGH = 0x8020
+PRIORITY_HIGHEST = 0xC030

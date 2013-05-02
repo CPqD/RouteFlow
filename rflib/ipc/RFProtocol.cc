@@ -5,11 +5,13 @@
 PortRegister::PortRegister() {
     set_vm_id(0);
     set_vm_port(0);
+    set_hwaddress(MACAddress());
 }
 
-PortRegister::PortRegister(uint64_t vm_id, uint32_t vm_port) {
+PortRegister::PortRegister(uint64_t vm_id, uint32_t vm_port, MACAddress hwaddress) {
     set_vm_id(vm_id);
     set_vm_port(vm_port);
+    set_hwaddress(hwaddress);
 }
 
 int PortRegister::get_type() {
@@ -32,16 +34,26 @@ void PortRegister::set_vm_port(uint32_t vm_port) {
     this->vm_port = vm_port;
 }
 
+MACAddress PortRegister::get_hwaddress() {
+    return this->hwaddress;
+}
+
+void PortRegister::set_hwaddress(MACAddress hwaddress) {
+    this->hwaddress = hwaddress;
+}
+
 void PortRegister::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
     set_vm_id(string_to<uint64_t>(obj["vm_id"].String()));
     set_vm_port(string_to<uint32_t>(obj["vm_port"].String()));
+    set_hwaddress(MACAddress(obj["hwaddress"].String()));
 }
 
 const char* PortRegister::to_BSON() {
     mongo::BSONObjBuilder _b;
     _b.append("vm_id", to_string<uint64_t>(get_vm_id()));
     _b.append("vm_port", to_string<uint32_t>(get_vm_port()));
+    _b.append("hwaddress", get_hwaddress().toString());
     mongo::BSONObj o = _b.obj();
     char* data = new char[o.objsize()];
     memcpy(data, o.objdata(), o.objsize());
@@ -53,6 +65,7 @@ string PortRegister::str() {
     ss << "PortRegister" << endl;
     ss << "  vm_id: " << to_string<uint64_t>(get_vm_id()) << endl;
     ss << "  vm_port: " << to_string<uint32_t>(get_vm_port()) << endl;
+    ss << "  hwaddress: " << get_hwaddress().toString() << endl;
     return ss.str();
 }
 
@@ -187,270 +200,6 @@ string DatapathConfig::str() {
     ss << "  ct_id: " << to_string<uint64_t>(get_ct_id()) << endl;
     ss << "  dp_id: " << to_string<uint64_t>(get_dp_id()) << endl;
     ss << "  operation_id: " << to_string<uint32_t>(get_operation_id()) << endl;
-    return ss.str();
-}
-
-RouteInfo::RouteInfo() {
-    set_vm_id(0);
-    set_vm_port(0);
-    set_address(IPAddress(IPV4));
-    set_netmask(IPAddress(IPV4));
-    set_dst_port(0);
-    set_src_hwaddress(MACAddress());
-    set_dst_hwaddress(MACAddress());
-    set_is_removal(false);
-}
-
-RouteInfo::RouteInfo(uint64_t vm_id, uint32_t vm_port, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal) {
-    set_vm_id(vm_id);
-    set_vm_port(vm_port);
-    set_address(address);
-    set_netmask(netmask);
-    set_dst_port(dst_port);
-    set_src_hwaddress(src_hwaddress);
-    set_dst_hwaddress(dst_hwaddress);
-    set_is_removal(is_removal);
-}
-
-int RouteInfo::get_type() {
-    return ROUTE_INFO;
-}
-
-uint64_t RouteInfo::get_vm_id() {
-    return this->vm_id;
-}
-
-void RouteInfo::set_vm_id(uint64_t vm_id) {
-    this->vm_id = vm_id;
-}
-
-uint32_t RouteInfo::get_vm_port() {
-    return this->vm_port;
-}
-
-void RouteInfo::set_vm_port(uint32_t vm_port) {
-    this->vm_port = vm_port;
-}
-
-IPAddress RouteInfo::get_address() {
-    return this->address;
-}
-
-void RouteInfo::set_address(IPAddress address) {
-    this->address = address;
-}
-
-IPAddress RouteInfo::get_netmask() {
-    return this->netmask;
-}
-
-void RouteInfo::set_netmask(IPAddress netmask) {
-    this->netmask = netmask;
-}
-
-uint32_t RouteInfo::get_dst_port() {
-    return this->dst_port;
-}
-
-void RouteInfo::set_dst_port(uint32_t dst_port) {
-    this->dst_port = dst_port;
-}
-
-MACAddress RouteInfo::get_src_hwaddress() {
-    return this->src_hwaddress;
-}
-
-void RouteInfo::set_src_hwaddress(MACAddress src_hwaddress) {
-    this->src_hwaddress = src_hwaddress;
-}
-
-MACAddress RouteInfo::get_dst_hwaddress() {
-    return this->dst_hwaddress;
-}
-
-void RouteInfo::set_dst_hwaddress(MACAddress dst_hwaddress) {
-    this->dst_hwaddress = dst_hwaddress;
-}
-
-bool RouteInfo::get_is_removal() {
-    return this->is_removal;
-}
-
-void RouteInfo::set_is_removal(bool is_removal) {
-    this->is_removal = is_removal;
-}
-
-void RouteInfo::from_BSON(const char* data) {
-    mongo::BSONObj obj(data);
-    set_vm_id(string_to<uint64_t>(obj["vm_id"].String()));
-    set_vm_port(string_to<uint32_t>(obj["vm_port"].String()));
-    set_address(IPAddress(IPV4, obj["address"].String()));
-    set_netmask(IPAddress(IPV4, obj["netmask"].String()));
-    set_dst_port(string_to<uint32_t>(obj["dst_port"].String()));
-    set_src_hwaddress(MACAddress(obj["src_hwaddress"].String()));
-    set_dst_hwaddress(MACAddress(obj["dst_hwaddress"].String()));
-    set_is_removal(obj["is_removal"].Bool());
-}
-
-const char* RouteInfo::to_BSON() {
-    mongo::BSONObjBuilder _b;
-    _b.append("vm_id", to_string<uint64_t>(get_vm_id()));
-    _b.append("vm_port", to_string<uint32_t>(get_vm_port()));
-    _b.append("address", get_address().toString());
-    _b.append("netmask", get_netmask().toString());
-    _b.append("dst_port", to_string<uint32_t>(get_dst_port()));
-    _b.append("src_hwaddress", get_src_hwaddress().toString());
-    _b.append("dst_hwaddress", get_dst_hwaddress().toString());
-    _b.append("is_removal", get_is_removal());
-    mongo::BSONObj o = _b.obj();
-    char* data = new char[o.objsize()];
-    memcpy(data, o.objdata(), o.objsize());
-    return data;
-}
-
-string RouteInfo::str() {
-    stringstream ss;
-    ss << "RouteInfo" << endl;
-    ss << "  vm_id: " << to_string<uint64_t>(get_vm_id()) << endl;
-    ss << "  vm_port: " << to_string<uint32_t>(get_vm_port()) << endl;
-    ss << "  address: " << get_address().toString() << endl;
-    ss << "  netmask: " << get_netmask().toString() << endl;
-    ss << "  dst_port: " << to_string<uint32_t>(get_dst_port()) << endl;
-    ss << "  src_hwaddress: " << get_src_hwaddress().toString() << endl;
-    ss << "  dst_hwaddress: " << get_dst_hwaddress().toString() << endl;
-    ss << "  is_removal: " << get_is_removal() << endl;
-    return ss.str();
-}
-
-FlowMod::FlowMod() {
-    set_ct_id(0);
-    set_dp_id(0);
-    set_address(IPAddress(IPV4));
-    set_netmask(IPAddress(IPV4));
-    set_dst_port(0);
-    set_src_hwaddress(MACAddress());
-    set_dst_hwaddress(MACAddress());
-    set_is_removal(false);
-}
-
-FlowMod::FlowMod(uint64_t ct_id, uint64_t dp_id, IPAddress address, IPAddress netmask, uint32_t dst_port, MACAddress src_hwaddress, MACAddress dst_hwaddress, bool is_removal) {
-    set_ct_id(ct_id);
-    set_dp_id(dp_id);
-    set_address(address);
-    set_netmask(netmask);
-    set_dst_port(dst_port);
-    set_src_hwaddress(src_hwaddress);
-    set_dst_hwaddress(dst_hwaddress);
-    set_is_removal(is_removal);
-}
-
-int FlowMod::get_type() {
-    return FLOW_MOD;
-}
-
-uint64_t FlowMod::get_ct_id() {
-    return this->ct_id;
-}
-
-void FlowMod::set_ct_id(uint64_t ct_id) {
-    this->ct_id = ct_id;
-}
-
-uint64_t FlowMod::get_dp_id() {
-    return this->dp_id;
-}
-
-void FlowMod::set_dp_id(uint64_t dp_id) {
-    this->dp_id = dp_id;
-}
-
-IPAddress FlowMod::get_address() {
-    return this->address;
-}
-
-void FlowMod::set_address(IPAddress address) {
-    this->address = address;
-}
-
-IPAddress FlowMod::get_netmask() {
-    return this->netmask;
-}
-
-void FlowMod::set_netmask(IPAddress netmask) {
-    this->netmask = netmask;
-}
-
-uint32_t FlowMod::get_dst_port() {
-    return this->dst_port;
-}
-
-void FlowMod::set_dst_port(uint32_t dst_port) {
-    this->dst_port = dst_port;
-}
-
-MACAddress FlowMod::get_src_hwaddress() {
-    return this->src_hwaddress;
-}
-
-void FlowMod::set_src_hwaddress(MACAddress src_hwaddress) {
-    this->src_hwaddress = src_hwaddress;
-}
-
-MACAddress FlowMod::get_dst_hwaddress() {
-    return this->dst_hwaddress;
-}
-
-void FlowMod::set_dst_hwaddress(MACAddress dst_hwaddress) {
-    this->dst_hwaddress = dst_hwaddress;
-}
-
-bool FlowMod::get_is_removal() {
-    return this->is_removal;
-}
-
-void FlowMod::set_is_removal(bool is_removal) {
-    this->is_removal = is_removal;
-}
-
-void FlowMod::from_BSON(const char* data) {
-    mongo::BSONObj obj(data);
-    set_ct_id(string_to<uint64_t>(obj["ct_id"].String()));
-    set_dp_id(string_to<uint64_t>(obj["dp_id"].String()));
-    set_address(IPAddress(IPV4, obj["address"].String()));
-    set_netmask(IPAddress(IPV4, obj["netmask"].String()));
-    set_dst_port(string_to<uint32_t>(obj["dst_port"].String()));
-    set_src_hwaddress(MACAddress(obj["src_hwaddress"].String()));
-    set_dst_hwaddress(MACAddress(obj["dst_hwaddress"].String()));
-    set_is_removal(obj["is_removal"].Bool());
-}
-
-const char* FlowMod::to_BSON() {
-    mongo::BSONObjBuilder _b;
-    _b.append("ct_id", to_string<uint64_t>(get_ct_id()));
-    _b.append("dp_id", to_string<uint64_t>(get_dp_id()));
-    _b.append("address", get_address().toString());
-    _b.append("netmask", get_netmask().toString());
-    _b.append("dst_port", to_string<uint32_t>(get_dst_port()));
-    _b.append("src_hwaddress", get_src_hwaddress().toString());
-    _b.append("dst_hwaddress", get_dst_hwaddress().toString());
-    _b.append("is_removal", get_is_removal());
-    mongo::BSONObj o = _b.obj();
-    char* data = new char[o.objsize()];
-    memcpy(data, o.objdata(), o.objsize());
-    return data;
-}
-
-string FlowMod::str() {
-    stringstream ss;
-    ss << "FlowMod" << endl;
-    ss << "  ct_id: " << to_string<uint64_t>(get_ct_id()) << endl;
-    ss << "  dp_id: " << to_string<uint64_t>(get_dp_id()) << endl;
-    ss << "  address: " << get_address().toString() << endl;
-    ss << "  netmask: " << get_netmask().toString() << endl;
-    ss << "  dst_port: " << to_string<uint32_t>(get_dst_port()) << endl;
-    ss << "  src_hwaddress: " << get_src_hwaddress().toString() << endl;
-    ss << "  dst_hwaddress: " << get_dst_hwaddress().toString() << endl;
-    ss << "  is_removal: " << get_is_removal() << endl;
     return ss.str();
 }
 
@@ -822,7 +571,7 @@ void RouteMod::add_option(const Option& option) {
 
 void RouteMod::from_BSON(const char* data) {
     mongo::BSONObj obj(data);
-    set_mod(obj["mod"].Int());
+    set_mod(string_to<uint8_t>(obj["mod"].String()));
     set_id(string_to<uint64_t>(obj["id"].String()));
     set_matches(MatchList::to_vector(obj["matches"].Array()));
     set_actions(ActionList::to_vector(obj["actions"].Array()));
@@ -831,7 +580,7 @@ void RouteMod::from_BSON(const char* data) {
 
 const char* RouteMod::to_BSON() {
     mongo::BSONObjBuilder _b;
-    _b.append("mod", get_mod());
+    _b.append("mod", to_string<uint16_t>(get_mod()));
     _b.append("id", to_string<uint64_t>(get_id()));
     _b.appendArray("matches", MatchList::to_BSON(get_matches()));
     _b.appendArray("actions", ActionList::to_BSON(get_actions()));
@@ -845,7 +594,7 @@ const char* RouteMod::to_BSON() {
 string RouteMod::str() {
     stringstream ss;
     ss << "RouteMod" << endl;
-    ss << "  mod: " << get_mod() << endl;
+    ss << "  mod: " << to_string<uint16_t>(get_mod()) << endl;
     ss << "  id: " << to_string<uint64_t>(get_id()) << endl;
     ss << "  matches: " << MatchList::to_BSON(get_matches()) << endl;
     ss << "  actions: " << ActionList::to_BSON(get_actions()) << endl;

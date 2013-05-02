@@ -8,10 +8,6 @@ IPCMessage* RFProtocolFactory::buildForType(int type) {
             return new PortConfig();
         case DATAPATH_CONFIG:
             return new DatapathConfig();
-        case ROUTE_INFO:
-            return new RouteInfo();
-        case FLOW_MOD:
-            return new FlowMod();
         case DATAPATH_PORT_REGISTER:
             return new DatapathPortRegister();
         case DATAPATH_DOWN:

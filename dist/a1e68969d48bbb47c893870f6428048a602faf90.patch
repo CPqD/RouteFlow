@@ -1,0 +1,92 @@
+From a1e68969d48bbb47c893870f6428048a602faf90 Mon Sep 17 00:00:00 2001
+From: Eliot Horowitz <eliot@10gen.com>
+Date: Sat, 22 Oct 2011 12:03:38 -0400
+Subject: [PATCH] use PDFILE_VERSION instead of VERSION since its such a
+ common name SERVER-3671
+
+---
+ db/db.cpp        |    6 +++---
+ db/pdfile.h      |    6 +++---
+ pch.h            |    4 ++--
+ util/version.cpp |    2 +-
+ 4 files changed, 9 insertions(+), 9 deletions(-)
+
+diff --git a/db/db.cpp b/db/db.cpp
+index 0d52bbb..21df558 100644
+--- a/db/db.cpp
++++ b/db/db.cpp
+@@ -237,8 +237,8 @@
+         static DBDirectClient db;
+ 
+         if ( h->version == 4 && h->versionMinor == 4 ) {
+-            assert( VERSION == 4 );
+-            assert( VERSION_MINOR == 5 );
++            assert( PDFILE_VERSION == 4 );
++            assert( PDFILE_VERSION_MINOR == 5 );
+ 
+             list<string> colls = db.getCollectionNames( dbName );
+             for ( list<string>::iterator i=colls.begin(); i!=colls.end(); i++) {
+@@ -290,7 +290,7 @@
+                 log() << "****" << endl;
+                 log() << "****" << endl;
+                 log() << "need to upgrade database " << dbName << " with pdfile version " << h->version << "." << h->versionMinor << ", "
+-                      << "new version: " << VERSION << "." << VERSION_MINOR << endl;
++                      << "new version: " << PDFILE_VERSION << "." << PDFILE_VERSION_MINOR << endl;
+                 if ( shouldRepairDatabases ) {
+                     // QUESTION: Repair even if file format is higher version than code?
+                     log() << "\t starting upgrade" << endl;
+diff --git a/db/pdfile.h b/db/pdfile.h
+index 64dba68..e06a7df 100644
+--- a/db/pdfile.h
++++ b/db/pdfile.h
+@@ -366,7 +366,7 @@
+ 
+         enum { HeaderSize = 8192 };
+ 
+-        bool isCurrentVersion() const { return ( version == VERSION ) && ( versionMinor == VERSION_MINOR ); }
++        bool isCurrentVersion() const { return ( version == PDFILE_VERSION ) && ( versionMinor == PDFILE_VERSION_MINOR ); }
+ 
+         bool uninitialized() const { return version == 0; }
+ 
+@@ -379,8 +379,8 @@
+                 assert( HeaderSize == 8192 );
+                 DataFileHeader *h = getDur().writing(this);
+                 h->fileLength = filelength;
+-                h->version = VERSION;
+-                h->versionMinor = VERSION_MINOR;
++                h->version = PDFILE_VERSION;
++                h->versionMinor = PDFILE_VERSION_MINOR;
+                 h->unused.set( fileno, HeaderSize );
+                 assert( (data-(char*)this) == HeaderSize );
+                 h->unusedLength = fileLength - HeaderSize - 16;
+diff --git a/pch.h b/pch.h
+index 1e9684d..600d416 100644
+--- a/pch.h
++++ b/pch.h
+@@ -113,8 +113,8 @@
+ #endif
+ 
+     // pdfile versions
+-    const int VERSION = 4;
+-    const int VERSION_MINOR = 5;
++    const int PDFILE_VERSION = 4;
++    const int PDFILE_VERSION_MINOR = 5;
+ 
+     enum ExitCode {
+         EXIT_CLEAN = 0 ,
+diff --git a/util/version.cpp b/util/version.cpp
+index 01c3dd9..1e4bc45 100644
+--- a/util/version.cpp
++++ b/util/version.cpp
+@@ -83,7 +83,7 @@
+ 
+     string mongodVersion() {
+         stringstream ss;
+-        ss << "db version v" << versionString << ", pdfile version " << VERSION << "." << VERSION_MINOR;
++        ss << "db version v" << versionString << ", pdfile version " << PDFILE_VERSION << "." << PDFILE_VERSION_MINOR;
+         return ss.str();
+     }
+ 
+-- 
+1.7.10
+

@@ -1,7 +1,7 @@
 export ROOT_DIR=$(CURDIR)
 export BUILD_DIR=$(ROOT_DIR)/build
 export LIB_DIR=$(ROOT_DIR)/rflib
-export RFC_DIR=$(ROOT_DIR)/nox
+export NOX_DIR=$(ROOT_DIR)/nox-rfproxy
 export MONGO_DIR=/usr/local/include/mongo
 
 export BUILD_LIB_DIR=$(BUILD_DIR)/lib
@@ -10,14 +10,14 @@ export BUILD_OBJ_DIR=$(BUILD_DIR)/obj
 export RFLIB_NAME=rflib
 
 #the lib subdirs should be done first
-export libdirs := ipc types openflow
+export libdirs := ipc types
 export srcdirs := rfclient
 
 export CPP := g++
 export CFLAGS := -Wall -W
 export AR := ar
 
-all: build lib app nox
+all: build lib app #nox
 
 build:
 	@mkdir -p $(BUILD_DIR);
@@ -54,25 +54,15 @@ rfclient: lib
 	
 nox: lib
 	echo "Building NOX with rfproxy..."
-	cd $(RFC_DIR); \
-	./boot.sh; \
-	mkdir build; \
-	cd build; \
+	cd $(NOX_DIR); \
 	export CPP=; \
-	../configure --enable-ndebug; \
-	make -C $(RFC_DIR)/build; \
+	make -C $(BUILD_DIR)/nox; \
 	echo "done."
 
-clean: clean-libs clean-apps_obj clean-apps_bin clean-nox
+clean: clean-libs clean-apps_obj clean-apps_bin #clean-nox
 
 clean-nox:
-	@rm -rf $(RFC_DIR)/build
-	@rm -rf $(RFC_DIR)/autom4te.cache
-	@rm -f $(RFC_DIR)/aclocal.m4
-	@rm -f $(RFC_DIR)/config.h*
-	@rm -f $(RFC_DIR)/configure.ac
-	@rm -f $(RFC_DIR)/configure
-	@rm -f $(RFC_DIR)/Makefile.in
+	@rm -rf $(BUILD_DIR)/nox
 
 clean-libs:
 	@rm -rf $(BUILD_LIB_DIR)
