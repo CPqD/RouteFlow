@@ -16,20 +16,16 @@
   <body>
     <div class="wrapper">
       <header>
-        <h1>Routeflow</h1>
-        <p>Virtual IP Routing Services over OpenFlow networks</p>
+        <p style="text-align: center;"><img src="images/rflogo.png" alt="RouteFlow"></p>
+        <p style="text-align: center;">Virtual IP Routing Services over OpenFlow networks</p>
 
-        <p class="view"><a href="https://github.com/CPqD/RouteFlow">View the Project on GitHub <small>CPqD/RouteFlow</small></a></p>
-
-
-        <ul>
-          <li><a href="https://github.com/CPqD/RouteFlow/zipball/master">Download <strong>ZIP File</strong></a></li>
-          <li><a href="https://github.com/CPqD/RouteFlow/tarball/master">Download <strong>TAR Ball</strong></a></li>
-          <li><a href="https://github.com/CPqD/RouteFlow">View On <strong>GitHub</strong></a></li>
+        <ul style="margin-left: auto; margin-right: auto;">
+          <li><a href="https://github.com/CPqD/RouteFlow">Download it in <strong>GitHub</strong></a></li>        
+          <li><a href="https://github.com/CPqD/RouteFlow/blob/master/README.md">Check the <strong>README</strong></a></li>
+          <li><a href="https://github.com/CPqD/RouteFlow/wiki">Go to the <strong>Wiki</strong></a></li>
         </ul>
       </header>
       <section>
-        <p><img src="images/rflogo.png" alt="RouteFlow"></p>
 
 <h1>What is it?</h1>
 
@@ -40,27 +36,26 @@
 <p>The routing engines generate the forwarding information base (FIB) into the Linux routing tables according to the configured routing protocols (e.g., OSPF, BGP). In turn, the Linux IP and ARP tables are collected by RouteFlow client (RFClient) processes and then translated into OpenFlow tuples that are finally installed in the associated OpenFlow-enabled devices in the forwarding plane. The diagram below illustrates this scenario:</p>
 
 <p><img src="images/rfscenario.png" alt="RouteFlow">
-You can also check out RouteFlow's <a href="https://sites.google.com/site/routeflow/">website</a> and <a href="http://www.youtube.com/watch?v=YduxuBTyjEw">video presentation</a> for more details.</p>
+You can also check out RouteFlow's <a href="https://sites.google.com/site/routeflow/">website</a> and <a href="http://www.youtube.com/watch?v=YduxuBTyjEw">video presentation</a> for more information.</p>
 
 <p>RouteFlow relies on technologies such as:</p>
 
 <ul>
 <li>
-<a href="http://www.noxrepo.org/nox/about-nox/">NOX</a> and <a href="http://www.noxrepo.org/pox/about-pox/">POX</a> controllers applications are used to connect the switches do the RFServer</li>
-<li>The <a href="http://www.nongnu.org/quagga/">Quagga</a> routing engine is used in the virtual machines to provide routing services</li>
+<a href="http://www.openflow.org/">OpenFlow</a>-enabled switches that can be software-based (such as <a href="http://mininet.org/">Mininet</a>) or hardware-based (such as NetFPGAs)</li>
+<li>
+OpenFlow controllers such as <a href="http://www.noxrepo.org/pox/about-pox/">POX</a> and <a href="http://osrg.github.io/ryu/">Ryu</a>, that are used to connect the switches to the RFServer</li>
+<li>The <a href="http://www.nongnu.org/quagga/">Quagga</a> routing engine can be used in the virtual machines to provide routing services</li>
 <li>
 <a href="http://openvswitch.org/">Open vSwitch</a> is used to connect the virtual machines</li>
-<li>
-<a href="http://www.openflow.org/">OpenFlow</a>-enabled switches that can be software-based (such as <a href="http://yuba.stanford.edu/foswiki/bin/view/OpenFlow/Mininet">Mininet</a>) or hardware-based (such as NetFPGAs)</li>
 <li>
 <a href="http://www.mongodb.org/">MongoDB</a> is used to provide a centralized database for the network and also to implement an IPC service</li>
 <li>
 <a href="http://lxc.sourceforge.net/">LXC</a> containers as virtual machines for running the RFClient and Quagga</li>
+
 </ul><h1>How do I get started?</h1>
 
 <p>You can download the newest RouteFlow distribution from our <a href="https://github.com/CPqD/RouteFlow">GitHub repository</a>. Further instructions for installing and running RouteFlow are provided in the <a href="https://github.com/CPqD/RouteFlow/blob/master/README.md">README</a> file. It's very easy to install on Ubuntu 12.04!</p>
-
-<p>There's also a <a href="ftp://ftp.cpqd.com.br/pub/routeflow/RouteFlow.zip">pre-configured VM with an old version of RouteFlow</a> (<a href="ftp://paperboy.nysernet.org/RouteFlow_20120731-1.zip">mirror</a>). It contains everything that is needed to run RouteFlow on Ubuntu 11.04 (Open vSwitch, MongoDB, RouteFlow and preconfigured LXC containers). Inside the VM package you will find another <a href="http://ftp.cpqd.com.br/pub/routeflow/README">README</a> file with instructions on running this environment.</p>
 
 <h1>Why should I use it?</h1>
 
