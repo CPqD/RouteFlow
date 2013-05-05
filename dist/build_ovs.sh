@@ -16,12 +16,12 @@ install_ovs() {
     $SUPER cp datapath/linux/*.ko /lib/modules/`uname -r`/kernel/net/ovs/ ||
         return 1
     $SUPER depmod -a || return 1
-    $SUPER modprobe openvswitch_mod || return 1
-    grep -q openvswitch_mod /etc/modules
+    $SUPER modprobe openvswitch || return 1
+    grep -q openvswitch /etc/modules
 
     status=$?
     if [ $status -eq 1 ]; then
-        $SUPER echo "openvswitch_mod" >>/etc/modules || return 1
+        $SUPER echo "openvswitch" >>/etc/modules || return 1
     elif [ $status -ne 0 ]; then
         print_status "Can't add openvswitch_mod to /etc/modules" $YELLOW
     fi
