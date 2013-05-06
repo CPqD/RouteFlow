@@ -27,7 +27,7 @@ def hex_int_extend(num, length):
     return ((length/4 - len(num)) * '0') + num
 
 def int_to_bin(num, length):
-    hexnum = hex(num)[2:]
+    hexnum = hex(num)[2:].rstrip('L')
     hexnum = hexnum if len(hexnum) % 2 == 0 else '0' + hexnum
     return a2b_hex(hex_int_extend(hexnum, length))
 
