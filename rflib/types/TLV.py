@@ -27,7 +27,18 @@ def hex_int_extend(num, length):
     return ((length/4 - len(num)) * '0') + num
 
 def int_to_bin(num, length):
-    hexnum = hex(num)[2:]
+    """Converts an integer into a fixed-length integer in network byte order.
+
+    Args:
+        num: An integer to serialise.
+        length: The number of bits expected in the packed result.
+
+    Returns:
+        A structure with the value packed in network byte-order. For example:
+
+        int_to_bin(0xabcd, 16) returns '\xab\xcd'
+    """
+    hexnum = hex(num)[2:].rstrip('L')
     hexnum = hexnum if len(hexnum) % 2 == 0 else '0' + hexnum
     return a2b_hex(hex_int_extend(hexnum, length))
 
