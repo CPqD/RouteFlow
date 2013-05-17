@@ -50,14 +50,22 @@ M:1      \ RFProtocol
 
 RouteFlow runs on Ubuntu 12.04.
 
-1. Clone RouteFlow's repository on GitHub:
+1. Install the dependencies:
+```
+sudo apt-get install build-essential git libboost-dev \
+  libboost-program-options-dev libboost-thread-dev \
+  libboost-filesystem-dev iproute-dev openvswitch-switch \
+  mongodb python-pymongo
+```
+
+2. Clone RouteFlow's repository on GitHub:
 ```
 $ git clone git://github.com/CPqD/RouteFlow.git
 ```
 
-2. Fetch dependencies and build rfclient:
+3. Build `rfclient`
 ```
-$ ./build.sh -c
+make rfclient
 ```
 
 That's it! Now you can run tests 1 and 2. The setup to run them is described in the "Running" section.
@@ -129,15 +137,13 @@ mininet> h2 ping h3
 For more details on this test, see its [tutorial](https://github.com/CPqD/RouteFlow/wiki/Tutorial-2:-rftest2).
 
 
-## Now what?
+# Now what?
 If you want to use the web interface to inspect RouteFlow behavior, see the wiki page on [rfweb](https://github.com/CPqD/RouteFlow/wiki/The-web-interface).
 
 If you want to create your custom configurations schemes for a given setup, check out the [configuration section of the first tutorial](https://github.com/CPqD/RouteFlow/wiki/Tutorial-1:-rftest1#configuration-file) and the guide on [how to create your virtual environment](https://github.com/CPqD/RouteFlow/wiki/Virtual-environment-creation).
 
-There are additional controllers available which may provide additional features or support for newer OpenFlow versions. To install these, use build.sh:
-```
-$ ./build.sh -c nox ryu
-```
+If you're developing for RouteFlow, there are more advanced options and components that can be installed through the `build.sh` script. See its [source](https://github.com/CPqD/RouteFlow/blob/master/build.sh) for more information.
+
 
 # Support
 If you want to know more or need to contact us regarding the project for anything (questions, suggestions, bug reports, discussions about RouteFlow and SDN in general) you can use the following resources:
