@@ -1,3 +1,13 @@
+# Notice
+This is the CPqD version of RouteFlow, which is and older and stable.
+
+For new features and versions, head to the [community repository](http://routeflow.github.io/RouteFlow/).
+
+The development is being continued in the community repository.
+
+CPqD's repository will be periodically updated with versions from it.
+
+
 # Welcome
 This version of RouteFlow is a beta developers' release intended to evaluate RouteFlow for providing virtualized IP routing services on one or more OpenFlow switches.
 
