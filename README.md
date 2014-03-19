@@ -75,6 +75,7 @@ $ git clone git://github.com/CPqD/RouteFlow.git
 
 3. Build `rfclient`
 ```
+cd RouteFlow
 make rfclient
 ```
 
